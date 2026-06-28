@@ -1,0 +1,54 @@
+import { Button, Slider } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    title: "orpheus";
+    width: 400px;
+    height: 200px;
+    background: #1e1e2e;
+
+    in property <string> current-track-title: "no song playing";
+    in property <string> current-artist: "---";
+
+    callback play-paused-clicked();
+    callback next-track-clicked();
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 15px;
+        alignment: center;
+
+        Text {
+            text: root.current-track-title;
+            color: #cdd6f4;
+            font-size: 16px;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: root.current-artist;
+            color: #cdd6f4;
+            font-size: 16px;
+            horizontal-alignment: center;
+        }
+
+        Slider {
+            minimum: 0;
+            maximum: 100;
+            value: 30;
+        }
+
+        Button {
+            text: "play/pause";
+            clicked => {
+                root.play-paused-clicked();
+            }
+        }
+
+        Button {
+            text: "next track";
+            clicked => {
+                root.next-track-clicked();
+            }
+        }
+    }
+}
