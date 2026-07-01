@@ -28,8 +28,8 @@ pub fn toggle_mpd_play() -> Result<(), mpd::error::Error> {
     let status = client.status()?;
 
     match status.state {
-        mpd::State::Play => client.pause(false),
-        mpd::State::Pause => client.pause(true),
+        mpd::State::Play => client.pause(true),
+        mpd::State::Pause => client.pause(false),
         mpd::State::Stop => client.stop(), // not necessary for now, might even remove later
     }
 }
