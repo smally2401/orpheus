@@ -6,7 +6,6 @@ pub struct TrackInfo {
 }
 
 pub fn fetch_mpd_metadata() -> Result<TrackInfo, mpd::error::Error> {
-
     let mut client = Client::connect("127.0.0.1:6600")?;
 
     if let Some(song) = client.currentsong()? {
@@ -22,4 +21,25 @@ pub fn fetch_mpd_metadata() -> Result<TrackInfo, mpd::error::Error> {
             artist: "---".to_string(),
         })
     }
+}
+
+pub fn toggle_mpd_play() -> Result<(), mpd::error::Error> {
+    let mut client = Client::connect("127.0.0.1:6600")?;
+    let status = client.status()?;
+
+    match status.state {
+        mpd::State::Play => client.pause(false),
+        mpd::State::Pause => client.pause(true),
+        mpd::State::Stop => client.stop(), // not necessary for now, might even remove later
+    }
+}
+
+pub fn next_mpd_track() -> Result<(), mpd::error::Error> {
+    let mut client = Client::connect("127.0.0.1:6600")?;
+    client.next()
+}
+
+pub fn prev_mpd_track() -> Result<(), mpd::error::Error> {
+    let mut client = Client::connect("127.0.0.1:6600")?;
+    client.prev()
 }

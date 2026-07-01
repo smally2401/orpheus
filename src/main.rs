@@ -8,14 +8,7 @@ slint::include_modules!();
 async fn main() -> Result<(), slint::PlatformError> {
 
     let ui = AppWindow::new()?;
-
-    match mpd_backend::fetch_mpd_metadata() {
-        Ok(track) => {
-            ui.set_current_track_title(track.title.into());
-            ui.set_current_artist(track.artist.into());
-        },
-        Err(e) => println!("an error happened: {}", e),
-    }
+    let tx = player_bridge::spawn_player_bridge(&ui);
 
     ui.run()
 }
