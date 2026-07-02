@@ -9,13 +9,14 @@ const ALLOWED_EXTENSIONS: &[&str] = &["mp3", "flac"]; // todo: add more
 pub struct Song {
     path: PathBuf,
 
-    title: String,
-    artist: String,
+    pub title: String,
+    pub artist: String,
 
     album_title: String,
     album_artist: String,
+    track_number: Option<u32>,
 
-    // todo: lyrics
+    // todo: lyrics and disc number
 }
 
 pub struct Album {
@@ -88,12 +89,16 @@ impl LocalBackend {
                 .map(|a| a.to_string())
                 .unwrap_or_else(|| artist.clone());
 
+            let track_number = tag
+                .and_then(|t| t.track());
+
             let song = Song {
                 path: path.to_path_buf(),
                 title,
                 artist,
                 album_title,
                 album_artist,
+                track_number,
             };
 
             if let Some(album) = albums.get_mut(&(song.album_title.clone(), song.album_artist.clone())) {
@@ -109,7 +114,10 @@ impl LocalBackend {
                 albums.insert((song.album_title, song.album_artist), album);
             }
         }
-        let library: Vec<Album> = albums.into_values().collect();
+        let mut library: Vec<Album> = albums.into_values().collect();
+        library.sort_by_key(|album| album.title.clone());
+        library.iter_mut()
+            .for_each(|album| album.tracklist.sort_by_key(|s| s.track_number));
 
         let stream = rodio::DeviceSinkBuilder::open_default_sink().unwrap();
         let mixer = stream.mixer();
@@ -137,7 +145,7 @@ impl LocalBackend {
     }
 
     pub fn next(&mut self) -> Result<(), Box<dyn Error>> {
-        if self.index < self.queue.len() - 1 {
+        if self.index + 1 < self.queue.len() {
             self.index += 1;
             self.load_track()?;
         }
@@ -169,7 +177,8 @@ impl LocalBackend {
         }
     }
 
-    pub fn get_current_song(&mut self) -> &Song {
-        &self.queue[self.index]
+    pub fn get_current_song(&self) -> Option<&Song> {
+        if self.queue.is_empty() { None } 
+        else { Some(&self.queue[self.index]) }
     }
 }

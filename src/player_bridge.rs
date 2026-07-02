@@ -3,17 +3,20 @@ use tokio::sync::mpsc;
 use slint::ComponentHandle;
 
 use crate::AppWindow;
-use crate::mpd_backend::*;
+use crate::local_backend::*;
 
 pub enum PlayerCommand {
     TogglePlay,
     NextTrack,
     PrevTrack,
+    SelectAlbum(usize),
     ToggleShuffle,
 }
 
-pub fn spawn_player_bridge(ui: &AppWindow) -> mpsc::Sender<PlayerCommand>{
+pub fn spawn_player_bridge(ui: &AppWindow) -> mpsc::Sender<PlayerCommand> {
 
+    let mut local_backend = LocalBackend::new();
+    let _ = local_backend.select_album(0);
     let (tx, mut rx) = mpsc::channel::<PlayerCommand>(100);
     let ui = ui.as_weak();
 
@@ -26,10 +29,12 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> mpsc::Sender<PlayerCommand>{
                 maybe_command = rx.recv() => {
                     if let Some(command) = maybe_command {
                         match command {
-                            PlayerCommand::TogglePlay => { let _ = toggle_mpd_play(); },
-                            PlayerCommand::NextTrack => { let _ = next_mpd_track(); },
-                            PlayerCommand::PrevTrack => { let _ = prev_mpd_track(); },
-                            PlayerCommand::ToggleShuffle => {  },
+                            // todo: remove let _ and handle stuff
+                            PlayerCommand::TogglePlay => { local_backend.toggle_play(); },
+                            PlayerCommand::NextTrack => { let _ = local_backend.next(); },
+                            PlayerCommand::PrevTrack => { let _ = local_backend.prev(); },
+                            PlayerCommand::SelectAlbum(i) => { let _ = local_backend.select_album(i); },
+                            _ => {  },
                         }
                     } else {
                         break;
@@ -37,13 +42,23 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> mpsc::Sender<PlayerCommand>{
                 }
 
                 _ = interval.tick() => {
-                    if let Ok(track_info) = fetch_mpd_metadata() {
-                        let ui_weak_clone = ui.clone();
+                    let ui_weak_clone = ui.clone();
+                    if let Some(track) = local_backend.get_current_song() {
+                        let title = track.title.clone();
+                        let artist = track.artist.clone();
 
                         let _ = slint::invoke_from_event_loop(move || {
                             if let Some(ui_instance) = ui_weak_clone.upgrade() {
-                                ui_instance.set_current_track_title(track_info.title.into());
-                                ui_instance.set_current_artist(track_info.artist.into());
+                                ui_instance.set_current_track_title(title.into());
+                                ui_instance.set_current_artist(artist.into());
+                            }
+                        });
+
+                    } else {
+                        let _ = slint::invoke_from_event_loop(move || {
+                            if let Some(ui_instance) = ui_weak_clone.upgrade() {
+                                ui_instance.set_current_track_title("No song playing".into());
+                                ui_instance.set_current_artist("---".into());
                             }
                         });
                     }
