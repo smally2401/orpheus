@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ffi::OsStr, path::PathBuf};
+use std::{collections::HashMap, error::Error, ffi::OsStr, path::PathBuf};
 use lofty::{file::TaggedFileExt, tag::{Accessor, ItemKey}};
 use rodio::{MixerDeviceSink, Player};
 use walkdir::WalkDir;
@@ -12,7 +12,7 @@ pub struct Song {
     title: String,
     artist: String,
 
-    album: String,
+    album_title: String,
     album_artist: String,
 
     // todo: lyrics
@@ -36,7 +36,7 @@ pub struct LocalBackend {
 }
 
 impl LocalBackend {
-    fn new() -> Self {
+    pub fn new() -> Self {
 
         // todo: change the hardcoded path
         let entries = WalkDir::new("/home/iris/music").into_iter().filter_map(|e| e.ok());
@@ -52,12 +52,12 @@ impl LocalBackend {
                     .map(|ext| ALLOWED_EXTENSIONS.contains(&ext.to_lowercase().as_str()))
                     .unwrap_or(false)
             })
-            .map(|e| e.path());
+            .map(|e| e.into_path());
 
         let mut albums: HashMap<(String, String), Album> = HashMap::new();
         for path in audio_files {
 
-            let tagged_file = match lofty::read_from_path(path) {
+            let tagged_file = match lofty::read_from_path(&path) {
                 Ok(file) => file,
                 Err(_) => continue,
             };
@@ -78,7 +78,7 @@ impl LocalBackend {
                 .map(|a| a.to_string())
                 .unwrap_or_else(|| "Unknown Artist".to_string());
 
-            let album = tag
+            let album_title = tag
                 .and_then(|t| t.album())
                 .map(|a| a.to_string())
                 .unwrap_or_else(|| "Unknown Album".to_string());
@@ -86,47 +86,90 @@ impl LocalBackend {
             let album_artist = tag
                 .and_then(|t| t.get_string(ItemKey::AlbumArtist))
                 .map(|a| a.to_string())
-                .unwrap_or_else(|| artist);
+                .unwrap_or_else(|| artist.clone());
 
             let song = Song {
                 path: path.to_path_buf(),
                 title,
                 artist,
-                album,
+                album_title,
                 album_artist,
             };
 
-            if let Some(album) = albums.get(&(song.album, song.album_artist)) {
+            if let Some(album) = albums.get_mut(&(song.album_title.clone(), song.album_artist.clone())) {
                 album.tracklist.push(song);
 
             } else {
-                let album = Album {
-                    title: song.album,
-                    artist: song.album_artist,
+                let mut album = Album {
+                    title: song.album_title.clone(),
+                    artist: song.album_artist.clone(),
                     tracklist: Vec::new(),
                 };
-                album.tracklist.push(song);
-                albums.insert((song.album, song.album_artist), album);
+                album.tracklist.push(song.clone());
+                albums.insert((song.album_title, song.album_artist), album);
             }
         }
         let library: Vec<Album> = albums.into_values().collect();
 
-        println!("haiii :3");
+        let stream = rodio::DeviceSinkBuilder::open_default_sink().unwrap();
+        let mixer = stream.mixer();
+        let player = rodio::Player::connect_new(mixer);
+
+        LocalBackend {
+            stream,
+            player,
+            library,
+            queue: Vec::new(),
+            index: 0,
+        }
     }
 
-    fn toggle_play(&mut self) {
-        // self.playing = !self.playing;
+    // todo: more precise error returns
+    pub fn load_track(&mut self) -> Result<(), Box<dyn Error>> {
+        self.player.stop();
+
+        let track = std::fs::File::open(&self.queue[self.index].path)?;
+        let source = rodio::Decoder::try_from(track)?;
+        self.player.append(source);
+        self.player.play();
+
+        Ok(())
     }
 
-    fn next(&mut self) {
+    pub fn next(&mut self) -> Result<(), Box<dyn Error>> {
         if self.index < self.queue.len() - 1 {
             self.index += 1;
+            self.load_track()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn prev(&mut self) -> Result<(), Box<dyn Error>> {
+        if self.index > 0 {
+            self.index -= 1;
+            self.load_track()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn select_album(&mut self, album_index: usize) -> Result<(), Box<dyn Error>> {
+        self.queue = self.library[album_index].tracklist.clone();
+        self.index = 0;
+        self.load_track()?;
+        Ok(())
+    } 
+
+    pub fn toggle_play(&mut self) {
+        if self.player.is_paused() {
+            self.player.play();
+        } else {
+            self.player.pause();
         }
     }
 
-    fn prev(&mut self) {
-        if self.index > 0 {
-            self.index -= 1;
-        }
+    pub fn get_current_song(&mut self) -> &Song {
+        &self.queue[self.index]
     }
 }
