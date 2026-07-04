@@ -2,6 +2,8 @@ mod mpd_backend;
 mod local_backend;
 mod player_bridge;
 
+use slint::{ModelRc, VecModel};
+
 use crate::player_bridge::PlayerCommand;
 
 slint::include_modules!();
@@ -10,7 +12,7 @@ slint::include_modules!();
 async fn main() -> Result<(), slint::PlatformError> {
 
     let ui = AppWindow::new()?;
-    let tx = player_bridge::spawn_player_bridge(&ui);
+    let (tx, library) = player_bridge::spawn_player_bridge(&ui);
     
     let tx_clone = tx.clone();
     ui.on_play_paused_clicked(move || {
@@ -35,6 +37,17 @@ async fn main() -> Result<(), slint::PlatformError> {
             let _ = tx.send(PlayerCommand::PrevTrack).await;
         });
     });
+
+    let tx_clone = tx.clone();
+    ui.on_album_selected(move |i| {
+        let tx = tx_clone.clone();
+        tokio::spawn(async move {
+            let _ = tx.send(PlayerCommand::SelectAlbum(i as usize)).await;
+        });
+    });
+
+    let model = ModelRc::new(VecModel::from(library));
+    ui.set_albums(model);
 
     ui.run()
 }

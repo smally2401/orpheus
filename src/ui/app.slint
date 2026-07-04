@@ -1,17 +1,28 @@
-import { Button, Slider } from "std-widgets.slint";
+import { Button, Slider, ListView } from "std-widgets.slint";
+
+struct SlintAlbum {
+    title: string,
+    artist: string,
+    track_count: int,
+}
 
 export component AppWindow inherits Window {
     title: "orpheus";
     width: 400px;
-    height: 300px;
+    height: 500px;
     background: #1e1e2e;
 
-    in property <string> current-track-title: "no song playing";
+    in property <[SlintAlbum]> albums: [];
+    in-out property <bool> show-library: true;
+
+    in property <string> current-track-title: "No song playing";
     in property <string> current-artist: "---";
 
     callback play-paused-clicked();
     callback next-track-clicked();
     callback prev-track-clicked();
+
+    callback album-selected(int);
 
     VerticalLayout {
         padding: 20px;
@@ -58,5 +69,20 @@ export component AppWindow inherits Window {
                 root.prev-track-clicked();
             }
         }
+        
+        if root.show-library: 
+            ListView {
+                height: 200px;
+                for entry[i] in root.albums: TouchArea {
+                    height: 65px;
+                    Rectangle { VerticalLayout {
+                        spacing: 4px;
+                        alignment: center;
+                        Text { text: entry.title; font-size: 15px; }
+                        Text { text: entry.artist; font-size: 12px; }
+                    } }
+                    clicked => root.album-selected(i);
+                }
+            }
     }
 }

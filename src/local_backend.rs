@@ -20,9 +20,9 @@ pub struct Song {
 }
 
 pub struct Album {
-    title: String,
-    artist: String,
-    tracklist: Vec<Song>,
+    pub title: String,
+    pub artist: String,
+    pub tracklist: Vec<Song>,
 
     // todo: art, year and genres
 }
@@ -31,7 +31,7 @@ pub struct LocalBackend {
     stream: MixerDeviceSink,
     player: Player,
 
-    library: Vec<Album>,
+    pub library: Vec<Album>,
     queue: Vec<Song>,
     index: usize, // index in current queue
 }
@@ -115,6 +115,8 @@ impl LocalBackend {
             }
         }
         let mut library: Vec<Album> = albums.into_values().collect();
+
+        // todo: add more ordering options
         library.sort_by_key(|album| album.title.clone());
         library.iter_mut()
             .for_each(|album| album.tracklist.sort_by_key(|s| s.track_number));

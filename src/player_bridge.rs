@@ -2,23 +2,32 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use slint::ComponentHandle;
 
-use crate::AppWindow;
-use crate::local_backend::*;
+use crate::{ AppWindow, SlintAlbum };
+use crate::local_backend::LocalBackend;
 
 pub enum PlayerCommand {
     TogglePlay,
     NextTrack,
     PrevTrack,
     SelectAlbum(usize),
-    ToggleShuffle,
+    // ToggleShuffle,
 }
 
-pub fn spawn_player_bridge(ui: &AppWindow) -> mpsc::Sender<PlayerCommand> {
+pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<SlintAlbum>) {
 
     let mut local_backend = LocalBackend::new();
-    let _ = local_backend.select_album(0);
     let (tx, mut rx) = mpsc::channel::<PlayerCommand>(100);
     let ui = ui.as_weak();
+
+    let mut library: Vec<SlintAlbum> = Vec::new();
+    for album in &local_backend.library {
+        let slint_album = SlintAlbum { 
+            title: album.title.clone().into(),
+            artist: album.artist.clone().into(),
+            track_count: album.tracklist.len() as i32,
+        };
+        library.push(slint_album);
+    }
 
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_millis(100));
@@ -34,7 +43,6 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> mpsc::Sender<PlayerCommand> {
                             PlayerCommand::NextTrack => { let _ = local_backend.next(); },
                             PlayerCommand::PrevTrack => { let _ = local_backend.prev(); },
                             PlayerCommand::SelectAlbum(i) => { let _ = local_backend.select_album(i); },
-                            _ => {  },
                         }
                     } else {
                         break;
@@ -67,5 +75,5 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> mpsc::Sender<PlayerCommand> {
         }
     });
 
-    tx
+    (tx, library)
 }
