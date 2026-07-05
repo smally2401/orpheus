@@ -1,9 +1,10 @@
 use std::time::Duration;
 use tokio::sync::mpsc;
-use slint::ComponentHandle;
+use slint::{ComponentHandle};
 
 use crate::{ AppWindow, SlintAlbum };
 use crate::local_backend::LocalBackend;
+use crate::utils::{album_rust_to_slint};
 
 pub enum PlayerCommand {
     TogglePlay,
@@ -21,11 +22,7 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
 
     let mut library: Vec<SlintAlbum> = Vec::new();
     for album in &local_backend.library {
-        let slint_album = SlintAlbum { 
-            title: album.title.clone().into(),
-            artist: album.artist.clone().into(),
-            track_count: album.tracklist.len() as i32,
-        };
+        let slint_album = album_rust_to_slint(album);
         library.push(slint_album);
     }
 

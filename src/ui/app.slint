@@ -1,10 +1,5 @@
 import { Button, Slider, ListView } from "std-widgets.slint";
-
-struct SlintAlbum {
-    title: string,
-    artist: string,
-    track_count: int,
-}
+import { SlintAlbum, SlintSong } from "types.slint";
 
 export component AppWindow inherits Window {
     title: "orpheus";
@@ -69,6 +64,14 @@ export component AppWindow inherits Window {
                 root.prev-track-clicked();
             }
         }
+
+        if !root.show-library:
+            Button {
+                text: "back to library";
+                clicked => {
+                    root.show-library = true;
+                }
+            }
         
         if root.show-library: 
             ListView {
@@ -81,7 +84,10 @@ export component AppWindow inherits Window {
                         Text { text: entry.title; font-size: 15px; }
                         Text { text: entry.artist; font-size: 12px; }
                     } }
-                    clicked => root.album-selected(i);
+                    clicked => {
+                        root.album-selected(i);
+                        root.show-library = false;
+                    }
                 }
             }
     }

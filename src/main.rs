@@ -1,6 +1,7 @@
 mod mpd_backend;
 mod local_backend;
 mod player_bridge;
+mod utils;
 
 use slint::{ModelRc, VecModel};
 
