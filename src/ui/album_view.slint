@@ -1,0 +1,61 @@
+import { SlintAlbum, SlintSong } from "types.slint";
+import { Button, ListView } from "std-widgets.slint";
+
+export component AlbumView {
+    in property <SlintAlbum> album;
+
+    callback back-clicked;
+    callback play-album-clicked;
+    callback play-track-clicked(int);
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 10px;
+
+        Text {
+            text: root.album.title;
+            font-size: 20px;
+        }
+
+        Text {
+            text: root.album.artist;
+            font-size: 15px;
+        }
+
+        HorizontalLayout {
+
+            Button {
+                text: "◀";
+                clicked => {
+                    root.back-clicked();
+                }
+            }
+
+            Button {
+                text: "▶";
+                clicked => {
+                    root.play-album-clicked();
+                }
+            }
+
+        }
+
+        ListView {
+            height: 200px;
+            for entry[i] in album.tracks: TouchArea {
+                height: 65px;
+                Rectangle {
+                    VerticalLayout {
+                        spacing: 4px;
+                        alignment: center;
+                        Text { text: entry.title; font-size: 15px; }
+                        Text { text: entry.artist; font-size: 12px; }
+                    }
+                }
+                clicked => {
+                    root.play-track-clicked(i);
+                }   
+            }
+        }
+    }
+}

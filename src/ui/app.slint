@@ -1,5 +1,8 @@
 import { Button, Slider, ListView } from "std-widgets.slint";
 import { SlintAlbum, SlintSong } from "types.slint";
+import { AlbumView } from "album_view.slint";
+
+enum View { Library, Album }
 
 export component AppWindow inherits Window {
     title: "orpheus";
@@ -8,7 +11,9 @@ export component AppWindow inherits Window {
     background: #1e1e2e;
 
     in property <[SlintAlbum]> albums: [];
-    in-out property <bool> show-library: true;
+    in-out property <View> current-view: View.Library;
+    in-out property <SlintAlbum> viewing-album;
+    in-out property <int> viewing-album-index;
 
     in property <string> current-track-title: "No song playing";
     in property <string> current-artist: "---";
@@ -18,6 +23,9 @@ export component AppWindow inherits Window {
     callback prev-track-clicked();
 
     callback album-selected(int);
+
+    callback play-album-clicked();
+    callback play-track-clicked(int);
 
     VerticalLayout {
         padding: 20px;
@@ -65,15 +73,15 @@ export component AppWindow inherits Window {
             }
         }
 
-        if !root.show-library:
-            Button {
-                text: "back to library";
-                clicked => {
-                    root.show-library = true;
-                }
+        if root.current-view == View.Album:
+            AlbumView {
+                album: root.viewing-album;
+                back-clicked => { root.current-view = View.Library }
+                play-album-clicked => { root.play-album-clicked() }
+                play-track-clicked(idx) => { root.play-track-clicked(idx) }
             }
         
-        if root.show-library: 
+        if root.current-view == View.Library: 
             ListView {
                 height: 200px;
                 for entry[i] in root.albums: TouchArea {
@@ -85,8 +93,9 @@ export component AppWindow inherits Window {
                         Text { text: entry.artist; font-size: 12px; }
                     } }
                     clicked => {
-                        root.album-selected(i);
-                        root.show-library = false;
+                        root.current-view = View.Album;
+                        root.viewing-album = albums[i];
+                        root.viewing-album-index = i;
                     }
                 }
             }

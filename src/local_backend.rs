@@ -28,7 +28,7 @@ pub struct Album {
 }
 
 pub struct LocalBackend {
-    stream: MixerDeviceSink,
+    _stream: MixerDeviceSink,
     player: Player,
 
     pub library: Vec<Album>,
@@ -126,7 +126,7 @@ impl LocalBackend {
         let player = rodio::Player::connect_new(mixer);
 
         LocalBackend {
-            stream,
+            _stream: stream,
             player,
             library,
             queue: Vec::new(),
@@ -170,6 +170,13 @@ impl LocalBackend {
         self.load_track()?;
         Ok(())
     } 
+
+    pub fn select_track(&mut self, album_index: usize, track_index: usize) -> Result<(), Box<dyn Error>> {
+        self.queue = self.library[album_index].tracklist.clone();
+        self.index = track_index;
+        self.load_track()?;
+        Ok(())
+    }
 
     pub fn toggle_play(&mut self) {
         if self.player.is_paused() {

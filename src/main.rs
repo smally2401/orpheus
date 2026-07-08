@@ -47,6 +47,30 @@ async fn main() -> Result<(), slint::PlatformError> {
         });
     });
 
+    let tx_clone = tx.clone();
+    let ui_weak = ui.as_weak();
+    ui.on_play_album_clicked(move || {
+        if let Some(ui) = ui_weak.upgrade() {
+            let album_index = ui.get_viewing_album_index() as usize;
+            let tx = tx_clone.clone();
+            tokio::spawn(async move {
+                let _ = tx.send(PlayerCommand::SelectAlbum(album_index)).await;
+            });
+        }
+    });
+
+    let tx_clone = tx.clone();
+    let ui_weak = ui.as_weak();
+    ui.on_play_track_clicked(move |song_index| {
+        if let Some(ui) = ui_weak.upgrade() {
+            let album_index = ui.get_viewing_album_index() as usize;
+            let tx = tx_clone.clone();
+            tokio::spawn(async move {
+                let _ = tx.send(PlayerCommand::SelectTrack(album_index, song_index as usize)).await;
+            });
+        }
+    });
+
     let model = ModelRc::new(VecModel::from(library));
     ui.set_albums(model);
 

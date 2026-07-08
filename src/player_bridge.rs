@@ -11,6 +11,7 @@ pub enum PlayerCommand {
     NextTrack,
     PrevTrack,
     SelectAlbum(usize),
+    SelectTrack(usize, usize),
     // ToggleShuffle,
 }
 
@@ -40,6 +41,7 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                             PlayerCommand::NextTrack => { let _ = local_backend.next(); },
                             PlayerCommand::PrevTrack => { let _ = local_backend.prev(); },
                             PlayerCommand::SelectAlbum(i) => { let _ = local_backend.select_album(i); },
+                            PlayerCommand::SelectTrack(album_i, track_i) => { let _ = local_backend.select_track(album_i, track_i); },
                         }
                     } else {
                         break;
