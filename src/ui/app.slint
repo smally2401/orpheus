@@ -22,8 +22,6 @@ export component AppWindow inherits Window {
     callback next-track-clicked();
     callback prev-track-clicked();
 
-    callback album-selected(int);
-
     callback play-album-clicked();
     callback play-track-clicked(int);
 
@@ -94,7 +92,7 @@ export component AppWindow inherits Window {
                     } }
                     clicked => {
                         root.current-view = View.Album;
-                        root.viewing-album = albums[i];
+                        root.viewing-album = root.albums[i];
                         root.viewing-album-index = i;
                     }
                 }

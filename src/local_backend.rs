@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error, ffi::OsStr, path::PathBuf};
+use std::{collections::HashMap, error::Error, ffi::OsStr, path::{PathBuf, Path}};
 use lofty::{file::TaggedFileExt, tag::{Accessor, ItemKey}};
 use rodio::{MixerDeviceSink, Player};
 use walkdir::WalkDir;
@@ -37,10 +37,10 @@ pub struct LocalBackend {
 }
 
 impl LocalBackend {
-    pub fn new() -> Self {
+    pub fn new(path: &Path) -> Self {
 
-        // todo: change the hardcoded path
-        let entries = WalkDir::new("/home/iris/music").into_iter().filter_map(|e| e.ok());
+        let entries = WalkDir::new(path).into_iter().filter_map(|e| e.ok());
+
         let audio_files = entries
             .filter(|e| {
                 if !e.file_type().is_file() {
@@ -189,5 +189,9 @@ impl LocalBackend {
     pub fn get_current_song(&self) -> Option<&Song> {
         if self.queue.is_empty() { None } 
         else { Some(&self.queue[self.index]) }
+    }
+
+    pub fn track_finished(&self) -> bool {
+        self.player.empty()
     }
 }

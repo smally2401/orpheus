@@ -1,4 +1,4 @@
-mod mpd_backend;
+// mod mpd_backend;
 mod local_backend;
 mod player_bridge;
 mod utils;
@@ -36,14 +36,6 @@ async fn main() -> Result<(), slint::PlatformError> {
         let tx = tx_clone.clone();
         tokio::spawn(async move {
             let _ = tx.send(PlayerCommand::PrevTrack).await;
-        });
-    });
-
-    let tx_clone = tx.clone();
-    ui.on_album_selected(move |i| {
-        let tx = tx_clone.clone();
-        tokio::spawn(async move {
-            let _ = tx.send(PlayerCommand::SelectAlbum(i as usize)).await;
         });
     });
 

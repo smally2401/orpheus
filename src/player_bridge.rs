@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use slint::{ComponentHandle};
@@ -17,7 +18,22 @@ pub enum PlayerCommand {
 
 pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<SlintAlbum>) {
 
-    let mut local_backend = LocalBackend::new();
+    let raw = std::env::var("ORPHEUS_MUSIC_DIR").ok();
+    let path = raw.map(|s| {
+        if let Some(stripped) = s.strip_prefix("~/") {
+            dirs::home_dir()
+                .map(|home| home.join(stripped))
+                .unwrap_or_else(|| PathBuf::from(s.clone()))
+        } else {
+            PathBuf::from(s)
+        }
+    }).unwrap_or_else(|| PathBuf::from("."));
+
+    if !path.exists() {
+        eprintln!("error: path {} could not be found", path.to_string_lossy());
+    }
+
+    let mut local_backend = LocalBackend::new(&path);
     let (tx, mut rx) = mpsc::channel::<PlayerCommand>(100);
     let ui = ui.as_weak();
 
@@ -49,6 +65,11 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                 }
 
                 _ = interval.tick() => {
+                    if local_backend.track_finished() {
+                        // todo: include loop back to track 0 option
+                        let _ = local_backend.next();
+                    }
+
                     let ui_weak_clone = ui.clone();
                     if let Some(track) = local_backend.get_current_song() {
                         let title = track.title.clone();
