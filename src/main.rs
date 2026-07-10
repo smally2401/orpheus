@@ -71,6 +71,14 @@ async fn main() -> Result<(), slint::PlatformError> {
         });
     });
 
+    let tx_clone = tx.clone();
+    ui.on_volume_changed(move |volume| {
+        let tx = tx_clone.clone();
+        tokio::spawn(async move {
+            let _ = tx.send(PlayerCommand::SetVolume(volume)).await;
+        });
+    });
+
     let model = ModelRc::new(VecModel::from(library));
     ui.set_albums(model);
 

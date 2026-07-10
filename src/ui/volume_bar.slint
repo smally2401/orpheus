@@ -1,0 +1,27 @@
+import { Slider } from "std-widgets.slint";
+
+export component VolumeBar {
+    callback volume-changed(float);
+
+    pure function format-percentage(n: float) -> string {
+        let percentage: int = n * 100;
+        return percentage + "%";
+    }
+
+    HorizontalLayout {
+        Text {
+            text: format-percentage(slider.value);
+            font-size: 8px;
+        }
+
+        slider := Slider {
+            minimum: 0;
+            maximum: 1;
+            value: 1.0;
+
+            changed(vol) => {
+                volume-changed(vol);
+            }
+        }
+    }
+}

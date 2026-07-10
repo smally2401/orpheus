@@ -2,6 +2,7 @@ import { Button, ListView } from "std-widgets.slint";
 import { SlintAlbum, SlintSong } from "types.slint";
 import { AlbumView } from "album_view.slint";
 import { ProgressBar } from "progress_bar.slint";
+import { VolumeBar } from "volume_bar.slint";
 
 enum View { Library, Album }
 
@@ -29,6 +30,7 @@ export component AppWindow inherits Window {
     callback play-track-clicked(int);
 
     callback seek-requested(int);
+    callback volume-changed(float);
 
     VerticalLayout {
         padding: 20px;
@@ -74,6 +76,10 @@ export component AppWindow inherits Window {
             current-position: root.current-position;
             total-duration: root.total-duration;
             seek-requested(val) => { root.seek-requested(val) }
+        }
+
+        VolumeBar {
+            volume-changed(val) => { root.volume-changed(val) }
         }
 
         if root.current-view == View.Album:

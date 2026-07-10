@@ -207,4 +207,8 @@ impl LocalBackend {
         self.player.try_seek(Duration::from_secs(position as u64))?;
         Ok(())
     }
+
+    pub fn set_volume(&mut self, volume: f32) {
+        self.player.set_volume(volume);
+    }
 }

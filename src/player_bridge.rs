@@ -14,6 +14,7 @@ pub enum PlayerCommand {
     SelectAlbum(usize),
     SelectTrack(usize, usize),
     Seek(usize),
+    SetVolume(f32),
     // ToggleShuffle,
 }
 
@@ -59,7 +60,8 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                             PlayerCommand::PrevTrack => { let _ = local_backend.prev(); },
                             PlayerCommand::SelectAlbum(i) => { let _ = local_backend.select_album(i); },
                             PlayerCommand::SelectTrack(album_i, track_i) => { let _ = local_backend.select_track(album_i, track_i); },
-                            PlayerCommand::Seek(dur) => { let _ = local_backend.seek(dur); }
+                            PlayerCommand::Seek(dur) => { let _ = local_backend.seek(dur); },
+                            PlayerCommand::SetVolume(vol) => { local_backend.set_volume(vol); },
                         }
                     } else {
                         break;
