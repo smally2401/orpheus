@@ -4,6 +4,7 @@ import { AlbumView } from "album_view.slint";
 import { ProgressBar } from "progress_bar.slint";
 import { VolumeBar } from "volume_bar.slint";
 import { LibraryView } from "library_view.slint";
+import { TrackButtons } from "track_buttons.slint";
 
 enum View { Library, Album }
 
@@ -51,25 +52,10 @@ export component AppWindow inherits Window {
             horizontal-alignment: center;
         }
 
-        Button {
-            text: "play/pause";
-            clicked => {
-                root.play-paused-clicked();
-            }
-        }
-
-        Button {
-            text: "next track";
-            clicked => {
-                root.next-track-clicked();
-            }
-        }
-
-        Button {
-            text: "previous track";
-            clicked => {
-                root.prev-track-clicked();
-            }
+        TrackButtons {
+            play-paused-clicked => { root.play-paused-clicked() }
+            next-track-clicked => { root.next-track-clicked() }
+            prev-track-clicked => { root.prev-track-clicked() }
         }
 
         ProgressBar {

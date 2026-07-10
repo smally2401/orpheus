@@ -1,0 +1,30 @@
+import { Button } from "std-widgets.slint";
+
+export component TrackButtons {
+    callback play-paused-clicked();
+    callback next-track-clicked();
+    callback prev-track-clicked();
+
+    HorizontalLayout {
+        Button {
+            text: "play/pause";
+            clicked => {
+                root.play-paused-clicked();
+            }
+        }
+
+        Button {
+            text: "next track";
+            clicked => {
+                root.next-track-clicked();
+            }
+        }
+
+        Button {
+            text: "previous track";
+            clicked => {
+                root.prev-track-clicked();
+            }
+        }
+    }
+}
