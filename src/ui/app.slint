@@ -34,25 +34,28 @@ export component AppWindow inherits Window {
     VerticalLayout {
         padding: 20px;
         spacing: 15px;
-        alignment: center;
 
-        if root.current-view == View.Album:
-            AlbumView {
-                album: root.viewing-album;
-                back-clicked => { root.current-view = View.Library }
-                play-album-clicked => { root.play-album-clicked() }
-                play-track-clicked(idx) => { root.play-track-clicked(idx) }
-            }
-        
-        if root.current-view == View.Library: 
-            LibraryView {
-                albums: root.albums;
-                album-opened(i) => {
-                    root.current-view = View.Album;
-                    root.viewing-album = root.albums[i];
-                    root.viewing-album-index = i;
+        VerticalLayout {
+            vertical-stretch: 1;
+
+            if root.current-view == View.Album:
+                AlbumView {
+                    album: root.viewing-album;
+                    back-clicked => { root.current-view = View.Library }
+                    play-album-clicked => { root.play-album-clicked() }
+                    play-track-clicked(idx) => { root.play-track-clicked(idx) }
                 }
-            }
+            
+            if root.current-view == View.Library: 
+                LibraryView {
+                    albums: root.albums;
+                    album-opened(i) => {
+                        root.current-view = View.Album;
+                        root.viewing-album = root.albums[i];
+                        root.viewing-album-index = i;
+                    }
+                }
+        }
 
         NowPlayingBar {
             play-paused-clicked => { root.play-paused-clicked() }
@@ -63,6 +66,7 @@ export component AppWindow inherits Window {
             seek-requested(val) => { root.seek-requested(val) }
             current-track-title: root.current-track-title;
             current-artist: root.current-artist;
+            volume-changed(vol) => { root.volume-changed(vol) }
         }
     }
 }

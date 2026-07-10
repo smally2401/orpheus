@@ -12,27 +12,29 @@ export component AlbumView {
         padding: 20px;
         spacing: 10px;
 
-        Text {
-            text: root.album.title;
-            font-size: 20px;
-        }
-
-        Text {
-            text: root.album.artist;
-            font-size: 15px;
-        }
-
         HorizontalLayout {
+            alignment: start;
+            spacing: 10px;
 
-            Button {
-                text: "◀";
-                clicked => {
-                    root.back-clicked();
+            VerticalLayout {
+                horizontal-stretch: 0;
+
+                Text {
+                    text: root.album.title;
+                    font-size: 28px;
+                    font-weight: 700;
+                }
+
+                Text {
+                    text: root.album.artist;
+                    font-size: 18px;
                 }
             }
 
             Button {
                 text: "▶";
+                width: 70px;
+                height: 70px;
                 clicked => {
                     root.play-album-clicked();
                 }
@@ -41,8 +43,7 @@ export component AlbumView {
         }
 
         ListView {
-            height: 200px;
-            for entry[i] in album.tracks: TouchArea {
+            for entry[i] in root.album.tracks: TouchArea {
                 height: 65px;
                 Rectangle {
                     VerticalLayout {

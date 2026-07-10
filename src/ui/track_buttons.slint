@@ -6,24 +6,32 @@ export component TrackButtons {
     callback prev-track-clicked();
 
     HorizontalLayout {
+        spacing: 10px;
+
         Button {
-            text: "play/pause";
+            width: 40px;
+            height: 40px;
+            text: "⏮";
+            clicked => {
+                root.prev-track-clicked();
+            }
+        }
+
+        Button {
+            width: 40px;
+            height: 40px;
+            text: "▶";
             clicked => {
                 root.play-paused-clicked();
             }
         }
 
         Button {
-            text: "next track";
+            width: 40px;
+            height: 40px;
+            text: "⏭";
             clicked => {
                 root.next-track-clicked();
-            }
-        }
-
-        Button {
-            text: "previous track";
-            clicked => {
-                root.prev-track-clicked();
             }
         }
     }

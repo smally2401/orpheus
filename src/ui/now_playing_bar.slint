@@ -18,24 +18,42 @@ export component NowPlayingBar {
     in property <string> current-artist: "---";
 
     HorizontalLayout {
+        spacing: 10px;
+
         TrackPlayingInfo {
+            horizontal-stretch: 1;
+            min-width: 0px;
+            preferred-width: 0px;
+
             current-track-title: root.current-track-title;
             current-artist: root.current-artist;
         }
 
-        TrackButtons {
-            play-paused-clicked => { root.play-paused-clicked() }
-            next-track-clicked => { root.next-track-clicked() }
-            prev-track-clicked => { root.prev-track-clicked() }
-        }
+        VerticalLayout {
+            horizontal-stretch: 3;
+            spacing: 5px;
 
-        ProgressBar {
-            current-position: root.current-position;
-            total-duration: root.total-duration;
-            seek-requested(val) => { root.seek-requested(val) }
+            HorizontalLayout {
+                alignment: center;
+                TrackButtons {
+                    play-paused-clicked => { root.play-paused-clicked() }
+                    next-track-clicked => { root.next-track-clicked() }
+                    prev-track-clicked => { root.prev-track-clicked() }
+                }
+            }
+
+            HorizontalLayout {
+                ProgressBar {
+                    horizontal-stretch: 1;
+                    current-position: root.current-position;
+                    total-duration: root.total-duration;
+                    seek-requested(val) => { root.seek-requested(val) }
+                }
+            }
         }
 
         VolumeBar {
+            horizontal-stretch: 1;
             volume-changed(val) => { root.volume-changed(val) }
         }
     }
