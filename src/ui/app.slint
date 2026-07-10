@@ -1,6 +1,7 @@
-import { Button, Slider, ListView } from "std-widgets.slint";
+import { Button, ListView } from "std-widgets.slint";
 import { SlintAlbum, SlintSong } from "types.slint";
 import { AlbumView } from "album_view.slint";
+import { ProgressBar } from "progress_bar.slint";
 
 enum View { Library, Album }
 
@@ -17,6 +18,8 @@ export component AppWindow inherits Window {
 
     in property <string> current-track-title: "No song playing";
     in property <string> current-artist: "---";
+    in property <int> current-position: 0;
+    in property <int> total-duration: 0;
 
     callback play-paused-clicked();
     callback next-track-clicked();
@@ -24,6 +27,8 @@ export component AppWindow inherits Window {
 
     callback play-album-clicked();
     callback play-track-clicked(int);
+
+    callback seek-requested(int);
 
     VerticalLayout {
         padding: 20px;
@@ -42,12 +47,6 @@ export component AppWindow inherits Window {
             color: #cdd6f4;
             font-size: 16px;
             horizontal-alignment: center;
-        }
-
-        Slider {
-            minimum: 0;
-            maximum: 100;
-            value: 30;
         }
 
         Button {
@@ -69,6 +68,12 @@ export component AppWindow inherits Window {
             clicked => {
                 root.prev-track-clicked();
             }
+        }
+
+        ProgressBar {
+            current-position: root.current-position;
+            total-duration: root.total-duration;
+            seek-requested(val) => { root.seek-requested(val) }
         }
 
         if root.current-view == View.Album:

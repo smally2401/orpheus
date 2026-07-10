@@ -1,0 +1,50 @@
+import { Slider } from "std-widgets.slint";
+
+export component ProgressBar {
+    in property <int> current-position: -1;
+    in property <int> total-duration: -1;
+    private property <bool> dragging: false;
+
+    callback seek-requested(int);
+
+    pure function format-time(total-seconds: int) -> string {
+        let mins: int = total-seconds / 60;
+        let secs = mod(total-seconds, 60);
+        return mins + ":" + (secs < 10 ? "0" + secs : secs);
+    }
+
+    changed current-position => {
+        if !root.dragging {
+            slider.value = root.current-position;
+        }
+    }
+
+    HorizontalLayout {
+
+        Text {
+            text: format-time(root.current-position);
+            font-size: 8px;
+        }
+
+        slider := Slider {
+            minimum: 0;
+            maximum: root.total-duration;
+            value: root.current-position;
+            
+            changed(val) => {
+                root.dragging = true;
+            }
+
+            released(val) => {
+                root.dragging = false;
+                root.seek-requested(val);
+            }
+        }
+
+        Text {
+            text: format-time(root.total-duration);
+            font-size: 8px;
+        }
+
+    }
+}

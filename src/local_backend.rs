@@ -1,5 +1,5 @@
-use std::{collections::HashMap, error::Error, ffi::OsStr, path::{PathBuf, Path}};
-use lofty::{file::TaggedFileExt, tag::{Accessor, ItemKey}};
+use std::{collections::HashMap, error::Error, ffi::OsStr, path::{Path, PathBuf}, time::Duration};
+use lofty::{file::{AudioFile, TaggedFileExt}, tag::{Accessor, ItemKey}};
 use rodio::{MixerDeviceSink, Player};
 use walkdir::WalkDir;
 
@@ -15,6 +15,7 @@ pub struct Song {
     album_title: String,
     album_artist: String,
     track_number: Option<u32>,
+    pub duration: Duration,
 
     // todo: lyrics and disc number
 }
@@ -92,6 +93,8 @@ impl LocalBackend {
             let track_number = tag
                 .and_then(|t| t.track());
 
+            let duration = tagged_file.properties().duration();
+
             let song = Song {
                 path: path.to_path_buf(),
                 title,
@@ -99,6 +102,7 @@ impl LocalBackend {
                 album_title,
                 album_artist,
                 track_number,
+                duration,
             };
 
             if let Some(album) = albums.get_mut(&(song.album_title.clone(), song.album_artist.clone())) {
@@ -193,5 +197,14 @@ impl LocalBackend {
 
     pub fn track_finished(&self) -> bool {
         self.player.empty()
+    }
+
+    pub fn get_current_position(&self) -> Duration {
+        self.player.get_pos()
+    }
+
+    pub fn seek(&mut self, position: usize) -> Result<(), Box<dyn Error>> {
+        self.player.try_seek(Duration::from_secs(position as u64))?;
+        Ok(())
     }
 }

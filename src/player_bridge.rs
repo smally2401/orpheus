@@ -13,6 +13,7 @@ pub enum PlayerCommand {
     PrevTrack,
     SelectAlbum(usize),
     SelectTrack(usize, usize),
+    Seek(usize),
     // ToggleShuffle,
 }
 
@@ -58,6 +59,7 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                             PlayerCommand::PrevTrack => { let _ = local_backend.prev(); },
                             PlayerCommand::SelectAlbum(i) => { let _ = local_backend.select_album(i); },
                             PlayerCommand::SelectTrack(album_i, track_i) => { let _ = local_backend.select_track(album_i, track_i); },
+                            PlayerCommand::Seek(dur) => { let _ = local_backend.seek(dur); }
                         }
                     } else {
                         break;
@@ -74,11 +76,15 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                     if let Some(track) = local_backend.get_current_song() {
                         let title = track.title.clone();
                         let artist = track.artist.clone();
+                        let current_position = local_backend.get_current_position().as_secs();
+                        let total_duration = track.duration.as_secs();
 
                         let _ = slint::invoke_from_event_loop(move || {
                             if let Some(ui_instance) = ui_weak_clone.upgrade() {
                                 ui_instance.set_current_track_title(title.into());
                                 ui_instance.set_current_artist(artist.into());
+                                ui_instance.set_current_position(current_position as i32);
+                                ui_instance.set_total_duration(total_duration as i32);
                             }
                         });
 
@@ -87,6 +93,8 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                             if let Some(ui_instance) = ui_weak_clone.upgrade() {
                                 ui_instance.set_current_track_title("No song playing".into());
                                 ui_instance.set_current_artist("---".into());
+                                ui_instance.set_current_position(0);
+                                ui_instance.set_total_duration(0);
                             }
                         });
                     }
