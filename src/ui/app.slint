@@ -1,10 +1,8 @@
 import { Button, ListView } from "std-widgets.slint";
 import { SlintAlbum, SlintSong } from "types.slint";
 import { AlbumView } from "album_view.slint";
-import { ProgressBar } from "progress_bar.slint";
-import { VolumeBar } from "volume_bar.slint";
 import { LibraryView } from "library_view.slint";
-import { TrackButtons } from "track_buttons.slint";
+import { NowPlayingBar } from "now_playing_bar.slint";
 
 enum View { Library, Album }
 
@@ -38,36 +36,6 @@ export component AppWindow inherits Window {
         spacing: 15px;
         alignment: center;
 
-        Text {
-            text: root.current-track-title;
-            color: #cdd6f4;
-            font-size: 16px;
-            horizontal-alignment: center;
-        }
-
-        Text {
-            text: root.current-artist;
-            color: #cdd6f4;
-            font-size: 16px;
-            horizontal-alignment: center;
-        }
-
-        TrackButtons {
-            play-paused-clicked => { root.play-paused-clicked() }
-            next-track-clicked => { root.next-track-clicked() }
-            prev-track-clicked => { root.prev-track-clicked() }
-        }
-
-        ProgressBar {
-            current-position: root.current-position;
-            total-duration: root.total-duration;
-            seek-requested(val) => { root.seek-requested(val) }
-        }
-
-        VolumeBar {
-            volume-changed(val) => { root.volume-changed(val) }
-        }
-
         if root.current-view == View.Album:
             AlbumView {
                 album: root.viewing-album;
@@ -85,5 +53,16 @@ export component AppWindow inherits Window {
                     root.viewing-album-index = i;
                 }
             }
+
+        NowPlayingBar {
+            play-paused-clicked => { root.play-paused-clicked() }
+            next-track-clicked => { root.next-track-clicked() }
+            prev-track-clicked => { root.prev-track-clicked() }
+            current-position: root.current-position;
+            total-duration: root.total-duration;
+            seek-requested(val) => { root.seek-requested(val) }
+            current-track-title: root.current-track-title;
+            current-artist: root.current-artist;
+        }
     }
 }

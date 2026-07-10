@@ -1,0 +1,20 @@
+export component TrackPlayingInfo {
+    in property <string> current-track-title: "No song playing";
+    in property <string> current-artist: "---";
+
+    VerticalLayout {
+        Text {
+            text: root.current-track-title;
+            color: #cdd6f4;
+            font-size: 15px;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: root.current-artist;
+            color: #cdd6f4;
+            font-size: 12px;
+            horizontal-alignment: center;
+        }
+    }
+}

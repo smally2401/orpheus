@@ -1,0 +1,42 @@
+import { ProgressBar } from "progress_bar.slint";
+import { TrackButtons } from "track_buttons.slint";
+import { VolumeBar } from "volume_bar.slint";
+import { TrackPlayingInfo } from "track_playing_info.slint";
+
+export component NowPlayingBar {
+    in property <int> current-position: 0;
+    in property <int> total-duration: 0;
+    callback seek-requested(int);
+
+    callback play-paused-clicked();
+    callback next-track-clicked();
+    callback prev-track-clicked();
+
+    callback volume-changed(float);
+
+    in property <string> current-track-title: "No song playing";
+    in property <string> current-artist: "---";
+
+    HorizontalLayout {
+        TrackPlayingInfo {
+            current-track-title: root.current-track-title;
+            current-artist: root.current-artist;
+        }
+
+        TrackButtons {
+            play-paused-clicked => { root.play-paused-clicked() }
+            next-track-clicked => { root.next-track-clicked() }
+            prev-track-clicked => { root.prev-track-clicked() }
+        }
+
+        ProgressBar {
+            current-position: root.current-position;
+            total-duration: root.total-duration;
+            seek-requested(val) => { root.seek-requested(val) }
+        }
+
+        VolumeBar {
+            volume-changed(val) => { root.volume-changed(val) }
+        }
+    }
+}
