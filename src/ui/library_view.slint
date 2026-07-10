@@ -1,0 +1,25 @@
+import { Slider, ListView } from "std-widgets.slint";
+import { SlintAlbum } from "types.slint";
+
+export component LibraryView {
+    in property <[SlintAlbum]> albums: [];
+    callback album-opened(int);
+
+    ListView {
+        height: 200px;
+        for entry[i] in root.albums: TouchArea {
+            height: 65px;
+            Rectangle {
+                VerticalLayout {
+                    spacing: 4px;
+                    alignment: center;
+                    Text { text: entry.title; font-size: 15px; }
+                    Text { text: entry.artist; font-size: 12px; }
+                }
+            }
+            clicked => {
+                album-opened(i);
+            }
+        }
+    }
+}

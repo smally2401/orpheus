@@ -3,13 +3,13 @@ import { SlintAlbum, SlintSong } from "types.slint";
 import { AlbumView } from "album_view.slint";
 import { ProgressBar } from "progress_bar.slint";
 import { VolumeBar } from "volume_bar.slint";
+import { LibraryView } from "library_view.slint";
 
 enum View { Library, Album }
 
 export component AppWindow inherits Window {
     title: "orpheus";
-    width: 400px;
-    height: 500px;
+    maximized: true;
     background: #1e1e2e;
 
     in property <[SlintAlbum]> albums: [];
@@ -91,21 +91,12 @@ export component AppWindow inherits Window {
             }
         
         if root.current-view == View.Library: 
-            ListView {
-                height: 200px;
-                for entry[i] in root.albums: TouchArea {
-                    height: 65px;
-                    Rectangle { VerticalLayout {
-                        spacing: 4px;
-                        alignment: center;
-                        Text { text: entry.title; font-size: 15px; }
-                        Text { text: entry.artist; font-size: 12px; }
-                    } }
-                    clicked => {
-                        root.current-view = View.Album;
-                        root.viewing-album = root.albums[i];
-                        root.viewing-album-index = i;
-                    }
+            LibraryView {
+                albums: root.albums;
+                album-opened(i) => {
+                    root.current-view = View.Album;
+                    root.viewing-album = root.albums[i];
+                    root.viewing-album-index = i;
                 }
             }
     }
