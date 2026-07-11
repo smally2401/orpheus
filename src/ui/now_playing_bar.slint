@@ -58,6 +58,8 @@ export component NowPlayingBar {
 
             VolumeBar {
                 horizontal-stretch: 1;
+                min-width: 0;
+                preferred-width: 0;
                 volume-changed(val) => { root.volume-changed(val) }
             }
         }

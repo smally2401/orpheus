@@ -11,12 +11,11 @@ pub fn song_rust_to_slint(song: &Song) -> SlintSong {
 }
 
 pub fn tracklist_rust_to_slint(tracklist: &[Song]) -> ModelRc<SlintSong> {
-    let mut slint_tracklist: Vec<SlintSong> = Vec::new();
+    let slint_tracklist: Vec<SlintSong> = tracklist
+        .iter()
+        .map(song_rust_to_slint)
+        .collect();
 
-    for track in tracklist {
-        slint_tracklist.push(song_rust_to_slint(track));
-    }
-    
     ModelRc::new(VecModel::from(slint_tracklist))
 }
 

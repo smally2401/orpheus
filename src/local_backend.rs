@@ -3,8 +3,6 @@ use lofty::{file::{AudioFile, TaggedFileExt}, tag::{Accessor, ItemKey}};
 use rodio::{MixerDeviceSink, Player};
 use walkdir::WalkDir;
 
-const ALLOWED_EXTENSIONS: &[&str] = &["mp3", "flac"]; // todo: add more
-
 #[derive(Clone)]
 pub struct Song {
     path: PathBuf,
@@ -51,8 +49,10 @@ impl LocalBackend {
                 e.path()
                     .extension()
                     .and_then(OsStr::to_str)
-                    .map(|ext| ALLOWED_EXTENSIONS.contains(&ext.to_lowercase().as_str()))
-                    .unwrap_or(false)
+                    .is_some_and(|ext| 
+                        ext.eq_ignore_ascii_case("mp3") || 
+                        ext.eq_ignore_ascii_case("flac")
+                    )
             })
             .map(|e| e.into_path());
 
@@ -105,18 +105,14 @@ impl LocalBackend {
                 duration,
             };
 
-            if let Some(album) = albums.get_mut(&(song.album_title.clone(), song.album_artist.clone())) {
-                album.tracklist.push(song);
-
-            } else {
-                let mut album = Album {
+            let album = albums
+                .entry((song.album_title.clone(), song.album_artist.clone()))
+                .or_insert_with(|| Album {
                     title: song.album_title.clone(),
                     artist: song.album_artist.clone(),
                     tracklist: Vec::new(),
-                };
-                album.tracklist.push(song.clone());
-                albums.insert((song.album_title, song.album_artist), album);
-            }
+                });
+            album.tracklist.push(song);
         }
         let mut library: Vec<Album> = albums.into_values().collect();
 

@@ -17,26 +17,17 @@ async fn main() -> Result<(), slint::PlatformError> {
     
     let tx_clone = tx.clone();
     ui.on_play_paused_clicked(move || {
-        let tx = tx_clone.clone();
-        tokio::spawn(async move {
-            let _ = tx.send(PlayerCommand::TogglePlay).await;
-        });
+        let _ = tx_clone.try_send(PlayerCommand::TogglePlay);
     });
 
     let tx_clone = tx.clone();
     ui.on_next_track_clicked(move || {
-        let tx = tx_clone.clone();
-        tokio::spawn(async move {
-            let _ = tx.send(PlayerCommand::NextTrack).await;
-        });
+        let _ = tx_clone.try_send(PlayerCommand::NextTrack);
     });
 
     let tx_clone = tx.clone();
     ui.on_prev_track_clicked(move || {
-        let tx = tx_clone.clone();
-        tokio::spawn(async move {
-            let _ = tx.send(PlayerCommand::PrevTrack).await;
-        });
+        let _ = tx_clone.try_send(PlayerCommand::PrevTrack);
     });
 
     let tx_clone = tx.clone();
@@ -44,10 +35,7 @@ async fn main() -> Result<(), slint::PlatformError> {
     ui.on_play_album_clicked(move || {
         if let Some(ui) = ui_weak.upgrade() {
             let album_index = ui.get_viewing_album_index() as usize;
-            let tx = tx_clone.clone();
-            tokio::spawn(async move {
-                let _ = tx.send(PlayerCommand::SelectAlbum(album_index)).await;
-            });
+            let _ = tx_clone.try_send(PlayerCommand::SelectAlbum(album_index));
         }
     });
 
@@ -56,27 +44,18 @@ async fn main() -> Result<(), slint::PlatformError> {
     ui.on_play_track_clicked(move |song_index| {
         if let Some(ui) = ui_weak.upgrade() {
             let album_index = ui.get_viewing_album_index() as usize;
-            let tx = tx_clone.clone();
-            tokio::spawn(async move {
-                let _ = tx.send(PlayerCommand::SelectTrack(album_index, song_index as usize)).await;
-            });
+            let _ = tx_clone.try_send(PlayerCommand::SelectTrack(album_index, song_index as usize));
         }
     });
 
     let tx_clone = tx.clone();
     ui.on_seek_requested(move |value| {
-        let tx = tx_clone.clone();
-        tokio::spawn(async move {
-            let _ = tx.send(PlayerCommand::Seek(value as usize)).await;
-        });
+        let _ = tx_clone.try_send(PlayerCommand::Seek(value as usize));
     });
 
     let tx_clone = tx.clone();
     ui.on_volume_changed(move |volume| {
-        let tx = tx_clone.clone();
-        tokio::spawn(async move {
-            let _ = tx.send(PlayerCommand::SetVolume(volume)).await;
-        });
+        let _ = tx_clone.try_send(PlayerCommand::SetVolume(volume));
     });
 
     let model = ModelRc::new(VecModel::from(library));
