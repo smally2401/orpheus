@@ -32,10 +32,9 @@ export component AppWindow inherits Window {
     callback volume-changed(float);
 
     VerticalLayout {
-        padding: 20px;
-        spacing: 15px;
 
         VerticalLayout {
+            padding: 20px;
             vertical-stretch: 1;
 
             if root.current-view == View.Album:

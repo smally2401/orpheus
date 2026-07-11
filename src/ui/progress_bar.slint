@@ -20,10 +20,12 @@ export component ProgressBar {
     }
 
     HorizontalLayout {
+        spacing: 5px;
 
         Text {
             text: format-time(root.current-position);
-            font-size: 8px;
+            font-size: 10px;
+            vertical-alignment: center;
         }
 
         slider := Slider {
@@ -43,7 +45,8 @@ export component ProgressBar {
 
         Text {
             text: format-time(root.total-duration);
-            font-size: 8px;
+            font-size: 10px;
+            vertical-alignment: center;
         }
 
     }

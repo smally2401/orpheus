@@ -17,44 +17,49 @@ export component NowPlayingBar {
     in property <string> current-track-title: "No song playing";
     in property <string> current-artist: "---";
 
-    HorizontalLayout {
-        spacing: 10px;
+    Rectangle {
+        height: 80px;
+        background: #000000;
 
-        TrackPlayingInfo {
-            horizontal-stretch: 1;
-            min-width: 0px;
-            preferred-width: 0px;
+        HorizontalLayout {
+            spacing: 10px;
 
-            current-track-title: root.current-track-title;
-            current-artist: root.current-artist;
-        }
+            TrackPlayingInfo {
+                horizontal-stretch: 1;
+                min-width: 0px;
+                preferred-width: 0px;
 
-        VerticalLayout {
-            horizontal-stretch: 3;
-            spacing: 5px;
+                current-track-title: root.current-track-title;
+                current-artist: root.current-artist;
+            }
 
-            HorizontalLayout {
-                alignment: center;
-                TrackButtons {
-                    play-paused-clicked => { root.play-paused-clicked() }
-                    next-track-clicked => { root.next-track-clicked() }
-                    prev-track-clicked => { root.prev-track-clicked() }
+            VerticalLayout {
+                horizontal-stretch: 3;
+                spacing: 5px;
+
+                HorizontalLayout {
+                    alignment: center;
+                    TrackButtons {
+                        play-paused-clicked => { root.play-paused-clicked() }
+                        next-track-clicked => { root.next-track-clicked() }
+                        prev-track-clicked => { root.prev-track-clicked() }
+                    }
+                }
+
+                HorizontalLayout {
+                    ProgressBar {
+                        horizontal-stretch: 1;
+                        current-position: root.current-position;
+                        total-duration: root.total-duration;
+                        seek-requested(val) => { root.seek-requested(val) }
+                    }
                 }
             }
 
-            HorizontalLayout {
-                ProgressBar {
-                    horizontal-stretch: 1;
-                    current-position: root.current-position;
-                    total-duration: root.total-duration;
-                    seek-requested(val) => { root.seek-requested(val) }
-                }
+            VolumeBar {
+                horizontal-stretch: 1;
+                volume-changed(val) => { root.volume-changed(val) }
             }
-        }
-
-        VolumeBar {
-            horizontal-stretch: 1;
-            volume-changed(val) => { root.volume-changed(val) }
         }
     }
 }

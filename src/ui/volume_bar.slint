@@ -9,9 +9,13 @@ export component VolumeBar {
     }
 
     HorizontalLayout {
+        padding-right: 10px;
+        spacing: 5px;
+
         Text {
             text: format-percentage(slider.value);
-            font-size: 8px;
+            font-size: 10px;
+            vertical-alignment: center;
         }
 
         slider := Slider {
