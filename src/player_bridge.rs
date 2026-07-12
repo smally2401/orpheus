@@ -99,6 +99,7 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                                 ui_instance.set_current_artist("---".into());
                                 ui_instance.set_current_position(0);
                                 ui_instance.set_total_duration(0);
+                                ui_instance.set_current_art(slint::Image::default());
                             }
                         });
                     }

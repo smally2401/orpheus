@@ -3,6 +3,7 @@ import { SlintAlbum, SlintSong } from "types.slint";
 import { AlbumView } from "album_view.slint";
 import { LibraryView } from "library_view.slint";
 import { NowPlayingBar } from "now_playing_bar.slint";
+import { Sidebar } from "sidebar.slint";
 
 enum View { Library, Album }
 
@@ -34,27 +35,38 @@ export component AppWindow inherits Window {
 
     VerticalLayout {
 
-        VerticalLayout {
-            padding: 20px;
+        HorizontalLayout {
             vertical-stretch: 1;
 
-            if root.current-view == View.Album:
-                AlbumView {
-                    album: root.viewing-album;
-                    back-clicked => { root.current-view = View.Library }
-                    play-album-clicked => { root.play-album-clicked() }
-                    play-track-clicked(idx) => { root.play-track-clicked(idx) }
+            Sidebar {
+                library-selected => { root.current-view = View.Library }
+            }
+
+            Rectangle {
+                background: #1f1d2f;
+
+                VerticalLayout {
+                    padding: 20px;
+
+                    if root.current-view == View.Album:
+                        AlbumView {
+                            album: root.viewing-album;
+                            back-clicked => { root.current-view = View.Library }
+                            play-album-clicked => { root.play-album-clicked() }
+                            play-track-clicked(idx) => { root.play-track-clicked(idx) }
+                        }
+                    
+                    if root.current-view == View.Library: 
+                        LibraryView {
+                            albums: root.albums;
+                            album-opened(i) => {
+                                root.current-view = View.Album;
+                                root.viewing-album = root.albums[i];
+                                root.viewing-album-index = i;
+                            }
+                        }
                 }
-            
-            if root.current-view == View.Library: 
-                LibraryView {
-                    albums: root.albums;
-                    album-opened(i) => {
-                        root.current-view = View.Album;
-                        root.viewing-album = root.albums[i];
-                        root.viewing-album-index = i;
-                    }
-                }
+            }
         }
 
         NowPlayingBar {

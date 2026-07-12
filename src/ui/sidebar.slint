@@ -1,0 +1,44 @@
+export component Sidebar {
+    callback library-selected();
+
+    width: 150px;
+
+    Rectangle {
+        background: #0e101d;
+
+        VerticalLayout {
+            padding: 15px;
+            spacing: 8px;
+            alignment: start;
+
+            Rectangle {
+                border-color: #dbe6ff;
+                border-width: 1px;
+                border-radius: 5px;
+                height: 50px;
+
+                TouchArea {
+                    Text {
+                        text: "Library";
+                        font-size: 18px;
+                    }
+                    clicked => { library-selected() }
+                }
+            }
+
+            Rectangle {
+                border-color: #dbe6ff;
+                border-width: 1px;
+                border-radius: 5px;
+                height: 50px;
+
+                TouchArea {
+                    Text {
+                        text: "Playlists";
+                        font-size: 18px;
+                    }
+                }
+            }
+        }
+    }
+}
