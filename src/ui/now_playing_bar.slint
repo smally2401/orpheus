@@ -16,6 +16,7 @@ export component NowPlayingBar {
 
     in property <string> current-track-title: "No song playing";
     in property <string> current-artist: "---";
+    in property <image> current-art;
 
     Rectangle {
         height: 80px;
@@ -31,6 +32,7 @@ export component NowPlayingBar {
 
                 current-track-title: root.current-track-title;
                 current-artist: root.current-artist;
+                current-art: root.current-art;
             }
 
             VerticalLayout {

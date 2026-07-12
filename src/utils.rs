@@ -25,5 +25,26 @@ pub fn album_rust_to_slint(album: &Album) -> SlintAlbum {
         artist: album.artist.clone().into(),
         track_count: album.tracklist.len() as i32,
         tracks: tracklist_rust_to_slint(&album.tracklist),
+        art: art_rust_to_slint(album.art.as_deref()),
+    }
+}
+
+pub fn art_rust_to_slint(art: Option<&[u8]>) -> slint::Image {
+    match art {
+        Some(art) => {
+            match image::load_from_memory(art) {
+                Ok(image) => {
+                    let image = image.into_rgb8();
+                    let width = image.width();
+                    let height = image.height();
+                    let raw = image.into_raw();
+                    let buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(&raw, width, height);
+
+                    slint::Image::from_rgb8(buffer)
+                },
+                Err(_) => slint::Image::default()
+            }
+        },
+        None => slint::Image::default()
     }
 }

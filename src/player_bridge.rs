@@ -5,7 +5,7 @@ use slint::{ComponentHandle};
 
 use crate::{ AppWindow, SlintAlbum };
 use crate::local_backend::LocalBackend;
-use crate::utils::{album_rust_to_slint};
+use crate::utils::{album_rust_to_slint, art_rust_to_slint};
 
 pub enum PlayerCommand {
     TogglePlay,
@@ -80,6 +80,7 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                         let artist = track.artist.clone();
                         let current_position = local_backend.get_current_position().as_secs();
                         let total_duration = track.duration.as_secs();
+                        let album_art_bytes = local_backend.get_current_album_art().map(|b| b.to_vec());
 
                         let _ = slint::invoke_from_event_loop(move || {
                             if let Some(ui_instance) = ui_weak_clone.upgrade() {
@@ -87,6 +88,7 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                                 ui_instance.set_current_artist(artist.into());
                                 ui_instance.set_current_position(current_position as i32);
                                 ui_instance.set_total_duration(total_duration as i32);
+                                ui_instance.set_current_art(art_rust_to_slint(album_art_bytes.as_deref()));
                             }
                         });
 

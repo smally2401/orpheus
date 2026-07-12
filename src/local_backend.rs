@@ -1,5 +1,5 @@
 use std::{collections::HashMap, error::Error, ffi::OsStr, path::{Path, PathBuf}, time::Duration};
-use lofty::{file::{AudioFile, TaggedFileExt}, tag::{Accessor, ItemKey}};
+use lofty::{file::{AudioFile, TaggedFileExt}, picture::{PictureType}, tag::{Accessor, ItemKey}};
 use rodio::{MixerDeviceSink, Player};
 use walkdir::WalkDir;
 
@@ -22,6 +22,7 @@ pub struct Album {
     pub title: String,
     pub artist: String,
     pub tracklist: Vec<Song>,
+    pub art: Option<Vec<u8>>,
 
     // todo: art, year and genres
 }
@@ -31,6 +32,7 @@ pub struct LocalBackend {
     player: Player,
 
     pub library: Vec<Album>,
+    current_album_art: Option<Vec<u8>>,
     queue: Vec<Song>,
     index: usize, // index in current queue
 }
@@ -95,6 +97,15 @@ impl LocalBackend {
 
             let duration = tagged_file.properties().duration();
 
+            let cover_art: Option<Vec<u8>> = tag
+                .map(|t| t.pictures())
+                .and_then(|pics| {
+                    pics.iter()
+                        .find(|p| p.pic_type() == PictureType::CoverFront)
+                        .or_else(|| pics.first())
+                        .map(|p| p.data().to_vec())
+                });
+
             let song = Song {
                 path: path.to_path_buf(),
                 title,
@@ -111,6 +122,7 @@ impl LocalBackend {
                     title: song.album_title.clone(),
                     artist: song.album_artist.clone(),
                     tracklist: Vec::new(),
+                    art: cover_art,
                 });
             album.tracklist.push(song);
         }
@@ -129,6 +141,7 @@ impl LocalBackend {
             _stream: stream,
             player,
             library,
+            current_album_art: None,
             queue: Vec::new(),
             index: 0,
         }
@@ -166,6 +179,7 @@ impl LocalBackend {
 
     pub fn select_album(&mut self, album_index: usize) -> Result<(), Box<dyn Error>> {
         self.queue = self.library[album_index].tracklist.clone();
+        self.current_album_art = self.library[album_index].art.clone();
         self.index = 0;
         self.load_track()?;
         Ok(())
@@ -173,6 +187,7 @@ impl LocalBackend {
 
     pub fn select_track(&mut self, album_index: usize, track_index: usize) -> Result<(), Box<dyn Error>> {
         self.queue = self.library[album_index].tracklist.clone();
+        self.current_album_art = self.library[album_index].art.clone();
         self.index = track_index;
         self.load_track()?;
         Ok(())
@@ -197,6 +212,10 @@ impl LocalBackend {
 
     pub fn get_current_position(&self) -> Duration {
         self.player.get_pos()
+    }
+
+    pub fn get_current_album_art(&self) -> Option<&[u8]> {
+        self.current_album_art.as_deref()
     }
 
     pub fn seek(&mut self, position: usize) -> Result<(), Box<dyn Error>> {

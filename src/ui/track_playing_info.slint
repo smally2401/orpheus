@@ -1,27 +1,42 @@
 export component TrackPlayingInfo {
     in property <string> current-track-title: "No song playing";
     in property <string> current-artist: "---";
+    in property <image> current-art;
 
-    VerticalLayout {
-        min-width: 0;
-        alignment: center;
-        padding-top: 10px;
-        padding-left: 10px;
+    HorizontalLayout {
+        spacing: 10px;
 
-        Text {
-            text: root.current-track-title;
-            color: #cdd6f4;
-            font-size: 15px;
-            horizontal-alignment: left;
-            overflow: elide;
+        VerticalLayout {
+            alignment: center;
+            padding-left: 10px;
+            Image {
+                source: root.current-art;
+                width: 45px;
+                height: 45px;
+            }
         }
 
-        Text {
-            text: root.current-artist;
-            color: #cdd6f4;
-            font-size: 12px;
-            horizontal-alignment: left;
-            overflow: elide;
+        VerticalLayout {
+            min-width: 0;
+            alignment: center;
+            padding-top: 10px;
+            padding-left: 10px;
+
+            Text {
+                text: root.current-track-title;
+                color: #cdd6f4;
+                font-size: 15px;
+                horizontal-alignment: left;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.current-artist;
+                color: #cdd6f4;
+                font-size: 12px;
+                horizontal-alignment: left;
+                overflow: elide;
+            }
         }
     }
 }

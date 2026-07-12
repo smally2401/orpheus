@@ -17,6 +17,15 @@ export component AlbumView {
             spacing: 10px;
 
             VerticalLayout {
+                alignment: center;
+                Image {
+                    source: album.art;
+                    width: 80px;
+                    height: 80px;
+                }
+            }
+
+            VerticalLayout {
                 horizontal-stretch: 0;
 
                 Text {

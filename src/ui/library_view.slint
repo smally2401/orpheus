@@ -9,11 +9,22 @@ export component LibraryView {
         for entry[i] in root.albums: TouchArea {
             height: 65px;
             Rectangle {
-                VerticalLayout {
-                    spacing: 4px;
-                    alignment: center;
-                    Text { text: entry.title; font-size: 15px; }
-                    Text { text: entry.artist; font-size: 12px; }
+                HorizontalLayout {
+                    spacing: 10px;
+                    VerticalLayout {
+                        alignment: center;
+                        Image {
+                            source: entry.art;
+                            width: 40px;
+                            height: 40px;
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        alignment: center;
+                        Text { text: entry.title; font-size: 15px; }
+                        Text { text: entry.artist; font-size: 12px; }
+                    }
                 }
             }
             clicked => {
