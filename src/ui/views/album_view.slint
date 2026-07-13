@@ -1,11 +1,11 @@
-import { SlintPlaylist } from "types.slint";
+import { SlintAlbum, SlintSong } from "../types.slint";
 import { Button, ListView } from "std-widgets.slint";
 
-export component OpenPlaylistView {
-    in property <SlintPlaylist> playlist;
+export component AlbumView {
+    in property <SlintAlbum> album;
 
-    callback play-playlist-clicked;
-    callback play-playlist-track-clicked(int);
+    callback play-album-clicked;
+    callback play-track-clicked(int);
 
     VerticalLayout {
         padding: 20px;
@@ -17,16 +17,25 @@ export component OpenPlaylistView {
 
             VerticalLayout {
                 alignment: center;
-                // todo: playlist art on here too
+                Image {
+                    source: album.art;
+                    width: 80px;
+                    height: 80px;
+                }
             }
 
             VerticalLayout {
                 horizontal-stretch: 0;
 
                 Text {
-                    text: root.playlist.name;
+                    text: root.album.title;
                     font-size: 28px;
                     font-weight: 700;
+                }
+
+                Text {
+                    text: root.album.artist;
+                    font-size: 18px;
                 }
             }
 
@@ -35,31 +44,26 @@ export component OpenPlaylistView {
                 width: 70px;
                 height: 70px;
                 clicked => {
-                    root.play-playlist-clicked();
+                    root.play-album-clicked();
                 }
             }
+
         }
 
         ListView {
-            for entry[i] in root.playlist.tracks: TouchArea {
-                height : 65px;
+            for entry[i] in root.album.tracks: TouchArea {
+                height: 65px;
                 Rectangle {
                     VerticalLayout {
                         spacing: 4px;
                         alignment: center;
-                        Text {
-                            text: entry.title;
-                            font-size: 15px;
-                        }
-                        Text {
-                            text: entry.artist;
-                            font-size: 12px;
-                        }
+                        Text { text: entry.title; font-size: 15px; }
+                        Text { text: entry.artist; font-size: 12px; }
                     }
                 }
                 clicked => {
-                    root.play-playlist-track-clicked(i);
-                }
+                    root.play-track-clicked(i);
+                }   
             }
         }
     }
