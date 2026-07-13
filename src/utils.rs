@@ -1,4 +1,5 @@
 use slint::{ModelRc, VecModel};
+use image::imageops::FilterType;
 use std::sync::Arc;
 
 use crate::{ SlintAlbum, SlintSong };
@@ -35,7 +36,7 @@ pub fn art_rust_to_slint(art: Option<&[u8]>) -> slint::Image {
         Some(art) => {
             match image::load_from_memory(art) {
                 Ok(image) => {
-                    let image = image.into_rgb8();
+                    let image = image.resize(100, 100, FilterType::Lanczos3).into_rgb8();
                     let width = image.width();
                     let height = image.height();
                     let raw = image.into_raw();

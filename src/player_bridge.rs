@@ -47,6 +47,7 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
 
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_millis(100));
+        let mut last_art_path: Option<PathBuf> = None;
 
         loop {
             tokio::select! {
@@ -80,10 +81,13 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                         let artist = track.artist.clone();
                         let current_position = local_backend.get_current_position().as_secs();
                         let total_duration = track.duration.as_secs();
-                        // todo: only recompute album art when current song changes
-                        let album_art_bytes = local_backend.get_current_song()
-                            .and_then(|song| song.art.as_ref())
-                            .map(|rc| rc.as_ref().clone());
+
+                        let new_art_bytes = if last_art_path.as_deref() != Some(track.path.as_path()) {
+                            last_art_path = Some(track.path.clone());
+                            Some(track.art.as_ref().map(|arc| arc.as_ref().clone()))
+                        } else {
+                            None
+                        };
 
                         let _ = slint::invoke_from_event_loop(move || {
                             if let Some(ui_instance) = ui_weak_clone.upgrade() {
@@ -91,11 +95,14 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                                 ui_instance.set_current_artist(artist.into());
                                 ui_instance.set_current_position(current_position as i32);
                                 ui_instance.set_total_duration(total_duration as i32);
-                                ui_instance.set_current_art(art_rust_to_slint(album_art_bytes.as_deref()));
+                                if let Some(bytes) = new_art_bytes {
+                                    ui_instance.set_current_art(art_rust_to_slint(bytes.as_deref()));
+                                }
                             }
                         });
 
                     } else {
+                        last_art_path = None;
                         let _ = slint::invoke_from_event_loop(move || {
                             if let Some(ui_instance) = ui_weak_clone.upgrade() {
                                 ui_instance.set_current_track_title("No song playing".into());
