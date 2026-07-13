@@ -1,13 +1,15 @@
 import { Button, ListView } from "std-widgets.slint";
-import { SlintAlbum, SlintSong } from "types.slint";
+import { SlintAlbum, SlintSong, SlintPlaylist } from "types.slint";
 import { AlbumView } from "album_view.slint";
 import { LibraryView } from "library_view.slint";
 import { NowPlayingBar } from "now_playing_bar.slint";
 import { Sidebar } from "sidebar.slint";
+import { PlaylistsView } from "playlists_view.slint";
+import { OpenPlaylistView } from "open_playlist_view.slint";
 
 import "../../assets/fonts/NotoSans-Regular.ttf";
 
-enum View { Library, Album }
+enum View { Library, Album, Playlists, OpenPlaylist }
 
 export component AppWindow inherits Window {
     title: "orpheus";
@@ -26,12 +28,19 @@ export component AppWindow inherits Window {
     in property <int> current-position: 0;
     in property <int> total-duration: 0;
 
+    in property <[SlintPlaylist]> playlists: [];
+    in-out property <SlintPlaylist> viewing-playlist;
+    in-out property <int> viewing-playlist-index;
+
     callback play-paused-clicked();
     callback next-track-clicked();
     callback prev-track-clicked();
 
     callback play-album-clicked();
     callback play-track-clicked(int);
+
+    callback play-playlist-clicked();
+    callback play-playlist-track-clicked(int);
 
     callback seek-requested(int);
     callback volume-changed(float);
@@ -43,6 +52,7 @@ export component AppWindow inherits Window {
 
             Sidebar {
                 library-selected => { root.current-view = View.Library }
+                playlists-selected => { root.current-view = View.Playlists }
             }
 
             Rectangle {
@@ -54,7 +64,6 @@ export component AppWindow inherits Window {
                     if root.current-view == View.Album:
                         AlbumView {
                             album: root.viewing-album;
-                            back-clicked => { root.current-view = View.Library }
                             play-album-clicked => { root.play-album-clicked() }
                             play-track-clicked(idx) => { root.play-track-clicked(idx) }
                         }
@@ -66,6 +75,23 @@ export component AppWindow inherits Window {
                                 root.current-view = View.Album;
                                 root.viewing-album = root.albums[i];
                                 root.viewing-album-index = i;
+                            }
+                        }
+
+                    if root.current-view == View.OpenPlaylist:
+                        OpenPlaylistView {
+                            playlist: root.viewing-playlist;
+                            play-playlist-clicked => { root.play-playlist-clicked() }
+                            play-playlist-track-clicked(idx) => { root.play-playlist-track-clicked(idx) }
+                        }
+
+                    if root.current-view == View.Playlists:
+                        PlaylistsView {
+                            playlists: root.playlists;
+                            playlist-opened(i) => {
+                                root.current-view = View.OpenPlaylist;
+                                root.viewing-playlist = root.playlists[i];
+                                root.viewing-playlist-index = i;
                             }
                         }
                 }

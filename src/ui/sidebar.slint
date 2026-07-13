@@ -1,5 +1,6 @@
 export component Sidebar {
     callback library-selected();
+    callback playlists-selected();
 
     width: 150px;
 
@@ -37,6 +38,7 @@ export component Sidebar {
                         text: "Playlists";
                         font-size: 18px;
                     }
+                    clicked => { playlists-selected() }
                 }
             }
         }

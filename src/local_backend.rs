@@ -145,12 +145,22 @@ impl LocalBackend {
         let mixer = stream.mixer();
         let player = rodio::Player::connect_new(mixer);
 
+        // PLAYLIST TEST
+        let test_playlist = Playlist {
+            name: "test playlist".to_string(),
+            songs: vec![
+                path.join("test/01 Breadcrumb Trail.mp3"),
+                path.join("test/05 New Dawn Fades.mp3"),
+            ],
+        };
+        let playlists = vec![test_playlist];
+
         LocalBackend {
             _stream: stream,
             player,
             library,
             queue: Vec::new(),
-            playlists: Vec::new(), // todo: test playlists
+            playlists,
             index: 0,
         }
     }
@@ -241,7 +251,7 @@ impl LocalBackend {
         None
     }
 
-    fn resolve_playlist_songs(&self, playlist_index: usize) -> Vec<Arc<Song>> {
+    pub fn resolve_playlist(&self, playlist_index: usize) -> Vec<Arc<Song>> {
         self.playlists[playlist_index].songs.iter()
             .filter_map(|path| self.find_song_by_path(path))
             .cloned()
@@ -249,7 +259,7 @@ impl LocalBackend {
     }
 
     pub fn select_playlist(&mut self, playlist_index: usize) -> Result<(), Box<dyn Error>> {
-        let queue = self.resolve_playlist_songs(playlist_index);
+        let queue = self.resolve_playlist(playlist_index);
         if queue.is_empty() {
             return Ok(()) // todo: maybe return an empty playlist error or something idk
         }
@@ -260,7 +270,7 @@ impl LocalBackend {
     }
 
     pub fn select_playlist_track(&mut self, playlist_index: usize, track_index: usize) -> Result<(), Box<dyn Error>> {
-        self.queue = self.resolve_playlist_songs(playlist_index);
+        self.queue = self.resolve_playlist(playlist_index);
         self.index = track_index;
         self.load_track()?;
         Ok(())

@@ -13,7 +13,7 @@ slint::include_modules!();
 async fn main() -> Result<(), slint::PlatformError> {
 
     let ui = AppWindow::new()?;
-    let (tx, library) = player_bridge::spawn_player_bridge(&ui);
+    let (tx, library, playlists) = player_bridge::spawn_player_bridge(&ui);
     
     let tx_clone = tx.clone();
     ui.on_play_paused_clicked(move || {
@@ -58,8 +58,11 @@ async fn main() -> Result<(), slint::PlatformError> {
         let _ = tx_clone.try_send(PlayerCommand::SetVolume(volume));
     });
 
-    let model = ModelRc::new(VecModel::from(library));
-    ui.set_albums(model);
+    let library_model = ModelRc::new(VecModel::from(library));
+    ui.set_albums(library_model);
+
+    let playlists_model = ModelRc::new(VecModel::from(playlists));
+    ui.set_playlists(playlists_model);
 
     ui.run()
 }

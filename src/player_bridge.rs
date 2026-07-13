@@ -3,9 +3,9 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use slint::{ComponentHandle};
 
-use crate::{ AppWindow, SlintAlbum };
+use crate::{ AppWindow, SlintAlbum, SlintPlaylist };
 use crate::local_backend::LocalBackend;
-use crate::utils::{album_rust_to_slint, art_rust_to_slint};
+use crate::utils::{album_rust_to_slint, art_rust_to_slint, playlist_rust_to_slint};
 
 pub enum PlayerCommand {
     TogglePlay,
@@ -18,7 +18,7 @@ pub enum PlayerCommand {
     // ToggleShuffle,
 }
 
-pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<SlintAlbum>) {
+pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<SlintAlbum>, Vec<SlintPlaylist>) {
 
     let raw = std::env::var("ORPHEUS_MUSIC_DIR").ok();
     let path = raw.map(|s| {
@@ -43,6 +43,11 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
     for album in &local_backend.library {
         let slint_album = album_rust_to_slint(album);
         library.push(slint_album);
+    }
+
+    let mut playlists: Vec<SlintPlaylist> = Vec::new();
+    for (i, _) in local_backend.playlists.iter().enumerate() {
+        playlists.push(playlist_rust_to_slint(i, &local_backend));
     }
 
     tokio::spawn(async move {
@@ -118,5 +123,5 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
         }
     });
 
-    (tx, library)
+    (tx, library, playlists)
 }

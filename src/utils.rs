@@ -2,8 +2,8 @@ use slint::{ModelRc, VecModel};
 use image::imageops::FilterType;
 use std::sync::Arc;
 
-use crate::{ SlintAlbum, SlintSong };
-use crate::local_backend::{ Album, Song };
+use crate::{ SlintAlbum, SlintSong, SlintPlaylist };
+use crate::local_backend::{ Album, LocalBackend, Song };
 
 pub fn song_rust_to_slint(song: &Song) -> SlintSong {
     SlintSong {
@@ -48,5 +48,15 @@ pub fn art_rust_to_slint(art: Option<&[u8]>) -> slint::Image {
             }
         },
         None => slint::Image::default()
+    }
+}
+
+pub fn playlist_rust_to_slint(playlist_index: usize, backend: &LocalBackend) -> SlintPlaylist {
+    let resolved_playlist = backend.resolve_playlist(playlist_index);
+
+    SlintPlaylist {
+        name: backend.playlists[playlist_index].name.clone().into(),
+        track_count: resolved_playlist.len() as i32,
+        tracks: tracklist_rust_to_slint(&resolved_playlist),
     }
 }

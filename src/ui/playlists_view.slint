@@ -1,0 +1,29 @@
+import { ListView } from "std-widgets.slint";
+import { SlintPlaylist } from "types.slint";
+
+export component PlaylistsView {
+    in property <[SlintPlaylist]> playlists: [];
+    callback playlist-opened(int);
+
+    ListView {
+        for entry[i] in root.playlists: TouchArea {
+            height: 65px;
+            Rectangle {
+                HorizontalLayout {
+                    spacing: 10px;
+                    VerticalLayout {
+                        alignment: center;
+                        // todo: playlist art
+                    }
+                    Text {
+                        text: entry.name;
+                        font-size: 15px;
+                    }
+                }
+            }
+            clicked => {
+                playlist-opened(i);
+            }
+        }
+    }
+}
