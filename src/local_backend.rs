@@ -1,11 +1,11 @@
-use std::{collections::HashMap, error::Error, ffi::OsStr, path::{Path, PathBuf}, time::Duration};
+use std::{collections::HashMap, error::Error, ffi::OsStr, path::{Path, PathBuf}, time::Duration, sync::Arc};
 use lofty::{file::{AudioFile, TaggedFileExt}, picture::{PictureType}, tag::{Accessor, ItemKey}};
 use rodio::{MixerDeviceSink, Player};
 use walkdir::WalkDir;
 
 #[derive(Clone)]
 pub struct Song {
-    path: PathBuf,
+    pub path: PathBuf,
 
     pub title: String,
     pub artist: String,
@@ -14,6 +14,7 @@ pub struct Song {
     album_artist: String,
     track_number: Option<u32>,
     pub duration: Duration,
+    pub art: Option<Arc<Vec<u8>>>,
 
     // todo: lyrics and disc number
 }
@@ -21,10 +22,15 @@ pub struct Song {
 pub struct Album {
     pub title: String,
     pub artist: String,
-    pub tracklist: Vec<Song>,
-    pub art: Option<Vec<u8>>,
+    pub tracklist: Vec<Arc<Song>>,
+    pub art: Option<Arc<Vec<u8>>>,
 
     // todo: art, year and genres
+}
+
+pub struct Playlist {
+    pub name: String,
+    pub songs: Vec<PathBuf>,
 }
 
 pub struct LocalBackend {
@@ -32,8 +38,8 @@ pub struct LocalBackend {
     player: Player,
 
     pub library: Vec<Album>,
-    current_album_art: Option<Vec<u8>>,
-    queue: Vec<Song>,
+    pub playlists: Vec<Playlist>,
+    queue: Vec<Arc<Song>>,
     index: usize, // index in current queue
 }
 
@@ -97,13 +103,14 @@ impl LocalBackend {
 
             let duration = tagged_file.properties().duration();
 
-            let cover_art: Option<Vec<u8>> = tag
+            let art: Option<Arc<Vec<u8>>> = tag
                 .map(|t| t.pictures())
                 .and_then(|pics| {
                     pics.iter()
                         .find(|p| p.pic_type() == PictureType::CoverFront)
                         .or_else(|| pics.first())
                         .map(|p| p.data().to_vec())
+                        .map(|bytes| Arc::new(bytes))
                 });
 
             let song = Song {
@@ -114,6 +121,7 @@ impl LocalBackend {
                 album_artist,
                 track_number,
                 duration,
+                art: art.clone(),
             };
 
             let album = albums
@@ -122,9 +130,9 @@ impl LocalBackend {
                     title: song.album_title.clone(),
                     artist: song.album_artist.clone(),
                     tracklist: Vec::new(),
-                    art: cover_art,
+                    art,
                 });
-            album.tracklist.push(song);
+            album.tracklist.push(Arc::new(song));
         }
         let mut library: Vec<Album> = albums.into_values().collect();
 
@@ -141,8 +149,8 @@ impl LocalBackend {
             _stream: stream,
             player,
             library,
-            current_album_art: None,
             queue: Vec::new(),
+            playlists: Vec::new(), // todo: test playlists
             index: 0,
         }
     }
@@ -179,15 +187,13 @@ impl LocalBackend {
 
     pub fn select_album(&mut self, album_index: usize) -> Result<(), Box<dyn Error>> {
         self.queue = self.library[album_index].tracklist.clone();
-        self.current_album_art = self.library[album_index].art.clone();
         self.index = 0;
         self.load_track()?;
         Ok(())
     } 
 
-    pub fn select_track(&mut self, album_index: usize, track_index: usize) -> Result<(), Box<dyn Error>> {
+    pub fn select_album_track(&mut self, album_index: usize, track_index: usize) -> Result<(), Box<dyn Error>> {
         self.queue = self.library[album_index].tracklist.clone();
-        self.current_album_art = self.library[album_index].art.clone();
         self.index = track_index;
         self.load_track()?;
         Ok(())
@@ -201,7 +207,7 @@ impl LocalBackend {
         }
     }
 
-    pub fn get_current_song(&self) -> Option<&Song> {
+    pub fn get_current_song(&self) -> Option<&Arc<Song>> {
         if self.queue.is_empty() { None } 
         else { Some(&self.queue[self.index]) }
     }
@@ -214,10 +220,6 @@ impl LocalBackend {
         self.player.get_pos()
     }
 
-    pub fn get_current_album_art(&self) -> Option<&[u8]> {
-        self.current_album_art.as_deref()
-    }
-
     pub fn seek(&mut self, position: usize) -> Result<(), Box<dyn Error>> {
         self.player.try_seek(Duration::from_secs(position as u64))?;
         Ok(())
@@ -225,5 +227,42 @@ impl LocalBackend {
 
     pub fn set_volume(&mut self, volume: f32) {
         self.player.set_volume(volume);
+    }
+
+    pub fn find_song_by_path(&self, path: &Path) -> Option<&Arc<Song>> {
+        for album in &self.library {
+            for song in &album.tracklist {
+                if song.path == path {
+                    return Some(song)
+                }
+            }
+        }
+
+        None
+    }
+
+    fn resolve_playlist_songs(&self, playlist_index: usize) -> Vec<Arc<Song>> {
+        self.playlists[playlist_index].songs.iter()
+            .filter_map(|path| self.find_song_by_path(path))
+            .cloned()
+            .collect()
+    }
+
+    pub fn select_playlist(&mut self, playlist_index: usize) -> Result<(), Box<dyn Error>> {
+        let queue = self.resolve_playlist_songs(playlist_index);
+        if queue.is_empty() {
+            return Ok(()) // todo: maybe return an empty playlist error or something idk
+        }
+        self.queue = queue;
+        self.index = 0;
+        self.load_track()?;
+        Ok(())
+    }
+
+    pub fn select_playlist_track(&mut self, playlist_index: usize, track_index: usize) -> Result<(), Box<dyn Error>> {
+        self.queue = self.resolve_playlist_songs(playlist_index);
+        self.index = track_index;
+        self.load_track()?;
+        Ok(())
     }
 }

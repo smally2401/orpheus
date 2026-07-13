@@ -1,4 +1,5 @@
 use slint::{ModelRc, VecModel};
+use std::sync::Arc;
 
 use crate::{ SlintAlbum, SlintSong };
 use crate::local_backend::{ Album, Song };
@@ -10,10 +11,10 @@ pub fn song_rust_to_slint(song: &Song) -> SlintSong {
     }
 }
 
-pub fn tracklist_rust_to_slint(tracklist: &[Song]) -> ModelRc<SlintSong> {
+pub fn tracklist_rust_to_slint(tracklist: &[Arc<Song>]) -> ModelRc<SlintSong> {
     let slint_tracklist: Vec<SlintSong> = tracklist
         .iter()
-        .map(song_rust_to_slint)
+        .map(|s| song_rust_to_slint(s))
         .collect();
 
     ModelRc::new(VecModel::from(slint_tracklist))
@@ -25,7 +26,7 @@ pub fn album_rust_to_slint(album: &Album) -> SlintAlbum {
         artist: album.artist.clone().into(),
         track_count: album.tracklist.len() as i32,
         tracks: tracklist_rust_to_slint(&album.tracklist),
-        art: art_rust_to_slint(album.art.as_deref()),
+        art: art_rust_to_slint(album.art.as_deref().map(|v| v.as_slice())),
     }
 }
 

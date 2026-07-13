@@ -5,12 +5,15 @@ import { LibraryView } from "library_view.slint";
 import { NowPlayingBar } from "now_playing_bar.slint";
 import { Sidebar } from "sidebar.slint";
 
+import "../../assets/fonts/NotoSans-Regular.ttf";
+
 enum View { Library, Album }
 
 export component AppWindow inherits Window {
     title: "orpheus";
     maximized: true;
     background: #1e1e2e;
+    default-font-family: "Noto Sans";
 
     in property <[SlintAlbum]> albums: [];
     in-out property <View> current-view: View.Library;

@@ -59,7 +59,7 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                             PlayerCommand::NextTrack => { let _ = local_backend.next(); },
                             PlayerCommand::PrevTrack => { let _ = local_backend.prev(); },
                             PlayerCommand::SelectAlbum(i) => { let _ = local_backend.select_album(i); },
-                            PlayerCommand::SelectTrack(album_i, track_i) => { let _ = local_backend.select_track(album_i, track_i); },
+                            PlayerCommand::SelectTrack(album_i, track_i) => { let _ = local_backend.select_album_track(album_i, track_i); },
                             PlayerCommand::Seek(dur) => { let _ = local_backend.seek(dur); },
                             PlayerCommand::SetVolume(vol) => { local_backend.set_volume(vol); },
                         }
@@ -80,7 +80,10 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                         let artist = track.artist.clone();
                         let current_position = local_backend.get_current_position().as_secs();
                         let total_duration = track.duration.as_secs();
-                        let album_art_bytes = local_backend.get_current_album_art().map(|b| b.to_vec());
+                        // todo: only recompute album art when current song changes
+                        let album_art_bytes = local_backend.get_current_song()
+                            .and_then(|song| song.art.as_ref())
+                            .map(|rc| rc.as_ref().clone());
 
                         let _ = slint::invoke_from_event_loop(move || {
                             if let Some(ui_instance) = ui_weak_clone.upgrade() {
