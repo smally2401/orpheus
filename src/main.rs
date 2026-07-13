@@ -58,6 +58,24 @@ async fn main() -> Result<(), slint::PlatformError> {
         let _ = tx_clone.try_send(PlayerCommand::SetVolume(volume));
     });
 
+    let tx_clone = tx.clone();
+    let ui_weak = ui.as_weak();
+    ui.on_play_playlist_clicked(move || {
+        if let Some(ui) = ui_weak.upgrade() {
+            let playlist_index = ui.get_viewing_playlist_index() as usize;
+            let _ = tx_clone.try_send(PlayerCommand::SelectPlaylist(playlist_index));
+        }
+    });
+
+    let tx_clone = tx.clone();
+    let ui_weak = ui.as_weak();
+    ui.on_play_playlist_track_clicked(move |song_index| {
+        if let Some(ui) = ui_weak.upgrade() {
+            let playlist_index = ui.get_viewing_playlist_index() as usize;
+            let _ = tx_clone.try_send(PlayerCommand::SelectPlaylistTrack(playlist_index, song_index as usize));
+        }
+    });
+
     let library_model = ModelRc::new(VecModel::from(library));
     ui.set_albums(library_model);
 
