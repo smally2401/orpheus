@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Config {
     pub sidebar_bg: String,
     pub now_playing_bar_bg: String,
@@ -21,12 +22,12 @@ impl Config {
 }
 
 const DEFAULT_CONFIG_FILE: &str = r#######"
-    sidebar_bg = "#0e101d"
-    now_playing_bar_bg = "#0a0a0f"
-    library_view_bg = "#1f1d2f"
-    album_view_bg = "#1f1d2f"
-    playlists_view_bg = "#1f1d2f"
-    open_playlist_view_bg = "#1f1d2f"
+sidebar_bg = "#0e101d"
+now_playing_bar_bg = "#0a0a0f"
+library_view_bg = "#1f1d2f"
+album_view_bg = "#1f1d2f"
+playlists_view_bg = "#1f1d2f"
+open_playlist_view_bg = "#1f1d2f"
 "#######;
 
 pub fn load_config() -> Config {
@@ -66,5 +67,30 @@ pub fn load_config() -> Config {
 
 fn load_lua(contents: String) -> Config {
     let lua = mlua::Lua::new();
-    lua.load(contents);
+    if let Err(e) = lua.load(&contents).exec() {
+        eprintln!("Error running config.lua: {}", e);
+        return Config::default();
+    }
+    let globals = lua.globals();
+    let defaults = Config::default();
+
+    let sidebar_bg = get_or_default(&globals, "sidebar_bg", defaults.sidebar_bg);
+    let now_playing_bar_bg = get_or_default(&globals, "now_playing_bar_bg", defaults.now_playing_bar_bg);
+    let library_view_bg = get_or_default(&globals, "library_view_bg", defaults.library_view_bg);
+    let album_view_bg = get_or_default(&globals, "album_view_bg", defaults.album_view_bg);
+    let playlists_view_bg = get_or_default(&globals, "playlists_view_bg", defaults.playlists_view_bg);
+    let open_playlist_view_bg = get_or_default(&globals, "open_playlist_view_bg", defaults.open_playlist_view_bg);
+
+    Config {
+        sidebar_bg,
+        now_playing_bar_bg,
+        library_view_bg,
+        album_view_bg,
+        playlists_view_bg,
+        open_playlist_view_bg,
+    }
+}
+
+fn get_or_default(globals: &mlua::Table, key: &str, default: String) -> String {
+    globals.get::<String>(key).unwrap_or(default)
 }

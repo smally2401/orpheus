@@ -12,6 +12,8 @@ slint::include_modules!();
 
 #[tokio::main]
 async fn main() -> Result<(), slint::PlatformError> {
+    let config = config::load_config();
+    println!("{:?}", config);
 
     let ui = AppWindow::new()?;
     let (tx, library, playlists) = player_bridge::spawn_player_bridge(&ui);
