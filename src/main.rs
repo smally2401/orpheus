@@ -2,6 +2,7 @@
 mod local_backend;
 mod player_bridge;
 mod utils;
+mod config;
 
 use slint::{ModelRc, VecModel};
 

@@ -17,7 +17,11 @@ export component OpenPlaylistView {
 
             VerticalLayout {
                 alignment: center;
-                // todo: playlist art on here too
+                Image {
+                    source: @image-url("../../../assets/images/cover_placeholder.png");
+                    width: 80px;
+                    height: 80px;
+                }
             }
 
             VerticalLayout {
@@ -27,6 +31,11 @@ export component OpenPlaylistView {
                     text: root.playlist.name;
                     font-size: 28px;
                     font-weight: 700;
+                }
+                
+                Text {
+                    text: "TRACK_COUNT tracks";
+                    font-size: 18px;
                 }
             }
 
@@ -40,20 +49,32 @@ export component OpenPlaylistView {
             }
         }
 
+        // todo: add album art for each track
         ListView {
             for entry[i] in root.playlist.tracks: TouchArea {
                 height : 65px;
                 Rectangle {
-                    VerticalLayout {
-                        spacing: 4px;
-                        alignment: center;
-                        Text {
-                            text: entry.title;
-                            font-size: 15px;
+                    HorizontalLayout {
+                        spacing: 10px;
+                        VerticalLayout {
+                            alignment: center;
+                            Image {
+                                source: @image-url("../../../assets/images/cover_placeholder.png");
+                                width: 40px;
+                                height: 40px;
+                            }
                         }
-                        Text {
-                            text: entry.artist;
-                            font-size: 12px;
+                        VerticalLayout {
+                            spacing: 4px;
+                            alignment: center;
+                            Text {
+                                text: entry.title;
+                                font-size: 15px;
+                            }
+                            Text {
+                                text: entry.artist;
+                                font-size: 12px;
+                            }
                         }
                     }
                 }
