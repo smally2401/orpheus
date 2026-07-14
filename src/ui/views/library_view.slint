@@ -3,38 +3,43 @@ import { SlintAlbum } from "../types.slint";
 
 export component LibraryView {
     in property <[SlintAlbum]> albums: [];
+    in property <color> bg-color;
     callback album-opened(int);
 
-    ListView {
-        for entry[i] in root.albums: TouchArea {
-            height: 65px;
-            Rectangle {
-                HorizontalLayout {
-                    spacing: 10px;
-                    VerticalLayout {
-                        alignment: center;
-                        Image {
-                            source: entry.art;
-                            width: 40px;
-                            height: 40px;
+    Rectangle {
+        background: root.bg-color;
+        ListView {
+            for entry[i] in root.albums: TouchArea {
+                height: 65px;
+                Rectangle {
+                    HorizontalLayout {
+                        padding-left: 20px;
+                        spacing: 10px;
+                        VerticalLayout {
+                            alignment: center;
+                            Image {
+                                source: entry.art;
+                                width: 40px;
+                                height: 40px;
+                            }
                         }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        alignment: center;
-                        Text {
-                            text: entry.title;
-                            font-size: 15px;
-                        }
-                        Text {
-                            text: entry.artist;
-                            font-size: 12px;
+                        VerticalLayout {
+                            spacing: 4px;
+                            alignment: center;
+                            Text {
+                                text: entry.title;
+                                font-size: 15px;
+                            }
+                            Text {
+                                text: entry.artist;
+                                font-size: 12px;
+                            }
                         }
                     }
                 }
-            }
-            clicked => {
-                album-opened(i);
+                clicked => {
+                    album-opened(i);
+                }
             }
         }
     }

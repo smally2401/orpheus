@@ -3,38 +3,43 @@ import { SlintPlaylist } from "../types.slint";
 
 export component PlaylistsView {
     in property <[SlintPlaylist]> playlists: [];
+    in property <color> bg-color;
     callback playlist-opened(int);
 
-    ListView {
-        for entry[i] in root.playlists: TouchArea {
-            height: 65px;
-            Rectangle {
-                HorizontalLayout {
-                    spacing: 10px;
-                    VerticalLayout {
-                        alignment: center;
-                        Image {
-                            source: @image-url("../../../assets/images/cover_placeholder.png");
-                            width: 40px;
-                            height: 40px;
+    Rectangle {
+        background: bg-color;
+        ListView {
+            for entry[i] in root.playlists: TouchArea {
+                height: 65px;
+                Rectangle {
+                    HorizontalLayout {
+                        padding-left: 20px;
+                        spacing: 10px;
+                        VerticalLayout {
+                            alignment: center;
+                            Image {
+                                source: @image-url("../../../assets/images/cover_placeholder.png");
+                                width: 40px;
+                                height: 40px;
+                            }
                         }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        alignment: center;
-                        Text {
-                            text: entry.name;
-                            font-size: 15px;
-                        }
-                        Text {
-                            text: "TRACK_COUNT tracks";
-                            font-size: 12px;
+                        VerticalLayout {
+                            spacing: 4px;
+                            alignment: center;
+                            Text {
+                                text: entry.name;
+                                font-size: 15px;
+                            }
+                            Text {
+                                text: "TRACK_COUNT tracks";
+                                font-size: 12px;
+                            }
                         }
                     }
                 }
-            }
-            clicked => {
-                playlist-opened(i);
+                clicked => {
+                    playlist-opened(i);
+                }
             }
         }
     }

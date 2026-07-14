@@ -3,83 +3,87 @@ import { Button, ListView } from "std-widgets.slint";
 
 export component OpenPlaylistView {
     in property <SlintPlaylist> playlist;
+    in property <color> bg-color;
 
     callback play-playlist-clicked;
     callback play-playlist-track-clicked(int);
 
-    VerticalLayout {
-        padding: 20px;
-        spacing: 10px;
-
-        HorizontalLayout {
-            alignment: start;
+    Rectangle {
+        background: root.bg-color;
+        VerticalLayout {
+            padding: 20px;
             spacing: 10px;
 
-            VerticalLayout {
-                alignment: center;
-                Image {
-                    source: @image-url("../../../assets/images/cover_placeholder.png");
-                    width: 80px;
-                    height: 80px;
+            HorizontalLayout {
+                alignment: start;
+                spacing: 10px;
+
+                VerticalLayout {
+                    alignment: center;
+                    Image {
+                        source: @image-url("../../../assets/images/cover_placeholder.png");
+                        width: 80px;
+                        height: 80px;
+                    }
+                }
+
+                VerticalLayout {
+                    horizontal-stretch: 0;
+
+                    Text {
+                        text: root.playlist.name;
+                        font-size: 28px;
+                        font-weight: 700;
+                    }
+                    
+                    Text {
+                        text: "TRACK_COUNT tracks";
+                        font-size: 18px;
+                    }
+                }
+
+                Button {
+                    text: "▶";
+                    width: 70px;
+                    height: 70px;
+                    clicked => {
+                        root.play-playlist-clicked();
+                    }
                 }
             }
 
-            VerticalLayout {
-                horizontal-stretch: 0;
-
-                Text {
-                    text: root.playlist.name;
-                    font-size: 28px;
-                    font-weight: 700;
-                }
-                
-                Text {
-                    text: "TRACK_COUNT tracks";
-                    font-size: 18px;
-                }
-            }
-
-            Button {
-                text: "▶";
-                width: 70px;
-                height: 70px;
-                clicked => {
-                    root.play-playlist-clicked();
-                }
-            }
-        }
-
-        // todo: add album art for each track
-        ListView {
-            for entry[i] in root.playlist.tracks: TouchArea {
-                height : 65px;
-                Rectangle {
-                    HorizontalLayout {
-                        spacing: 10px;
-                        VerticalLayout {
-                            alignment: center;
-                            Image {
-                                source: @image-url("../../../assets/images/cover_placeholder.png");
-                                width: 40px;
-                                height: 40px;
+            // todo: add album art for each track
+            ListView {
+                for entry[i] in root.playlist.tracks: TouchArea {
+                    height : 65px;
+                    Rectangle {
+                        HorizontalLayout {
+                            spacing: 10px;
+                            VerticalLayout {
+                                alignment: center;
+                                Image {
+                                    source: @image-url("../../../assets/images/cover_placeholder.png");
+                                    width: 40px;
+                                    height: 40px;
+                                }
                             }
-                        }
-                        VerticalLayout {
-                            spacing: 4px;
-                            alignment: center;
-                            Text {
-                                text: entry.title;
-                                font-size: 15px;
-                            }
-                            Text {
-                                text: entry.artist;
-                                font-size: 12px;
+                            VerticalLayout {
+                                spacing: 4px;
+                                alignment: center;
+                                Text {
+                                    text: entry.title;
+                                    font-size: 15px;
+                                }
+                                Text {
+                                    text: entry.artist;
+                                    font-size: 12px;
+                                }
                             }
                         }
                     }
-                }
-                clicked => {
-                    root.play-playlist-track-clicked(i);
+                    clicked => {
+                        root.play-playlist-track-clicked(i);
+                    }
                 }
             }
         }

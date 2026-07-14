@@ -18,9 +18,11 @@ export component NowPlayingBar {
     in property <string> current-artist: "---";
     in property <image> current-art;
 
+    in property <color> bg-color;
+
     Rectangle {
         height: 80px;
-        background: #0a0a0f;
+        background: root.bg-color;
 
         HorizontalLayout {
             spacing: 10px;

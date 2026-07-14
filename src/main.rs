@@ -12,11 +12,17 @@ slint::include_modules!();
 
 #[tokio::main]
 async fn main() -> Result<(), slint::PlatformError> {
-    let config = config::load_config();
-    println!("{:?}", config);
 
     let ui = AppWindow::new()?;
     let (tx, library, playlists) = player_bridge::spawn_player_bridge(&ui);
+
+    let config = config::load_config();
+    ui.set_sidebar_bg(config.sidebar_bg);
+    ui.set_now_playing_bg(config.now_playing_bar_bg);
+    ui.set_library_view_bg(config.library_view_bg);
+    ui.set_album_view_bg(config.album_view_bg);
+    ui.set_playlists_view_bg(config.playlists_view_bg);
+    ui.set_open_playlist_view_bg(config.open_playlist_view_bg);
     
     let tx_clone = tx.clone();
     ui.on_play_paused_clicked(move || {

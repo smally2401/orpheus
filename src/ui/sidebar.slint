@@ -2,10 +2,12 @@ export component Sidebar {
     callback library-selected();
     callback playlists-selected();
 
+    in property <color> bg-color;
+
     width: 150px;
 
     Rectangle {
-        background: #0e101d;
+        background: root.bg-color;
 
         VerticalLayout {
             padding: 15px;

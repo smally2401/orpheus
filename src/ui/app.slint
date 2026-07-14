@@ -45,6 +45,14 @@ export component AppWindow inherits Window {
     callback seek-requested(int);
     callback volume-changed(float);
 
+    // LUA CONFIG
+    in property <color> sidebar-bg;
+    in property <color> now-playing-bg;
+    in property <color> library-view-bg;
+    in property <color> album-view-bg;
+    in property <color> playlists-view-bg;
+    in property <color> open-playlist-view-bg;
+
     VerticalLayout {
 
         HorizontalLayout {
@@ -53,48 +61,48 @@ export component AppWindow inherits Window {
             Sidebar {
                 library-selected => { root.current-view = View.Library }
                 playlists-selected => { root.current-view = View.Playlists }
+                bg-color: root.sidebar-bg;
             }
 
-            Rectangle {
-                background: #1f1d2f;
+            VerticalLayout {
 
-                VerticalLayout {
-                    padding: 20px;
+                if root.current-view == View.Album:
+                    AlbumView {
+                        album: root.viewing-album;
+                        bg-color: root.album-view-bg;
+                        play-album-clicked => { root.play-album-clicked() }
+                        play-track-clicked(idx) => { root.play-track-clicked(idx) }
+                    }
+                
+                if root.current-view == View.Library: 
+                    LibraryView {
+                        albums: root.albums;
+                        bg-color: root.library-view-bg;
+                        album-opened(i) => {
+                            root.current-view = View.Album;
+                            root.viewing-album = root.albums[i];
+                            root.viewing-album-index = i;
+                        }
+                    }
 
-                    if root.current-view == View.Album:
-                        AlbumView {
-                            album: root.viewing-album;
-                            play-album-clicked => { root.play-album-clicked() }
-                            play-track-clicked(idx) => { root.play-track-clicked(idx) }
-                        }
-                    
-                    if root.current-view == View.Library: 
-                        LibraryView {
-                            albums: root.albums;
-                            album-opened(i) => {
-                                root.current-view = View.Album;
-                                root.viewing-album = root.albums[i];
-                                root.viewing-album-index = i;
-                            }
-                        }
+                if root.current-view == View.OpenPlaylist:
+                    OpenPlaylistView {
+                        bg-color: root.open-playlist-view-bg;
+                        playlist: root.viewing-playlist;
+                        play-playlist-clicked => { root.play-playlist-clicked() }
+                        play-playlist-track-clicked(idx) => { root.play-playlist-track-clicked(idx) }
+                    }
 
-                    if root.current-view == View.OpenPlaylist:
-                        OpenPlaylistView {
-                            playlist: root.viewing-playlist;
-                            play-playlist-clicked => { root.play-playlist-clicked() }
-                            play-playlist-track-clicked(idx) => { root.play-playlist-track-clicked(idx) }
+                if root.current-view == View.Playlists:
+                    PlaylistsView {
+                        bg-color: root.playlists-view-bg;
+                        playlists: root.playlists;
+                        playlist-opened(i) => {
+                            root.current-view = View.OpenPlaylist;
+                            root.viewing-playlist = root.playlists[i];
+                            root.viewing-playlist-index = i;
                         }
-
-                    if root.current-view == View.Playlists:
-                        PlaylistsView {
-                            playlists: root.playlists;
-                            playlist-opened(i) => {
-                                root.current-view = View.OpenPlaylist;
-                                root.viewing-playlist = root.playlists[i];
-                                root.viewing-playlist-index = i;
-                            }
-                        }
-                }
+                    }
             }
         }
 
@@ -109,6 +117,7 @@ export component AppWindow inherits Window {
             current-artist: root.current-artist;
             volume-changed(vol) => { root.volume-changed(vol) }
             current-art: root.current-art;
+            bg-color: root.now-playing-bg;
         }
     }
 }
