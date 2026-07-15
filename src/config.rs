@@ -23,23 +23,20 @@ impl Config {
     }
 }
 
-const DEFAULT_CONFIG_FILE: &str = r#######"sidebar_bg = "#0e101d"
+const DEFAULT_CONFIG_FILE: &str = r##"sidebar_bg = "#0e101d"
 now_playing_bar_bg = "#0a0a0f"
 library_view_bg = "#1f1d2f"
 album_view_bg = "#1f1d2f"
 playlists_view_bg = "#1f1d2f"
 open_playlist_view_bg = "#1f1d2f"
-"#######;
+"##;
 
 pub fn load_config() -> Config {
 
     
-    let config_dir = match dirs::config_dir() {
-        Some(dir) => dir.join("orpheus"),
-        None => {
-            eprintln!("Could not find config path");
-            return Config::default();
-        }
+    let Some(config_dir) = dirs::config_dir() else {
+        eprintln!("Could not find config path");
+        return Config::default();
     };
 
     if std::fs::create_dir_all(&config_dir).is_err() {
@@ -55,21 +52,18 @@ pub fn load_config() -> Config {
         return Config::default();
     }
 
-    let file_contents = match std::fs::read_to_string(config_path) {
-        Ok(contents) => contents,
-        Err(_) => {
-            eprintln!("Could not read config file");
-            return Config::default();
-        }
+    let Ok(file_contents) = std::fs::read_to_string(config_path) else {
+        eprintln!("Could not read config file");
+        return Config::default();
     };
 
-    load_lua(file_contents)
+    load_lua(&file_contents)
 }
 
-fn load_lua(contents: String) -> Config {
+fn load_lua(contents: &str) -> Config {
     let lua = mlua::Lua::new();
-    if let Err(e) = lua.load(&contents).exec() {
-        eprintln!("Error running config.lua: {}", e);
+    if let Err(e) = lua.load(contents).exec() {
+        eprintln!("Error running config.lua: {e}");
         return Config::default();
     }
     let globals = lua.globals();

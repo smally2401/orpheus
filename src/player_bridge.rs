@@ -1,11 +1,14 @@
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::sync::mpsc;
-use slint::{ComponentHandle};
-
-use crate::{ AppWindow, SlintAlbum, SlintPlaylist };
+use slint::ComponentHandle;
+use crate::AppWindow;
+use crate::SlintAlbum;
+use crate::SlintPlaylist;
 use crate::local_backend::LocalBackend;
-use crate::utils::{album_rust_to_slint, art_rust_to_slint, playlist_rust_to_slint};
+use crate::utils::album_rust_to_slint;
+use crate::utils::art_rust_to_slint;
+use crate::utils::playlist_rust_to_slint;
 
 pub enum PlayerCommand {
     TogglePlay,
@@ -23,15 +26,18 @@ pub enum PlayerCommand {
 pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<SlintAlbum>, Vec<SlintPlaylist>) {
 
     let raw = std::env::var("ORPHEUS_MUSIC_DIR").ok();
-    let path = raw.map(|s| {
+    let path = raw.map_or_else(
+        || PathBuf::from("."),
+        |s| {
         if let Some(stripped) = s.strip_prefix("~/") {
-            dirs::home_dir()
-                .map(|home| home.join(stripped))
-                .unwrap_or_else(|| PathBuf::from(s.clone()))
+            dirs::home_dir().map_or_else(
+                || PathBuf::from(s.clone()),
+                |home| home.join(stripped)
+            )
         } else {
             PathBuf::from(s)
         }
-    }).unwrap_or_else(|| PathBuf::from("."));
+    });
 
     if !path.exists() {
         eprintln!("error: path {} could not be found", path.to_string_lossy());
@@ -91,11 +97,11 @@ pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<
                         let current_position = local_backend.get_current_position().as_secs();
                         let total_duration = track.duration.as_secs();
 
-                        let new_art_bytes = if last_art_path.as_deref() != Some(track.path.as_path()) {
+                        let new_art_bytes = if last_art_path.as_deref() == Some(track.path.as_path()) {
+                            None
+                        } else {
                             last_art_path = Some(track.path.clone());
                             Some(track.art.as_ref().map(|arc| arc.as_ref().clone()))
-                        } else {
-                            None
                         };
 
                         let _ = slint::invoke_from_event_loop(move || {

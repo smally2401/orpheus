@@ -4,6 +4,13 @@ version = "0.1.0"
 edition = "2024"
 build = "build.rs"
 
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+struct_field_names = "allow"
+cast_sign_loss = "allow"
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+
 [dependencies]
 dirs = "6.0.0"
 image = "0.25.10"

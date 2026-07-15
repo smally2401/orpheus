@@ -12,7 +12,7 @@ if hour >= 22 or hour <= 7 then
 else
     -- daytime
     sidebar_bg = "#e6e8f5"
-    now_playing_bar_bg = "f4f5fb"
+    now_playing_bar_bg = "#f4f5fb"
     library_view_bg = "#d6d4eb"
     album_view_bg = "#d6d4eb"
     playlists_view_bg = "#d6d4eb"

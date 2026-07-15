@@ -1,6 +1,16 @@
-use std::{collections::HashMap, error::Error, ffi::OsStr, path::{Path, PathBuf}, time::Duration, sync::Arc};
-use lofty::{file::{AudioFile, TaggedFileExt}, picture::{PictureType}, tag::{Accessor, ItemKey}};
-use rodio::{MixerDeviceSink, Player};
+use std::collections::HashMap;
+use std::error::Error;
+use std::ffi::OsStr;
+use std::path::Path;
+use std::path::PathBuf;
+use std::time::Duration;
+use std::sync::Arc;
+use lofty::file::AudioFile;
+use lofty::file::TaggedFileExt;
+use lofty::picture::PictureType;
+use lofty::tag::ItemKey;
+use rodio::MixerDeviceSink;
+use rodio::Player;
 use walkdir::WalkDir;
 
 #[derive(Clone)]
@@ -44,9 +54,10 @@ pub struct LocalBackend {
 }
 
 impl LocalBackend {
+    #[allow(clippy::too_many_lines)]
     pub fn new(path: &Path) -> Self {
 
-        let entries = WalkDir::new(path).into_iter().filter_map(|e| e.ok());
+        let entries = WalkDir::new(path).into_iter().filter_map(std::result::Result::ok);
 
         let audio_files = entries
             .filter(|e| {
@@ -62,59 +73,62 @@ impl LocalBackend {
                         ext.eq_ignore_ascii_case("flac")
                     )
             })
-            .map(|e| e.into_path());
+            .map(walkdir::DirEntry::into_path);
 
         let mut albums: HashMap<(String, String), Album> = HashMap::new();
         for path in audio_files {
 
-            let tagged_file = match lofty::read_from_path(&path) {
-                Ok(file) => file,
-                Err(_) => continue,
-            };
+            let Ok(tagged_file) = lofty::read_from_path(&path) 
+                else { continue };
             let tag = tagged_file.primary_tag()
                 .or_else(|| tagged_file.first_tag());
 
             let title = tag
-                .and_then(|t| t.title())
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| {
-                    path.file_name()
-                        .map(|os_str| os_str.to_string_lossy().into_owned())
-                        .unwrap_or_else(|| "Unknown Title".to_string())
-                });
+                .and_then(lofty::tag::Accessor::title).map_or_else(|| {
+                    path.file_name().map_or_else(
+                        || "Unknown Title".to_string(),
+                        |os_str| os_str.to_string_lossy().into_owned()
+                    )
+                }, |a| a.to_string());
 
             let artist = tag
-                .and_then(|t| t.artist())
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "Unknown Artist".to_string());
+                .and_then(lofty::tag::Accessor::artist)
+                .map_or_else(
+                    || "Unknown Artist".to_string(),
+                    |a| a.to_string()
+                );
 
             let album_title = tag
-                .and_then(|t| t.album())
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "Unknown Album".to_string());
+                .and_then(lofty::tag::Accessor::album)
+                .map_or_else(
+                    || "Unknown Album".to_string(),
+                    |a| a.to_string()
+                );
 
             let album_artist = tag
                 .and_then(|t| t.get_string(ItemKey::AlbumArtist))
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| artist.clone());
+                .map_or_else(
+                    || artist.clone(),
+                    std::string::ToString::to_string
+                );
 
             let track_number = tag
-                .and_then(|t| t.track());
+                .and_then(lofty::tag::Accessor::track);
 
             let duration = tagged_file.properties().duration();
 
             let art: Option<Arc<Vec<u8>>> = tag
-                .map(|t| t.pictures())
+                .map(lofty::tag::Tag::pictures)
                 .and_then(|pics| {
                     pics.iter()
                         .find(|p| p.pic_type() == PictureType::CoverFront)
                         .or_else(|| pics.first())
                         .map(|p| p.data().to_vec())
-                        .map(|bytes| Arc::new(bytes))
+                        .map(Arc::new)
                 });
 
             let song = Song {
-                path: path.to_path_buf(),
+                path: path.clone(),
                 title,
                 artist,
                 album_title,
@@ -138,8 +152,9 @@ impl LocalBackend {
 
         // todo: add more ordering options
         library.sort_by_key(|album| album.title.clone());
-        library.iter_mut()
-            .for_each(|album| album.tracklist.sort_by_key(|s| s.track_number));
+        for album in &mut library {
+            album.tracklist.sort_by_key(|s| s.track_number);
+        }
 
         let stream = rodio::DeviceSinkBuilder::open_default_sink().unwrap();
         let mixer = stream.mixer();

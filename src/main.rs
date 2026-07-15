@@ -4,8 +4,8 @@ mod player_bridge;
 mod utils;
 mod config;
 
-use slint::{ModelRc, VecModel};
-
+use slint::ModelRc;
+use slint::VecModel;
 use crate::player_bridge::PlayerCommand;
 
 slint::include_modules!();
