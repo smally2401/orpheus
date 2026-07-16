@@ -11,6 +11,7 @@ use std::process::ExitStatus;
 const INSTALL_PROMPT: &str = "Do you wish to install Orpheus? (Disclaimer: The current installer builds the project from source, so it'll take a while)";
 const FINISH_MESSAGE: &str = "Orpheus finished installing successfully!";
 
+// todo: maybe make more os-specific stuff using #[cfg(target_os = "x")]
 fn main() -> Result<()> {
     if !ask_confirm(INSTALL_PROMPT) {
         return Ok(());
@@ -128,4 +129,22 @@ fn check_path(dest_bin_dir: &Path) {
 
 fn make_desktop_file(path: &str) -> String {
     format!("[Desktop Entry]\nType=Application\nName=Orpheus\nExec={path}\nTerminal=false")
+}
+
+fn get_executable_extension() -> String {
+    if cfg!(target_os = "windows") {
+        ".exe".to_string()
+    } else {
+        String::new()
+    }
+}
+
+fn get_shortcut_extension() -> String {
+    if cfg!(target_os = "windows") {
+        ".lnk".to_string()
+    } else if cfg!(target_os = "linux") {
+        ".desktop".to_string()
+    } else {
+        String::new()
+    }
 }

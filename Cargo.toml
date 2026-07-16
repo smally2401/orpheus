@@ -10,14 +10,17 @@ struct_field_names = "allow"
 cast_sign_loss = "allow"
 cast_possible_truncation = "allow"
 cast_possible_wrap = "allow"
+too_many_lines = "allow"
 
 [dependencies]
 anyhow = "1.0.103"
+async-executor = "1.14.0"
 dirs = "6.0.0"
+futures-lite = "2.6.1"
 image = "0.25.10"
 lofty = "0.24.0"
 mlua = { version = "0.11", features = ["lua54", "vendored" ] }
-mpris-server = { version = "0.10.0", features = ["tokio"] }
+mpris-server = "0.10.0"
 rodio = { version = "0.22.2", features = ["playback", "mp3", "flac"] }
 slint = "1.17.0"
 tokio = { version = "1.52.3", features = ["full"] }

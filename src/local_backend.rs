@@ -52,7 +52,6 @@ pub struct LocalBackend {
 }
 
 impl LocalBackend {
-    #[allow(clippy::too_many_lines)]
     pub fn new(path: &Path) -> Self {
         let entries = WalkDir::new(path)
             .into_iter()
@@ -71,7 +70,7 @@ impl LocalBackend {
                         ext.eq_ignore_ascii_case("mp3") || ext.eq_ignore_ascii_case("flac")
                     })
             })
-            .map(walkdir::DirEntry::into_path);
+        .map(walkdir::DirEntry::into_path);
 
         let mut albums: HashMap<(String, String), Album> = HashMap::new();
         for path in audio_files {
@@ -223,6 +222,14 @@ impl LocalBackend {
         } else {
             self.player.pause();
         }
+    }
+
+    pub fn play(&mut self) {
+        self.player.play();
+    }
+
+    pub fn pause(&mut self) {
+        self.player.pause();
     }
 
     pub fn get_current_song(&self) -> Option<&Arc<Song>> {

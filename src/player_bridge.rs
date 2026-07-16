@@ -2,12 +2,12 @@ use crate::AppWindow;
 use crate::SlintAlbum;
 use crate::SlintPlaylist;
 use crate::local_backend::LocalBackend;
-use crate::mpris::spawn_mpris;
 use crate::mpris::MprisCommand;
-use mpris_server::PlaybackStatus;
+use crate::mpris::spawn_mpris;
 use crate::utils::album_rust_to_slint;
 use crate::utils::art_rust_to_slint;
 use crate::utils::playlist_rust_to_slint;
+use mpris_server::PlaybackStatus;
 use slint::ComponentHandle;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -15,6 +15,8 @@ use tokio::sync::mpsc;
 
 pub enum PlayerCommand {
     TogglePlay,
+    Play,
+    Pause,
     NextTrack,
     PrevTrack,
     SelectAlbum(usize),
@@ -81,6 +83,8 @@ pub fn spawn_player_bridge(
                         match command {
                             // todo: remove let _ and handle stuff
                             PlayerCommand::TogglePlay => { local_backend.toggle_play(); },
+                            PlayerCommand::Play => { local_backend.play(); },
+                            PlayerCommand::Pause => { local_backend.pause(); },
                             PlayerCommand::NextTrack => { let _ = local_backend.next(); },
                             PlayerCommand::PrevTrack => { let _ = local_backend.prev(); },
                             PlayerCommand::SelectAlbum(i) => { let _ = local_backend.select_album(i); },

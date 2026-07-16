@@ -10,10 +10,8 @@ use slint::VecModel;
 
 slint::include_modules!();
 
-fn main() -> Result<(), slint::PlatformError> {
-    let rt = tokio::runtime::Runtime::new().expect("Failed to build tokio runtime");
-    let _guard = rt.enter();
-
+#[tokio::main]
+async fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
     let (tx, library, playlists) = player_bridge::spawn_player_bridge(&ui);
 
