@@ -1,16 +1,16 @@
-use std::collections::HashMap;
-use std::error::Error;
-use std::ffi::OsStr;
-use std::path::Path;
-use std::path::PathBuf;
-use std::time::Duration;
-use std::sync::Arc;
 use lofty::file::AudioFile;
 use lofty::file::TaggedFileExt;
 use lofty::picture::PictureType;
 use lofty::tag::ItemKey;
 use rodio::MixerDeviceSink;
 use rodio::Player;
+use std::collections::HashMap;
+use std::error::Error;
+use std::ffi::OsStr;
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Duration;
 use walkdir::WalkDir;
 
 #[derive(Clone)]
@@ -25,7 +25,6 @@ pub struct Song {
     track_number: Option<u32>,
     pub duration: Duration,
     pub art: Option<Arc<Vec<u8>>>,
-
     // todo: lyrics and disc number
 }
 
@@ -34,7 +33,6 @@ pub struct Album {
     pub artist: String,
     pub tracklist: Vec<Arc<Song>>,
     pub art: Option<Arc<Vec<u8>>>,
-
     // todo: art, year and genres
 }
 
@@ -56,8 +54,9 @@ pub struct LocalBackend {
 impl LocalBackend {
     #[allow(clippy::too_many_lines)]
     pub fn new(path: &Path) -> Self {
-
-        let entries = WalkDir::new(path).into_iter().filter_map(std::result::Result::ok);
+        let entries = WalkDir::new(path)
+            .into_iter()
+            .filter_map(std::result::Result::ok);
 
         let audio_files = entries
             .filter(|e| {
@@ -68,64 +67,54 @@ impl LocalBackend {
                 e.path()
                     .extension()
                     .and_then(OsStr::to_str)
-                    .is_some_and(|ext| 
-                        ext.eq_ignore_ascii_case("mp3") || 
-                        ext.eq_ignore_ascii_case("flac")
-                    )
+                    .is_some_and(|ext| {
+                        ext.eq_ignore_ascii_case("mp3") || ext.eq_ignore_ascii_case("flac")
+                    })
             })
             .map(walkdir::DirEntry::into_path);
 
         let mut albums: HashMap<(String, String), Album> = HashMap::new();
         for path in audio_files {
-
-            let Ok(tagged_file) = lofty::read_from_path(&path) 
-                else { continue };
-            let tag = tagged_file.primary_tag()
+            let Ok(tagged_file) = lofty::read_from_path(&path) else {
+                continue;
+            };
+            let tag = tagged_file
+                .primary_tag()
                 .or_else(|| tagged_file.first_tag());
 
-            let title = tag
-                .and_then(lofty::tag::Accessor::title).map_or_else(|| {
+            let title = tag.and_then(lofty::tag::Accessor::title).map_or_else(
+                || {
                     path.file_name().map_or_else(
                         || "Unknown Title".to_string(),
-                        |os_str| os_str.to_string_lossy().into_owned()
+                        |os_str| os_str.to_string_lossy().into_owned(),
                     )
-                }, |a| a.to_string());
+                },
+                |a| a.to_string(),
+            );
 
             let artist = tag
                 .and_then(lofty::tag::Accessor::artist)
-                .map_or_else(
-                    || "Unknown Artist".to_string(),
-                    |a| a.to_string()
-                );
+                .map_or_else(|| "Unknown Artist".to_string(), |a| a.to_string());
 
             let album_title = tag
                 .and_then(lofty::tag::Accessor::album)
-                .map_or_else(
-                    || "Unknown Album".to_string(),
-                    |a| a.to_string()
-                );
+                .map_or_else(|| "Unknown Album".to_string(), |a| a.to_string());
 
             let album_artist = tag
                 .and_then(|t| t.get_string(ItemKey::AlbumArtist))
-                .map_or_else(
-                    || artist.clone(),
-                    std::string::ToString::to_string
-                );
+                .map_or_else(|| artist.clone(), std::string::ToString::to_string);
 
-            let track_number = tag
-                .and_then(lofty::tag::Accessor::track);
+            let track_number = tag.and_then(lofty::tag::Accessor::track);
 
             let duration = tagged_file.properties().duration();
 
-            let art: Option<Arc<Vec<u8>>> = tag
-                .map(lofty::tag::Tag::pictures)
-                .and_then(|pics| {
-                    pics.iter()
-                        .find(|p| p.pic_type() == PictureType::CoverFront)
-                        .or_else(|| pics.first())
-                        .map(|p| p.data().to_vec())
-                        .map(Arc::new)
-                });
+            let art: Option<Arc<Vec<u8>>> = tag.map(lofty::tag::Tag::pictures).and_then(|pics| {
+                pics.iter()
+                    .find(|p| p.pic_type() == PictureType::CoverFront)
+                    .or_else(|| pics.first())
+                    .map(|p| p.data().to_vec())
+                    .map(Arc::new)
+            });
 
             let song = Song {
                 path: path.clone(),
@@ -215,9 +204,13 @@ impl LocalBackend {
         self.index = 0;
         self.load_track()?;
         Ok(())
-    } 
+    }
 
-    pub fn select_album_track(&mut self, album_index: usize, track_index: usize) -> Result<(), Box<dyn Error>> {
+    pub fn select_album_track(
+        &mut self,
+        album_index: usize,
+        track_index: usize,
+    ) -> Result<(), Box<dyn Error>> {
         self.queue = self.library[album_index].tracklist.clone();
         self.index = track_index;
         self.load_track()?;
@@ -233,8 +226,11 @@ impl LocalBackend {
     }
 
     pub fn get_current_song(&self) -> Option<&Arc<Song>> {
-        if self.queue.is_empty() { None } 
-        else { Some(&self.queue[self.index]) }
+        if self.queue.is_empty() {
+            None
+        } else {
+            Some(&self.queue[self.index])
+        }
     }
 
     pub fn track_finished(&self) -> bool {
@@ -258,7 +254,7 @@ impl LocalBackend {
         for album in &self.library {
             for song in &album.tracklist {
                 if song.path == path {
-                    return Some(song)
+                    return Some(song);
                 }
             }
         }
@@ -267,7 +263,9 @@ impl LocalBackend {
     }
 
     pub fn resolve_playlist(&self, playlist_index: usize) -> Vec<Arc<Song>> {
-        self.playlists[playlist_index].songs.iter()
+        self.playlists[playlist_index]
+            .songs
+            .iter()
             .filter_map(|path| self.find_song_by_path(path))
             .cloned()
             .collect()
@@ -276,7 +274,7 @@ impl LocalBackend {
     pub fn select_playlist(&mut self, playlist_index: usize) -> Result<(), Box<dyn Error>> {
         let queue = self.resolve_playlist(playlist_index);
         if queue.is_empty() {
-            return Ok(()) // todo: maybe return an empty playlist error or something idk
+            return Ok(()); // todo: maybe return an empty playlist error or something idk
         }
         self.queue = queue;
         self.index = 0;
@@ -284,7 +282,11 @@ impl LocalBackend {
         Ok(())
     }
 
-    pub fn select_playlist_track(&mut self, playlist_index: usize, track_index: usize) -> Result<(), Box<dyn Error>> {
+    pub fn select_playlist_track(
+        &mut self,
+        playlist_index: usize,
+        track_index: usize,
+    ) -> Result<(), Box<dyn Error>> {
         self.queue = self.resolve_playlist(playlist_index);
         self.index = track_index;
         self.load_track()?;

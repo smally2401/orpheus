@@ -16,9 +16,9 @@ impl Config {
             sidebar_bg: Color::from_rgb_u8(0x0e, 0x10, 0x1d),
             now_playing_bar_bg: Color::from_rgb_u8(0x0a, 0x0a, 0x0f),
             library_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
-            album_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f), 
-            playlists_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f), 
-            open_playlist_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f), 
+            album_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
+            playlists_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
+            open_playlist_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
         }
     }
 }
@@ -32,8 +32,6 @@ open_playlist_view_bg = "#1f1d2f"
 "##;
 
 pub fn load_config() -> Config {
-
-    
     let Some(config_dir) = dirs::config_dir() else {
         eprintln!("Could not find config path");
         return Config::default();
@@ -70,11 +68,18 @@ fn load_lua(contents: &str) -> Config {
     let defaults = Config::default();
 
     let sidebar_bg = get_color_or_default(&globals, "sidebar_bg", defaults.sidebar_bg);
-    let now_playing_bar_bg = get_color_or_default(&globals, "now_playing_bar_bg", defaults.now_playing_bar_bg);
-    let library_view_bg = get_color_or_default(&globals, "library_view_bg", defaults.library_view_bg);
+    let now_playing_bar_bg =
+        get_color_or_default(&globals, "now_playing_bar_bg", defaults.now_playing_bar_bg);
+    let library_view_bg =
+        get_color_or_default(&globals, "library_view_bg", defaults.library_view_bg);
     let album_view_bg = get_color_or_default(&globals, "album_view_bg", defaults.album_view_bg);
-    let playlists_view_bg = get_color_or_default(&globals, "playlists_view_bg", defaults.playlists_view_bg);
-    let open_playlist_view_bg = get_color_or_default(&globals, "open_playlist_view_bg", defaults.open_playlist_view_bg);
+    let playlists_view_bg =
+        get_color_or_default(&globals, "playlists_view_bg", defaults.playlists_view_bg);
+    let open_playlist_view_bg = get_color_or_default(
+        &globals,
+        "open_playlist_view_bg",
+        defaults.open_playlist_view_bg,
+    );
 
     Config {
         sidebar_bg,

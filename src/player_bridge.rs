@@ -1,7 +1,3 @@
-use std::path::PathBuf;
-use std::time::Duration;
-use tokio::sync::mpsc;
-use slint::ComponentHandle;
 use crate::AppWindow;
 use crate::SlintAlbum;
 use crate::SlintPlaylist;
@@ -9,6 +5,10 @@ use crate::local_backend::LocalBackend;
 use crate::utils::album_rust_to_slint;
 use crate::utils::art_rust_to_slint;
 use crate::utils::playlist_rust_to_slint;
+use slint::ComponentHandle;
+use std::path::PathBuf;
+use std::time::Duration;
+use tokio::sync::mpsc;
 
 pub enum PlayerCommand {
     TogglePlay,
@@ -23,21 +23,25 @@ pub enum PlayerCommand {
     // ToggleShuffle,
 }
 
-pub fn spawn_player_bridge(ui: &AppWindow) -> (mpsc::Sender<PlayerCommand>, Vec<SlintAlbum>, Vec<SlintPlaylist>) {
-
+pub fn spawn_player_bridge(
+    ui: &AppWindow,
+) -> (
+    mpsc::Sender<PlayerCommand>,
+    Vec<SlintAlbum>,
+    Vec<SlintPlaylist>,
+) {
     let raw = std::env::var("ORPHEUS_MUSIC_DIR").ok();
     let path = raw.map_or_else(
         || PathBuf::from("."),
         |s| {
-        if let Some(stripped) = s.strip_prefix("~/") {
-            dirs::home_dir().map_or_else(
-                || PathBuf::from(s.clone()),
-                |home| home.join(stripped)
-            )
-        } else {
-            PathBuf::from(s)
-        }
-    });
+            if let Some(stripped) = s.strip_prefix("~/") {
+                dirs::home_dir()
+                    .map_or_else(|| PathBuf::from(s.clone()), |home| home.join(stripped))
+            } else {
+                PathBuf::from(s)
+            }
+        },
+    );
 
     if !path.exists() {
         eprintln!("error: path {} could not be found", path.to_string_lossy());

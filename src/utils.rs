@@ -1,13 +1,13 @@
-use slint::ModelRc;
-use slint::VecModel;
-use image::imageops::FilterType;
-use std::sync::Arc;
 use crate::SlintAlbum;
-use crate::SlintSong;
 use crate::SlintPlaylist;
+use crate::SlintSong;
 use crate::local_backend::Album;
 use crate::local_backend::LocalBackend;
 use crate::local_backend::Song;
+use image::imageops::FilterType;
+use slint::ModelRc;
+use slint::VecModel;
+use std::sync::Arc;
 
 pub fn song_rust_to_slint(song: &Song) -> SlintSong {
     SlintSong {
@@ -17,10 +17,7 @@ pub fn song_rust_to_slint(song: &Song) -> SlintSong {
 }
 
 pub fn tracklist_rust_to_slint(tracklist: &[Arc<Song>]) -> ModelRc<SlintSong> {
-    let slint_tracklist: Vec<SlintSong> = tracklist
-        .iter()
-        .map(|s| song_rust_to_slint(s))
-        .collect();
+    let slint_tracklist: Vec<SlintSong> = tracklist.iter().map(|s| song_rust_to_slint(s)).collect();
 
     ModelRc::new(VecModel::from(slint_tracklist))
 }
@@ -37,21 +34,21 @@ pub fn album_rust_to_slint(album: &Album) -> SlintAlbum {
 
 pub fn art_rust_to_slint(art: Option<&[u8]>) -> slint::Image {
     match art {
-        Some(art) => {
-            match image::load_from_memory(art) {
-                Ok(image) => {
-                    let image = image.resize(100, 100, FilterType::Lanczos3).into_rgb8();
-                    let width = image.width();
-                    let height = image.height();
-                    let raw = image.into_raw();
-                    let buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(&raw, width, height);
+        Some(art) => match image::load_from_memory(art) {
+            Ok(image) => {
+                let image = image.resize(100, 100, FilterType::Lanczos3).into_rgb8();
+                let width = image.width();
+                let height = image.height();
+                let raw = image.into_raw();
+                let buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(
+                    &raw, width, height,
+                );
 
-                    slint::Image::from_rgb8(buffer)
-                },
-                Err(_) => slint::Image::default()
+                slint::Image::from_rgb8(buffer)
             }
+            Err(_) => slint::Image::default(),
         },
-        None => slint::Image::default()
+        None => slint::Image::default(),
     }
 }
 

@@ -1,18 +1,17 @@
 // mod mpd_backend;
+mod config;
 mod local_backend;
 mod player_bridge;
 mod utils;
-mod config;
 
+use crate::player_bridge::PlayerCommand;
 use slint::ModelRc;
 use slint::VecModel;
-use crate::player_bridge::PlayerCommand;
 
 slint::include_modules!();
 
 #[tokio::main]
 async fn main() -> Result<(), slint::PlatformError> {
-
     let ui = AppWindow::new()?;
     let (tx, library, playlists) = player_bridge::spawn_player_bridge(&ui);
 
@@ -23,7 +22,7 @@ async fn main() -> Result<(), slint::PlatformError> {
     ui.set_album_view_bg(config.album_view_bg);
     ui.set_playlists_view_bg(config.playlists_view_bg);
     ui.set_open_playlist_view_bg(config.open_playlist_view_bg);
-    
+
     let tx_clone = tx.clone();
     ui.on_play_paused_clicked(move || {
         let _ = tx_clone.try_send(PlayerCommand::TogglePlay);
@@ -81,7 +80,10 @@ async fn main() -> Result<(), slint::PlatformError> {
     ui.on_play_playlist_track_clicked(move |song_index| {
         if let Some(ui) = ui_weak.upgrade() {
             let playlist_index = ui.get_viewing_playlist_index() as usize;
-            let _ = tx_clone.try_send(PlayerCommand::SelectPlaylistTrack(playlist_index, song_index as usize));
+            let _ = tx_clone.try_send(PlayerCommand::SelectPlaylistTrack(
+                playlist_index,
+                song_index as usize,
+            ));
         }
     });
 

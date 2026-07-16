@@ -1,38 +1,86 @@
 use std::io;
+use std::fs;
 use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
+use std::path::Path;
 use std::process::ExitStatus;
+use anyhow::Context;
+use anyhow::Result;
 
 const INSTALL_PROMPT: &str = "Do you wish to install Orpheus? (Disclaimer: The current installer builds the project from source, so it'll take a while)";
+const FINISH_MESSAGE: &str = "Orpheus finished installing successfully!";
 
-fn main() -> io::Result<()> {
-
+fn main() -> Result<()> {
     if !ask_confirm(INSTALL_PROMPT) {
         return Ok(());
     }
 
-    let build = match std::process::Command::new("cargo").args(["build", "--release"]).status() {
+    build()?;
+
+    let (orpheus_bin_path, dest_bin_dir, shortcut_dir) = get_paths()?;
+
+    make_files(orpheus_bin_path, &dest_bin_dir, &shortcut_dir)?;
+
+    println!("{FINISH_MESSAGE}");
+    
+    check_path(&dest_bin_dir);
+
+    Ok(())
+}
+
+fn build() -> Result<()> {
+    let build = match std::process::Command::new("cargo")
+        .args(["build", "--release"])
+        .status()
+    {
         Ok(value) => value,
         Err(e) => {
-            println!("An error happened while building: {e}");
-            return Ok(());
-        },
+            anyhow::bail!("An error happened while building: {e}");
+        }
     };
 
     if !ExitStatus::success(&build) {
-        println!("An error happened while building.");
-        return Ok(());
+        anyhow::bail!("An error happened while building.");
     }
 
+    Ok(())
+}
+
+fn get_paths() -> Result<(PathBuf, PathBuf, PathBuf)> {
     let orpheus_bin_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target/release/orpheus");
-    let Some(dest_bin_path) = dirs::executable_dir() else {
-        println!("Failed to find a destination path for binaries.");
-        return Ok(());
+
+    // todo: add an option to specify a path
+    let Some(dest_bin_dir) = dirs::executable_dir() else {
+        anyhow::bail!("Failed to find a destination path for binaries.");
     };
-    let shortcut_path = dirs::data_local_dir();
+    if !dest_bin_dir.exists() && fs::create_dir_all(&dest_bin_dir).is_err() {
+        anyhow::bail!("Could not create destination directory for the binary.");
+    }
 
+    // todo: add an option to specify a path or to not create a shortcut
+    let Some(shortcut_dir) = dirs::data_local_dir().map(|d| d.join("applications")) else {
+        anyhow::bail!("Failed to find a destinarion path for shorcuts.");
+    };
+    if !shortcut_dir.exists() && fs::create_dir_all(&shortcut_dir).is_err() {
+        anyhow::bail!("Could not create destination directory for shortcuts.");
+    }
 
+    Ok((orpheus_bin_path, dest_bin_dir, shortcut_dir))
+}
 
+fn make_files(orpheus_bin_path: PathBuf, dest_bin_dir: &Path, shortcut_dir: &Path) -> Result<()> {
+    let dest_bin_path = dest_bin_dir.join("orpheus");
+    fs::copy(orpheus_bin_path, &dest_bin_path)
+        .context("Failed to move binary to binaries directory.")?;
+
+    let desktop_file = make_desktop_file(&dest_bin_path.to_string_lossy());
+    fs::write(shortcut_dir.join("orpheus.desktop"), desktop_file)
+        .context("Failed to move shortcut to shortcuts directory.")?;
+
+    let mut perms = fs::metadata(&dest_bin_path)?.permissions();
+    perms.set_mode(0o755);
+    fs::set_permissions(&dest_bin_path, perms)?;
 
     Ok(())
 }
@@ -64,6 +112,20 @@ fn ask_confirm(prompt: &str) -> bool {
     }
 }
 
-fn desktop_file(path: &str) -> String {
-    format!("[Desktop Entry]\nType=Application\nName=Orpheus\nExec={path}")
+fn check_path(dest_bin_dir: &Path) {
+    let in_path = std::env::var("PATH")
+        .map(|p| std::env::split_paths(&p).any(|entry| entry == dest_bin_dir))
+        .unwrap_or(false);
+
+    if !in_path {
+        println!(
+            "Note: {} is not on your PATH. To run 'orpheus' from a terminal, add this to your shell config:\n   export PATH=\"{}:$PATH\"",
+            dest_bin_dir.display(),
+            dest_bin_dir.display(),
+        );
+    }
+}
+
+fn make_desktop_file(path: &str) -> String {
+    format!("[Desktop Entry]\nType=Application\nName=Orpheus\nExec={path}\nTerminal=false")
 }
