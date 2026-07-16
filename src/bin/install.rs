@@ -1,12 +1,12 @@
-use std::io;
-use std::fs;
-use std::io::Write;
-use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
-use std::path::Path;
-use std::process::ExitStatus;
 use anyhow::Context;
 use anyhow::Result;
+use std::fs;
+use std::io;
+use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
+use std::path::PathBuf;
+use std::process::ExitStatus;
 
 const INSTALL_PROMPT: &str = "Do you wish to install Orpheus? (Disclaimer: The current installer builds the project from source, so it'll take a while)";
 const FINISH_MESSAGE: &str = "Orpheus finished installing successfully!";
@@ -23,7 +23,7 @@ fn main() -> Result<()> {
     make_files(orpheus_bin_path, &dest_bin_dir, &shortcut_dir)?;
 
     println!("{FINISH_MESSAGE}");
-    
+
     check_path(&dest_bin_dir);
 
     Ok(())

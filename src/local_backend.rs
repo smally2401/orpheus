@@ -241,6 +241,10 @@ impl LocalBackend {
         self.player.get_pos()
     }
 
+    pub fn is_paused(&self) -> bool {
+        self.player.is_paused()
+    }
+
     pub fn seek(&mut self, position: usize) -> Result<(), Box<dyn Error>> {
         self.player.try_seek(Duration::from_secs(position as u64))?;
         Ok(())

@@ -1,6 +1,6 @@
-// mod mpd_backend;
 mod config;
 mod local_backend;
+mod mpris;
 mod player_bridge;
 mod utils;
 
@@ -10,8 +10,10 @@ use slint::VecModel;
 
 slint::include_modules!();
 
-#[tokio::main]
-async fn main() -> Result<(), slint::PlatformError> {
+fn main() -> Result<(), slint::PlatformError> {
+    let rt = tokio::runtime::Runtime::new().expect("Failed to build tokio runtime");
+    let _guard = rt.enter();
+
     let ui = AppWindow::new()?;
     let (tx, library, playlists) = player_bridge::spawn_player_bridge(&ui);
 

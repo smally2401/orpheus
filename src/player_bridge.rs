@@ -2,6 +2,9 @@ use crate::AppWindow;
 use crate::SlintAlbum;
 use crate::SlintPlaylist;
 use crate::local_backend::LocalBackend;
+use crate::mpris::spawn_mpris;
+use crate::mpris::MprisCommand;
+use mpris_server::PlaybackStatus;
 use crate::utils::album_rust_to_slint;
 use crate::utils::art_rust_to_slint;
 use crate::utils::playlist_rust_to_slint;
@@ -62,9 +65,13 @@ pub fn spawn_player_bridge(
         playlists.push(playlist_rust_to_slint(i, &local_backend));
     }
 
+    let mpris_tx = spawn_mpris(tx.clone());
+
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_millis(100));
         let mut last_art_path: Option<PathBuf> = None;
+
+        let mut was_paused = true;
 
         loop {
             tokio::select! {
@@ -92,6 +99,17 @@ pub fn spawn_player_bridge(
                     if local_backend.track_finished() {
                         // todo: include loop back to track 0 option
                         let _ = local_backend.next();
+                    }
+
+                    let is_paused = local_backend.is_paused();
+                    if is_paused != was_paused {
+                        was_paused = is_paused;
+                        let status = if is_paused {
+                            PlaybackStatus::Paused
+                        } else {
+                            PlaybackStatus::Playing
+                        };
+                        let _ = mpris_tx.try_send(MprisCommand::UpdateStatus(status));
                     }
 
                     let ui_weak_clone = ui.clone();
