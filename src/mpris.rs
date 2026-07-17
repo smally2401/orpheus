@@ -3,12 +3,14 @@ use async_executor::LocalExecutor;
 use mpris_server::Metadata;
 use mpris_server::Time;
 use mpris_server::TrackId;
+use std::fs;
 use std::hash::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::path::Path;
 use std::rc::Rc;
 use tokio::sync::mpsc;
+use image::ImageFormat;
 
 pub enum MprisCommand {
     UpdateStatus(mpris_server::PlaybackStatus),
@@ -18,6 +20,7 @@ pub enum MprisCommand {
         album: String,
         track_id: TrackId,
         length: u64,
+        art_url: Option<String>,
     },
     UpdatePosition(u64),
 }
@@ -66,14 +69,20 @@ pub fn spawn_mpris(app_tx: mpsc::Sender<PlayerCommand>) -> mpsc::Sender<MprisCom
                         album,
                         track_id,
                         length,
+                        art_url,
                     } => {
-                        let metadata = Metadata::builder()
+                        let mut builder = Metadata::builder()
                             .trackid(track_id)
                             .title(title)
                             .artist([artist])
                             .album(album)
-                            .length(Time::from_secs(length as i64))
-                            .build();
+                            .length(Time::from_secs(length as i64));
+
+                        if let Some(url) = art_url {
+                            builder = builder.art_url(url);
+                        }
+                        
+                        let metadata = builder.build();
                         if let Err(e) = player.set_metadata(metadata).await {
                             eprintln!("Failed to update metadata: {e}");
                         }
@@ -131,4 +140,26 @@ pub fn track_id_for_path(path: &Path) -> TrackId {
     path.hash(&mut hasher);
     let id = hasher.finish();
     TrackId::try_from(format!("/org/orpheus/track/{id}")).expect("valid object path")
+}
+
+fn track_id_hash(path: &Path) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    path.hash(&mut hasher);
+    hasher.finish()
+}
+
+pub fn write_art_cache(path: &Path, bytes: &[u8]) -> Option<String> {
+    let cache_dir = dirs::cache_dir()?.join("orpheus").join("art");
+    fs::create_dir_all(&cache_dir).ok()?;
+
+    let ext = match image::guess_format(bytes) {
+        Ok(ImageFormat::Png) => "png",
+        Ok(ImageFormat::Jpeg) => "jpg",
+        _ => "img"
+    };
+
+    let file_path = cache_dir.join(format!("{}.{ext}", track_id_hash(path)));
+    fs::write(&file_path, bytes).ok()?;
+
+    Some(format!("file://{}", file_path.display()))
 }

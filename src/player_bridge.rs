@@ -5,6 +5,7 @@ use crate::local_backend::LocalBackend;
 use crate::mpris::MprisCommand;
 use crate::mpris::spawn_mpris;
 use crate::mpris::track_id_for_path;
+use crate::mpris::write_art_cache;
 use crate::utils::album_rust_to_slint;
 use crate::utils::art_rust_to_slint;
 use crate::utils::playlist_rust_to_slint;
@@ -131,12 +132,18 @@ pub fn spawn_player_bridge(
                             None
                         } else {
                             last_art_path = Some(track.path.clone());
+
+                            let art_url = track.art
+                                .as_ref()
+                                .and_then(|bytes| write_art_cache(&track.path, bytes));
+
                             let _ = mpris_tx.try_send(MprisCommand::UpdateMetadata {
                                 title: track.title.clone(),
                                 artist: track.artist.clone(),
                                 album: track.album_title.clone(),
                                 track_id: track_id_for_path(&track.path),
                                 length: track.duration.as_secs(),
+                                art_url,
                             });
                             Some(track.art.as_ref().map(|arc| arc.as_ref().clone()))
                         };
