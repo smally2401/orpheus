@@ -4,6 +4,7 @@ use crate::SlintPlaylist;
 use crate::local_backend::LocalBackend;
 use crate::mpris::MprisCommand;
 use crate::mpris::spawn_mpris;
+use crate::mpris::track_id_for_path;
 use crate::utils::album_rust_to_slint;
 use crate::utils::art_rust_to_slint;
 use crate::utils::playlist_rust_to_slint;
@@ -21,7 +22,7 @@ pub enum PlayerCommand {
     PrevTrack,
     SelectAlbum(usize),
     SelectTrack(usize, usize),
-    Seek(usize),
+    SetPosition(usize),
     SetVolume(f32),
     SelectPlaylist(usize),
     SelectPlaylistTrack(usize, usize),
@@ -89,7 +90,7 @@ pub fn spawn_player_bridge(
                             PlayerCommand::PrevTrack => { let _ = local_backend.prev(); },
                             PlayerCommand::SelectAlbum(i) => { let _ = local_backend.select_album(i); },
                             PlayerCommand::SelectTrack(album_i, track_i) => { let _ = local_backend.select_album_track(album_i, track_i); },
-                            PlayerCommand::Seek(dur) => { let _ = local_backend.seek(dur); },
+                            PlayerCommand::SetPosition(dur) => { let _ = local_backend.set_position(dur); },
                             PlayerCommand::SetVolume(vol) => { local_backend.set_volume(vol); },
                             PlayerCommand::SelectPlaylist(i) => { let _ = local_backend.select_playlist(i); },
                             PlayerCommand::SelectPlaylistTrack(playlist_i, track_i) => { let _ = local_backend.select_playlist_track(playlist_i, track_i); },
@@ -100,6 +101,7 @@ pub fn spawn_player_bridge(
                 }
 
                 _ = interval.tick() => {
+
                     if local_backend.track_finished() {
                         // todo: include loop back to track 0 option
                         let _ = local_backend.next();
@@ -116,17 +118,26 @@ pub fn spawn_player_bridge(
                         let _ = mpris_tx.try_send(MprisCommand::UpdateStatus(status));
                     }
 
+                    let current_position = local_backend.get_current_position().as_secs();
+                    let _ = mpris_tx.try_send(MprisCommand::UpdatePosition(current_position));
+
                     let ui_weak_clone = ui.clone();
                     if let Some(track) = local_backend.get_current_song() {
                         let title = track.title.clone();
                         let artist = track.artist.clone();
-                        let current_position = local_backend.get_current_position().as_secs();
                         let total_duration = track.duration.as_secs();
 
                         let new_art_bytes = if last_art_path.as_deref() == Some(track.path.as_path()) {
                             None
                         } else {
                             last_art_path = Some(track.path.clone());
+                            let _ = mpris_tx.try_send(MprisCommand::UpdateMetadata {
+                                title: track.title.clone(),
+                                artist: track.artist.clone(),
+                                album: track.album_title.clone(),
+                                track_id: track_id_for_path(&track.path),
+                                length: track.duration.as_secs(),
+                            });
                             Some(track.art.as_ref().map(|arc| arc.as_ref().clone()))
                         };
 

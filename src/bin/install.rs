@@ -131,6 +131,7 @@ fn make_desktop_file(path: &str) -> String {
     format!("[Desktop Entry]\nType=Application\nName=Orpheus\nExec={path}\nTerminal=false")
 }
 
+#[allow(dead_code)]
 fn get_executable_extension() -> String {
     if cfg!(target_os = "windows") {
         ".exe".to_string()
@@ -139,6 +140,7 @@ fn get_executable_extension() -> String {
     }
 }
 
+#[allow(dead_code)]
 fn get_shortcut_extension() -> String {
     if cfg!(target_os = "windows") {
         ".lnk".to_string()

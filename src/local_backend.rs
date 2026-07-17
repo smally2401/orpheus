@@ -20,7 +20,7 @@ pub struct Song {
     pub title: String,
     pub artist: String,
 
-    album_title: String,
+    pub album_title: String,
     album_artist: String,
     track_number: Option<u32>,
     pub duration: Duration,
@@ -70,7 +70,7 @@ impl LocalBackend {
                         ext.eq_ignore_ascii_case("mp3") || ext.eq_ignore_ascii_case("flac")
                     })
             })
-        .map(walkdir::DirEntry::into_path);
+            .map(walkdir::DirEntry::into_path);
 
         let mut albums: HashMap<(String, String), Album> = HashMap::new();
         for path in audio_files {
@@ -252,7 +252,7 @@ impl LocalBackend {
         self.player.is_paused()
     }
 
-    pub fn seek(&mut self, position: usize) -> Result<(), Box<dyn Error>> {
+    pub fn set_position(&mut self, position: usize) -> Result<(), Box<dyn Error>> {
         self.player.try_seek(Duration::from_secs(position as u64))?;
         Ok(())
     }

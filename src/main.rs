@@ -58,7 +58,7 @@ async fn main() -> Result<(), slint::PlatformError> {
 
     let tx_clone = tx.clone();
     ui.on_seek_requested(move |value| {
-        let _ = tx_clone.try_send(PlayerCommand::Seek(value as usize));
+        let _ = tx_clone.try_send(PlayerCommand::SetPosition(value as usize));
     });
 
     let tx_clone = tx.clone();
