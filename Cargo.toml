@@ -11,7 +11,6 @@ enum_variant_names = "allow"
 cast_sign_loss = "allow"
 cast_possible_truncation = "allow"
 cast_possible_wrap = "allow"
-too_many_lines = "allow"
 
 [dependencies]
 anyhow = "1.0.103"

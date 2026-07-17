@@ -2,6 +2,8 @@ use slint::Color;
 
 #[derive(Debug)]
 pub struct Config {
+    pub music_dir: String,
+
     pub sidebar_bg: Color,
     pub now_playing_bar_bg: Color,
     pub library_view_bg: Color,
@@ -10,9 +12,11 @@ pub struct Config {
     pub open_playlist_view_bg: Color,
 }
 
-impl Config {
+impl Default for Config {
     fn default() -> Config {
         Config {
+            music_dir: String::from("~/Music"),
+
             sidebar_bg: Color::from_rgb_u8(0x0e, 0x10, 0x1d),
             now_playing_bar_bg: Color::from_rgb_u8(0x0a, 0x0a, 0x0f),
             library_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
@@ -23,13 +27,14 @@ impl Config {
     }
 }
 
-const DEFAULT_CONFIG_FILE: &str = r##"sidebar_bg = "#0e101d"
+const DEFAULT_CONFIG_FILE: &str = r##"music_dir = "~/Music"
+
+sidebar_bg = "#0e101d"
 now_playing_bar_bg = "#0a0a0f"
 library_view_bg = "#1f1d2f"
 album_view_bg = "#1f1d2f"
 playlists_view_bg = "#1f1d2f"
-open_playlist_view_bg = "#1f1d2f"
-"##;
+open_playlist_view_bg = "#1f1d2f""##;
 
 pub fn load_config() -> Config {
     let Some(config_dir) = dirs::config_dir() else {
@@ -67,6 +72,8 @@ fn load_lua(contents: &str) -> Config {
     let globals = lua.globals();
     let defaults = Config::default();
 
+    let music_dir = get_music_dir_or_default(&globals, defaults.music_dir);
+
     let sidebar_bg = get_color_or_default(&globals, "sidebar_bg", defaults.sidebar_bg);
     let now_playing_bar_bg =
         get_color_or_default(&globals, "now_playing_bar_bg", defaults.now_playing_bar_bg);
@@ -82,12 +89,20 @@ fn load_lua(contents: &str) -> Config {
     );
 
     Config {
+        music_dir,
         sidebar_bg,
         now_playing_bar_bg,
         library_view_bg,
         album_view_bg,
         playlists_view_bg,
         open_playlist_view_bg,
+    }
+}
+
+fn get_music_dir_or_default(globals: &mlua::Table, default: String) -> String {
+    match globals.get::<String>("music_dir") {
+        Ok(value) => value,
+        _ => default,
     }
 }
 

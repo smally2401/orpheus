@@ -8,6 +8,7 @@ use image::imageops::FilterType;
 use slint::ModelRc;
 use slint::VecModel;
 use std::sync::Arc;
+use std::path::PathBuf;
 
 pub fn song_rust_to_slint(song: &Song) -> SlintSong {
     SlintSong {
@@ -59,5 +60,13 @@ pub fn playlist_rust_to_slint(playlist_index: usize, backend: &LocalBackend) -> 
         name: backend.playlists[playlist_index].name.clone().into(),
         track_count: resolved_playlist.len() as i32,
         tracks: tracklist_rust_to_slint(&resolved_playlist),
+    }
+}
+
+pub fn expand_tilde(path: &str) -> PathBuf {
+    if let Some(stripped) = path.strip_prefix("~/") {
+        dirs::home_dir().map_or_else(|| PathBuf::from(path), |home| home.join(stripped))
+    } else {
+        PathBuf::from(path)
     }
 }

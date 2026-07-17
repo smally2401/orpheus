@@ -21,7 +21,7 @@ pub struct Song {
     pub artist: String,
 
     pub album_title: String,
-    album_artist: String,
+    pub album_artist: String,
     track_number: Option<u32>,
     pub duration: Duration,
     pub art: Option<Arc<Vec<u8>>>,
@@ -47,6 +47,7 @@ pub struct LocalBackend {
 
     pub library: Vec<Album>,
     pub playlists: Vec<Playlist>,
+    song_paths: HashMap<PathBuf, Arc<Song>>,
     queue: Vec<Arc<Song>>,
     index: usize, // index in current queue
 }
@@ -73,6 +74,7 @@ impl LocalBackend {
             .map(walkdir::DirEntry::into_path);
 
         let mut albums: HashMap<(String, String), Album> = HashMap::new();
+        let mut song_paths: HashMap<PathBuf, Arc<Song>> = HashMap::new();
         for path in audio_files {
             let Ok(tagged_file) = lofty::read_from_path(&path) else {
                 continue;
@@ -84,7 +86,7 @@ impl LocalBackend {
             let title = tag.and_then(lofty::tag::Accessor::title).map_or_else(
                 || {
                     path.file_name().map_or_else(
-                        || "Unknown Title".to_string(),
+                        || String::from("Unknown Title"),
                         |os_str| os_str.to_string_lossy().into_owned(),
                     )
                 },
@@ -93,11 +95,11 @@ impl LocalBackend {
 
             let artist = tag
                 .and_then(lofty::tag::Accessor::artist)
-                .map_or_else(|| "Unknown Artist".to_string(), |a| a.to_string());
+                .map_or_else(|| String::from("Unknown Artist"), |a| a.to_string());
 
             let album_title = tag
                 .and_then(lofty::tag::Accessor::album)
-                .map_or_else(|| "Unknown Album".to_string(), |a| a.to_string());
+                .map_or_else(|| String::from("Unknown Album"), |a| a.to_string());
 
             let album_artist = tag
                 .and_then(|t| t.get_string(ItemKey::AlbumArtist))
@@ -115,7 +117,7 @@ impl LocalBackend {
                     .map(Arc::new)
             });
 
-            let song = Song {
+            let song = Arc::new(Song {
                 path: path.clone(),
                 title,
                 artist,
@@ -124,7 +126,9 @@ impl LocalBackend {
                 track_number,
                 duration,
                 art: art.clone(),
-            };
+            });
+
+            song_paths.insert(path.clone(), song.clone());
 
             let album = albums
                 .entry((song.album_title.clone(), song.album_artist.clone()))
@@ -134,7 +138,7 @@ impl LocalBackend {
                     tracklist: Vec::new(),
                     art,
                 });
-            album.tracklist.push(Arc::new(song));
+            album.tracklist.push(song.clone());
         }
         let mut library: Vec<Album> = albums.into_values().collect();
 
@@ -162,6 +166,7 @@ impl LocalBackend {
             _stream: stream,
             player,
             library,
+            song_paths,
             queue: Vec::new(),
             playlists,
             index: 0,
@@ -180,13 +185,14 @@ impl LocalBackend {
         Ok(())
     }
 
-    pub fn next(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn next(&mut self) -> Result<bool, Box<dyn Error>> {
         if self.index + 1 < self.queue.len() {
             self.index += 1;
             self.load_track()?;
+            Ok(true)
+        } else {
+            Ok(false)
         }
-
-        Ok(())
     }
 
     pub fn prev(&mut self) -> Result<(), Box<dyn Error>> {
@@ -262,15 +268,7 @@ impl LocalBackend {
     }
 
     pub fn find_song_by_path(&self, path: &Path) -> Option<&Arc<Song>> {
-        for album in &self.library {
-            for song in &album.tracklist {
-                if song.path == path {
-                    return Some(song);
-                }
-            }
-        }
-
-        None
+        self.song_paths.get(path)
     }
 
     pub fn resolve_playlist(&self, playlist_index: usize) -> Vec<Arc<Song>> {

@@ -9,6 +9,7 @@ use crate::mpris::write_art_cache;
 use crate::utils::album_rust_to_slint;
 use crate::utils::art_rust_to_slint;
 use crate::utils::playlist_rust_to_slint;
+use crate::utils::expand_tilde;
 use mpris_server::PlaybackStatus;
 use slint::ComponentHandle;
 use std::path::PathBuf;
@@ -30,25 +31,16 @@ pub enum PlayerCommand {
     // ToggleShuffle,
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn spawn_player_bridge(
     ui: &AppWindow,
+    music_dir: &str
 ) -> (
     mpsc::Sender<PlayerCommand>,
     Vec<SlintAlbum>,
     Vec<SlintPlaylist>,
 ) {
-    let raw = std::env::var("ORPHEUS_MUSIC_DIR").ok();
-    let path = raw.map_or_else(
-        || PathBuf::from("."),
-        |s| {
-            if let Some(stripped) = s.strip_prefix("~/") {
-                dirs::home_dir()
-                    .map_or_else(|| PathBuf::from(s.clone()), |home| home.join(stripped))
-            } else {
-                PathBuf::from(s)
-            }
-        },
-    );
+    let path = expand_tilde(&music_dir);
 
     if !path.exists() {
         eprintln!("error: path {} could not be found", path.to_string_lossy());
@@ -73,9 +65,10 @@ pub fn spawn_player_bridge(
 
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_millis(100));
-        let mut last_art_path: Option<PathBuf> = None;
-
+        let mut last_song_info: Option<(String, String)> = None;
+        let mut last_song_path: Option<PathBuf> = None;
         let mut was_paused = true;
+        let mut queue_exhausted = false;
 
         loop {
             tokio::select! {
@@ -88,13 +81,31 @@ pub fn spawn_player_bridge(
                             PlayerCommand::Play => { local_backend.play(); },
                             PlayerCommand::Pause => { local_backend.pause(); },
                             PlayerCommand::NextTrack => { let _ = local_backend.next(); },
-                            PlayerCommand::PrevTrack => { let _ = local_backend.prev(); },
-                            PlayerCommand::SelectAlbum(i) => { let _ = local_backend.select_album(i); },
-                            PlayerCommand::SelectTrack(album_i, track_i) => { let _ = local_backend.select_album_track(album_i, track_i); },
-                            PlayerCommand::SetPosition(dur) => { let _ = local_backend.set_position(dur); },
+                            PlayerCommand::PrevTrack => {
+                                let _ = local_backend.prev();
+                                queue_exhausted = false;
+                            },
+                            PlayerCommand::SelectAlbum(i) => {
+                                let _ = local_backend.select_album(i);
+                                queue_exhausted = false;
+                            },
+                            PlayerCommand::SelectTrack(album_i, track_i) => {
+                                let _ = local_backend.select_album_track(album_i, track_i);
+                                queue_exhausted = false;
+                            },
+                            PlayerCommand::SetPosition(dur) => {
+                                let _ = local_backend.set_position(dur);
+                                let _ = mpris_tx.try_send(MprisCommand::Seeked(dur as u64));
+                            },
                             PlayerCommand::SetVolume(vol) => { local_backend.set_volume(vol); },
-                            PlayerCommand::SelectPlaylist(i) => { let _ = local_backend.select_playlist(i); },
-                            PlayerCommand::SelectPlaylistTrack(playlist_i, track_i) => { let _ = local_backend.select_playlist_track(playlist_i, track_i); },
+                            PlayerCommand::SelectPlaylist(i) => {
+                                let _ = local_backend.select_playlist(i);
+                                queue_exhausted = false;
+                            },
+                            PlayerCommand::SelectPlaylistTrack(playlist_i, track_i) => {
+                                let _ = local_backend.select_playlist_track(playlist_i, track_i);
+                                queue_exhausted = false;
+                            },
                         }
                     } else {
                         break;
@@ -103,9 +114,9 @@ pub fn spawn_player_bridge(
 
                 _ = interval.tick() => {
 
-                    if local_backend.track_finished() {
+                    if local_backend.track_finished() && !queue_exhausted {
                         // todo: include loop back to track 0 option
-                        let _ = local_backend.next();
+                        queue_exhausted = !local_backend.next().unwrap_or(false);
                     }
 
                     let is_paused = local_backend.is_paused();
@@ -128,10 +139,17 @@ pub fn spawn_player_bridge(
                         let artist = track.artist.clone();
                         let total_duration = track.duration.as_secs();
 
-                        let new_art_bytes = if last_art_path.as_deref() == Some(track.path.as_path()) {
+                        let current_album = (track.album_title.clone(), track.album_artist.clone());
+                        let new_art_bytes = if last_song_info.as_ref() == Some(&current_album) {
                             None
                         } else {
-                            last_art_path = Some(track.path.clone());
+                            last_song_info = Some(current_album);
+                            track.art.clone()
+                        };
+
+                        let current_song_path = track.path.clone();
+                        if last_song_path != Some(current_song_path) {
+                            last_song_path = Some(track.path.clone());
 
                             let art_url = track.art
                                 .as_ref()
@@ -145,8 +163,7 @@ pub fn spawn_player_bridge(
                                 length: track.duration.as_secs(),
                                 art_url,
                             });
-                            Some(track.art.as_ref().map(|arc| arc.as_ref().clone()))
-                        };
+                        }
 
                         let _ = slint::invoke_from_event_loop(move || {
                             if let Some(ui_instance) = ui_weak_clone.upgrade() {
@@ -155,13 +172,14 @@ pub fn spawn_player_bridge(
                                 ui_instance.set_current_position(current_position as i32);
                                 ui_instance.set_total_duration(total_duration as i32);
                                 if let Some(bytes) = new_art_bytes {
-                                    ui_instance.set_current_art(art_rust_to_slint(bytes.as_deref()));
+                                    ui_instance.set_current_art(art_rust_to_slint(Some(bytes.as_slice())));
                                 }
                             }
                         });
 
                     } else {
-                        last_art_path = None;
+                        last_song_info = None;
+                        last_song_path = None;
                         let _ = slint::invoke_from_event_loop(move || {
                             if let Some(ui_instance) = ui_weak_clone.upgrade() {
                                 ui_instance.set_current_track_title("No song playing".into());

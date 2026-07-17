@@ -13,9 +13,9 @@ slint::include_modules!();
 #[tokio::main]
 async fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
-    let (tx, library, playlists) = player_bridge::spawn_player_bridge(&ui);
-
     let config = config::load_config();
+    let (tx, library, playlists) = player_bridge::spawn_player_bridge(&ui, &config.music_dir);
+
     ui.set_sidebar_bg(config.sidebar_bg);
     ui.set_now_playing_bg(config.now_playing_bar_bg);
     ui.set_library_view_bg(config.library_view_bg);

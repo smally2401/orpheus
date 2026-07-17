@@ -1,5 +1,6 @@
 use crate::player_bridge::PlayerCommand;
 use async_executor::LocalExecutor;
+use image::ImageFormat;
 use mpris_server::Metadata;
 use mpris_server::Time;
 use mpris_server::TrackId;
@@ -10,7 +11,6 @@ use std::hash::Hasher;
 use std::path::Path;
 use std::rc::Rc;
 use tokio::sync::mpsc;
-use image::ImageFormat;
 
 pub enum MprisCommand {
     UpdateStatus(mpris_server::PlaybackStatus),
@@ -23,6 +23,7 @@ pub enum MprisCommand {
         art_url: Option<String>,
     },
     UpdatePosition(u64),
+    Seeked(u64),
 }
 
 pub fn spawn_mpris(app_tx: mpsc::Sender<PlayerCommand>) -> mpsc::Sender<MprisCommand> {
@@ -81,7 +82,7 @@ pub fn spawn_mpris(app_tx: mpsc::Sender<PlayerCommand>) -> mpsc::Sender<MprisCom
                         if let Some(url) = art_url {
                             builder = builder.art_url(url);
                         }
-                        
+
                         let metadata = builder.build();
                         if let Err(e) = player.set_metadata(metadata).await {
                             eprintln!("Failed to update metadata: {e}");
@@ -89,6 +90,11 @@ pub fn spawn_mpris(app_tx: mpsc::Sender<PlayerCommand>) -> mpsc::Sender<MprisCom
                     }
                     MprisCommand::UpdatePosition(pos) => {
                         player.set_position(Time::from_secs(pos as i64));
+                    }
+                    MprisCommand::Seeked(pos) => {
+                        if let Err(e) = player.seeked(Time::from_secs(pos as i64)).await {
+                            eprintln!("Failed to emit seeked signal: {e}");
+                        }
                     }
                 }
             }
@@ -135,17 +141,15 @@ fn setup_controls(player: &Rc<mpris_server::Player>, app_tx: &mpsc::Sender<Playe
     });
 }
 
-pub fn track_id_for_path(path: &Path) -> TrackId {
-    let mut hasher = DefaultHasher::new();
-    path.hash(&mut hasher);
-    let id = hasher.finish();
-    TrackId::try_from(format!("/org/orpheus/track/{id}")).expect("valid object path")
-}
-
 fn track_id_hash(path: &Path) -> u64 {
     let mut hasher = DefaultHasher::new();
     path.hash(&mut hasher);
     hasher.finish()
+}
+
+pub fn track_id_for_path(path: &Path) -> TrackId {
+    let id = track_id_hash(path);
+    TrackId::try_from(format!("/org/orpheus/track/{id}")).expect("valid object path")
 }
 
 pub fn write_art_cache(path: &Path, bytes: &[u8]) -> Option<String> {
@@ -155,7 +159,7 @@ pub fn write_art_cache(path: &Path, bytes: &[u8]) -> Option<String> {
     let ext = match image::guess_format(bytes) {
         Ok(ImageFormat::Png) => "png",
         Ok(ImageFormat::Jpeg) => "jpg",
-        _ => "img"
+        _ => "img",
     };
 
     let file_path = cache_dir.join(format!("{}.{ext}", track_id_hash(path)));

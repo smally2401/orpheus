@@ -6,7 +6,6 @@ use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::ExitStatus;
 
 const INSTALL_PROMPT: &str = "Do you wish to install Orpheus? (Disclaimer: The current installer builds the project from source, so it'll take a while)";
 const FINISH_MESSAGE: &str = "Orpheus finished installing successfully!";
@@ -41,7 +40,7 @@ fn build() -> Result<()> {
         }
     };
 
-    if !ExitStatus::success(&build) {
+    if !build.success() {
         anyhow::bail!("An error happened while building.");
     }
 
@@ -134,7 +133,7 @@ fn make_desktop_file(path: &str) -> String {
 #[allow(dead_code)]
 fn get_executable_extension() -> String {
     if cfg!(target_os = "windows") {
-        ".exe".to_string()
+        String::from(".exe")
     } else {
         String::new()
     }
@@ -143,9 +142,9 @@ fn get_executable_extension() -> String {
 #[allow(dead_code)]
 fn get_shortcut_extension() -> String {
     if cfg!(target_os = "windows") {
-        ".lnk".to_string()
+        String::from(".lnk")
     } else if cfg!(target_os = "linux") {
-        ".desktop".to_string()
+        String::from(".desktop")
     } else {
         String::new()
     }
