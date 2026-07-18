@@ -3,6 +3,7 @@ use slint::Color;
 #[derive(Debug)]
 pub struct Config {
     pub music_dir: String,
+    pub playlists: Vec<PlaylistDef>,
 
     pub sidebar_bg: Color,
     pub now_playing_bar_bg: Color,
@@ -16,6 +17,7 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             music_dir: String::from("~/Music"),
+            playlists: Vec::new(),
 
             sidebar_bg: Color::from_rgb_u8(0x0e, 0x10, 0x1d),
             now_playing_bar_bg: Color::from_rgb_u8(0x0a, 0x0a, 0x0f),
@@ -25,6 +27,12 @@ impl Default for Config {
             open_playlist_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
         }
     }
+}
+
+#[derive(Debug)]
+pub struct PlaylistDef {
+    pub name: String,
+    pub songs: Vec<String>,
 }
 
 const DEFAULT_CONFIG_FILE: &str = r##"music_dir = "~/Music"
@@ -42,6 +50,7 @@ pub fn load_config() -> Config {
         return Config::default();
     };
 
+    let config_dir = config_dir.join("orpheus");
     if std::fs::create_dir_all(&config_dir).is_err() {
         eprintln!("Could not create config directory");
         return Config::default();
@@ -73,6 +82,7 @@ fn load_lua(contents: &str) -> Config {
     let defaults = Config::default();
 
     let music_dir = get_music_dir_or_default(&globals, defaults.music_dir);
+    let playlists = get_playlists(&globals);
 
     let sidebar_bg = get_color_or_default(&globals, "sidebar_bg", defaults.sidebar_bg);
     let now_playing_bar_bg =
@@ -90,6 +100,7 @@ fn load_lua(contents: &str) -> Config {
 
     Config {
         music_dir,
+        playlists,
         sidebar_bg,
         now_playing_bar_bg,
         library_view_bg,
@@ -104,6 +115,41 @@ fn get_music_dir_or_default(globals: &mlua::Table, default: String) -> String {
         Ok(value) => value,
         _ => default,
     }
+}
+
+fn get_playlists(globals: &mlua::Table) -> Vec<PlaylistDef> {
+    let playlists_table: mlua::Table = match globals.get("playlists") {
+        Ok(p) => p,
+        Err(_) => return Vec::new(),
+    };
+
+    let mut playlists = Vec::new();
+
+    for entry in playlists_table.sequence_values::<mlua::Table>() {
+        let entry_table: mlua::Table = match entry {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+
+        let name: String = match entry_table.get("name") {
+            Ok(n) => n,
+            Err(_) => continue,
+        };
+
+        let songs_table: mlua::Table = match entry_table.get("songs") {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+
+        let songs: Vec<String> = songs_table
+            .sequence_values::<String>()
+            .filter_map(std::result::Result::ok)
+            .collect();
+
+        playlists.push(PlaylistDef { name, songs });
+    }
+
+    playlists
 }
 
 fn get_color_or_default(globals: &mlua::Table, key: &str, default: Color) -> Color {

@@ -1,3 +1,4 @@
+use crate::config::PlaylistDef;
 use lofty::file::AudioFile;
 use lofty::file::TaggedFileExt;
 use lofty::picture::PictureType;
@@ -53,7 +54,7 @@ pub struct LocalBackend {
 }
 
 impl LocalBackend {
-    pub fn new(path: &Path) -> Self {
+    pub fn new(path: &Path, playlist_defs: Vec<PlaylistDef>) -> Self {
         let entries = WalkDir::new(path)
             .into_iter()
             .filter_map(std::result::Result::ok);
@@ -152,15 +153,13 @@ impl LocalBackend {
         let mixer = stream.mixer();
         let player = rodio::Player::connect_new(mixer);
 
-        // PLAYLIST TEST
-        let test_playlist = Playlist {
-            name: "test playlist".to_string(),
-            songs: vec![
-                path.join("test/01 Breadcrumb Trail.mp3"),
-                path.join("test/05 New Dawn Fades.mp3"),
-            ],
-        };
-        let playlists = vec![test_playlist];
+        let playlists: Vec<Playlist> = playlist_defs
+            .into_iter()
+            .map(|def| Playlist {
+                name: def.name,
+                songs: def.songs.iter().map(|s| path.join(s)).collect(),
+            })
+            .collect();
 
         LocalBackend {
             _stream: stream,

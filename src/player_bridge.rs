@@ -1,6 +1,7 @@
 use crate::AppWindow;
 use crate::SlintAlbum;
 use crate::SlintPlaylist;
+use crate::config::PlaylistDef;
 use crate::local_backend::LocalBackend;
 use crate::mpris::MprisCommand;
 use crate::mpris::spawn_mpris;
@@ -8,8 +9,8 @@ use crate::mpris::track_id_for_path;
 use crate::mpris::write_art_cache;
 use crate::utils::album_rust_to_slint;
 use crate::utils::art_rust_to_slint;
-use crate::utils::playlist_rust_to_slint;
 use crate::utils::expand_tilde;
+use crate::utils::playlist_rust_to_slint;
 use mpris_server::PlaybackStatus;
 use slint::ComponentHandle;
 use std::path::PathBuf;
@@ -34,19 +35,20 @@ pub enum PlayerCommand {
 #[allow(clippy::too_many_lines)]
 pub fn spawn_player_bridge(
     ui: &AppWindow,
-    music_dir: &str
+    music_dir: &str,
+    playlist_defs: Vec<PlaylistDef>,
 ) -> (
     mpsc::Sender<PlayerCommand>,
     Vec<SlintAlbum>,
     Vec<SlintPlaylist>,
 ) {
-    let path = expand_tilde(&music_dir);
+    let path = expand_tilde(music_dir);
 
     if !path.exists() {
         eprintln!("error: path {} could not be found", path.to_string_lossy());
     }
 
-    let mut local_backend = LocalBackend::new(&path);
+    let mut local_backend = LocalBackend::new(&path, playlist_defs);
     let (tx, mut rx) = mpsc::channel::<PlayerCommand>(100);
     let ui = ui.as_weak();
 

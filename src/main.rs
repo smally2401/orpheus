@@ -14,7 +14,8 @@ slint::include_modules!();
 async fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
     let config = config::load_config();
-    let (tx, library, playlists) = player_bridge::spawn_player_bridge(&ui, &config.music_dir);
+    let (tx, library, playlists) =
+        player_bridge::spawn_player_bridge(&ui, &config.music_dir, config.playlists);
 
     ui.set_sidebar_bg(config.sidebar_bg);
     ui.set_now_playing_bg(config.now_playing_bar_bg);

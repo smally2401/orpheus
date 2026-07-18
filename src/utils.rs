@@ -7,8 +7,8 @@ use crate::local_backend::Song;
 use image::imageops::FilterType;
 use slint::ModelRc;
 use slint::VecModel;
-use std::sync::Arc;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 pub fn song_rust_to_slint(song: &Song) -> SlintSong {
     SlintSong {
