@@ -1,6 +1,6 @@
+use crate::utils::expand_tilde;
 use slint::Color;
 use std::path::PathBuf;
-use crate::utils::expand_tilde;
 
 pub struct Config {
     pub music_dir: String,
@@ -180,10 +180,14 @@ fn register_list_music_files(lua: &mlua::Lua, music_dir: PathBuf) -> mlua::Resul
         let target_dir = music_dir.join(&relative_dir);
         let mut songs = Vec::new();
 
-        for entry in walkdir::WalkDir::new(&target_dir).into_iter().filter_map(Result::ok) {
-            if entry.file_type().is_file() 
-                && let Ok(rel) = entry.path().strip_prefix(&music_dir) {
-                    songs.push(rel.to_string_lossy().into_owned());
+        for entry in walkdir::WalkDir::new(&target_dir)
+            .into_iter()
+            .filter_map(Result::ok)
+        {
+            if entry.file_type().is_file()
+                && let Ok(rel) = entry.path().strip_prefix(&music_dir)
+            {
+                songs.push(rel.to_string_lossy().into_owned());
             }
         }
         Ok(songs)
@@ -211,7 +215,7 @@ fn is_valid_hex_color(str: &str) -> bool {
     stripped.len() == 6 && stripped.chars().all(|c| c.is_ascii_hexdigit())
 }
 
-pub fn hex_to_color(hex: &str) -> slint::Color {
+fn hex_to_color(hex: &str) -> slint::Color {
     let stripped = hex.strip_prefix("#").unwrap_or(hex);
     let r = u8::from_str_radix(&stripped[0..2], 16).unwrap_or(0);
     let g = u8::from_str_radix(&stripped[2..4], 16).unwrap_or(0);

@@ -282,7 +282,8 @@ impl LocalBackend {
 
         if self.playlists[playlist_index].sort {
             songs.sort_by(|a, b| {
-                a.album_artist.cmp(&b.album_artist)
+                a.album_artist
+                    .cmp(&b.album_artist)
                     .then(a.album_title.cmp(&b.album_title))
                     .then(a.track_number.cmp(&b.track_number))
             });
