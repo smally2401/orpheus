@@ -40,6 +40,7 @@ pub struct Album {
 pub struct Playlist {
     pub name: String,
     pub songs: Vec<PathBuf>,
+    pub sort: bool,
 }
 
 pub struct LocalBackend {
@@ -158,6 +159,7 @@ impl LocalBackend {
             .map(|def| Playlist {
                 name: def.name,
                 songs: def.songs.iter().map(|s| path.join(s)).collect(),
+                sort: def.sort,
             })
             .collect();
 
@@ -271,12 +273,22 @@ impl LocalBackend {
     }
 
     pub fn resolve_playlist(&self, playlist_index: usize) -> Vec<Arc<Song>> {
-        self.playlists[playlist_index]
+        let mut songs: Vec<Arc<Song>> = self.playlists[playlist_index]
             .songs
             .iter()
             .filter_map(|path| self.find_song_by_path(path))
             .cloned()
-            .collect()
+            .collect();
+
+        if self.playlists[playlist_index].sort {
+            songs.sort_by(|a, b| {
+                a.album_artist.cmp(&b.album_artist)
+                    .then(a.album_title.cmp(&b.album_title))
+                    .then(a.track_number.cmp(&b.track_number))
+            });
+        }
+
+        songs
     }
 
     pub fn select_playlist(&mut self, playlist_index: usize) -> Result<(), Box<dyn Error>> {
