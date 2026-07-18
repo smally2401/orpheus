@@ -1,5 +1,6 @@
 use crate::config::PlaylistDef;
 use lofty::file::AudioFile;
+use lofty::file::TaggedFile;
 use lofty::file::TaggedFileExt;
 use lofty::picture::PictureType;
 use lofty::tag::ItemKey;
@@ -81,55 +82,8 @@ impl LocalBackend {
             let Ok(tagged_file) = lofty::read_from_path(&path) else {
                 continue;
             };
-            let tag = tagged_file
-                .primary_tag()
-                .or_else(|| tagged_file.first_tag());
 
-            let title = tag.and_then(lofty::tag::Accessor::title).map_or_else(
-                || {
-                    path.file_name().map_or_else(
-                        || String::from("Unknown Title"),
-                        |os_str| os_str.to_string_lossy().into_owned(),
-                    )
-                },
-                |a| a.to_string(),
-            );
-
-            let artist = tag
-                .and_then(lofty::tag::Accessor::artist)
-                .map_or_else(|| String::from("Unknown Artist"), |a| a.to_string());
-
-            let album_title = tag
-                .and_then(lofty::tag::Accessor::album)
-                .map_or_else(|| String::from("Unknown Album"), |a| a.to_string());
-
-            let album_artist = tag
-                .and_then(|t| t.get_string(ItemKey::AlbumArtist))
-                .map_or_else(|| artist.clone(), std::string::ToString::to_string);
-
-            let track_number = tag.and_then(lofty::tag::Accessor::track);
-
-            let duration = tagged_file.properties().duration();
-
-            let art: Option<Arc<Vec<u8>>> = tag.map(lofty::tag::Tag::pictures).and_then(|pics| {
-                pics.iter()
-                    .find(|p| p.pic_type() == PictureType::CoverFront)
-                    .or_else(|| pics.first())
-                    .map(|p| p.data().to_vec())
-                    .map(Arc::new)
-            });
-
-            let song = Arc::new(Song {
-                path: path.clone(),
-                title,
-                artist,
-                album_title,
-                album_artist,
-                track_number,
-                duration,
-                art: art.clone(),
-            });
-
+            let song = Arc::new(song_from_tagged_file(&path, &tagged_file));
             song_paths.insert(path.clone(), song.clone());
 
             let album = albums
@@ -138,7 +92,7 @@ impl LocalBackend {
                     title: song.album_title.clone(),
                     artist: song.album_artist.clone(),
                     tracklist: Vec::new(),
-                    art,
+                    art: song.art.clone(),
                 });
             album.tracklist.push(song.clone());
         }
@@ -154,14 +108,7 @@ impl LocalBackend {
         let mixer = stream.mixer();
         let player = rodio::Player::connect_new(mixer);
 
-        let playlists: Vec<Playlist> = playlist_defs
-            .into_iter()
-            .map(|def| Playlist {
-                name: def.name,
-                songs: def.songs.iter().map(|s| path.join(s)).collect(),
-                sort: def.sort,
-            })
-            .collect();
+        let playlists = build_playlists(path, playlist_defs);
 
         LocalBackend {
             _stream: stream,
@@ -313,4 +260,66 @@ impl LocalBackend {
         self.load_track()?;
         Ok(())
     }
+}
+
+fn song_from_tagged_file(path: &Path, tagged_file: &TaggedFile) -> Song {
+    let tag = tagged_file
+        .primary_tag()
+        .or_else(|| tagged_file.first_tag());
+
+    let title = tag.and_then(lofty::tag::Accessor::title).map_or_else(
+        || {
+            path.file_name().map_or_else(
+                || String::from("Unknown Title"),
+                |os_str| os_str.to_string_lossy().into_owned(),
+            )
+        },
+        |a| a.to_string(),
+    );
+
+    let artist = tag
+        .and_then(lofty::tag::Accessor::artist)
+        .map_or_else(|| String::from("Unknown Artist"), |a| a.to_string());
+
+    let album_title = tag
+        .and_then(lofty::tag::Accessor::album)
+        .map_or_else(|| String::from("Unknown Album"), |a| a.to_string());
+
+    let album_artist = tag
+        .and_then(|t| t.get_string(ItemKey::AlbumArtist))
+        .map_or_else(|| artist.clone(), std::string::ToString::to_string);
+
+    let track_number = tag.and_then(lofty::tag::Accessor::track);
+
+    let duration = tagged_file.properties().duration();
+
+    let art: Option<Arc<Vec<u8>>> = tag.map(lofty::tag::Tag::pictures).and_then(|pics| {
+        pics.iter()
+            .find(|p| p.pic_type() == PictureType::CoverFront)
+            .or_else(|| pics.first())
+            .map(|p| p.data().to_vec())
+            .map(Arc::new)
+    });
+
+    Song {
+        path: path.to_path_buf(),
+        title,
+        artist,
+        album_title,
+        album_artist,
+        track_number,
+        duration,
+        art,
+    }
+}
+
+fn build_playlists(path: &Path, playlist_defs: Vec<PlaylistDef>) -> Vec<Playlist> {
+    playlist_defs
+        .into_iter()
+        .map(|def| Playlist {
+            name: def.name,
+            songs: def.songs.iter().map(|s| path.join(s)).collect(),
+            sort: def.sort,
+        })
+        .collect()
 }
