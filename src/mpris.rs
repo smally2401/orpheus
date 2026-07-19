@@ -1,3 +1,12 @@
+//! Integrates Orpheus with the OS-level MPRIS media control interface
+//! (used by desktop environments for lock-screen controls, media keys,
+//! notification widgets, etc.).
+//!
+//! Communicates with the rest of the app via two independent channels:
+//! `MprisCommand`s flow in (app -> MPRIS, e.g. "track changed"), and
+//! `PlayerCommand`s flow out (MPRIS -> app, e.g. "the OS media key was
+//! pressed").
+
 use crate::player_bridge::PlayerCommand;
 use async_executor::LocalExecutor;
 use image::ImageFormat;
@@ -12,6 +21,7 @@ use std::path::Path;
 use std::rc::Rc;
 use tokio::sync::mpsc;
 
+/// A state change to report to the OS MPRIS interface.
 pub enum MprisCommand {
     UpdateStatus(mpris_server::PlaybackStatus),
     UpdateMetadata {
@@ -20,12 +30,24 @@ pub enum MprisCommand {
         album: String,
         track_id: TrackId,
         length: u64,
+        /// A `file://` URL pointing at cacher cover art, if any.
+        /// See `write_art_cache`.
         art_url: Option<String>,
     },
     UpdatePosition(u64),
+    /// A user-initiated seek just completed, to be reported back to MPRIS
+    /// listeners (distinct from `UpdatePosition`, which is the regulat
+    /// polling update: see the `Seeked` signal in the MPRIS spec).
     Seeked(u64),
 }
 
+/// Spawns the MPRIS server on its own OS thread and returns a channel to
+/// send it `MprisCommand`s.
+///
+/// `app_tx` is used the other direction: MPRIS control events (play/pause,
+/// next/previous, seek, volume: see `setup_controls`) are translated into
+/// `PlayerCommand`s and sent back into the app's main command channel, so
+/// OS-level media controls behave identically to in-app UI controls.
 pub fn spawn_mpris(app_tx: mpsc::Sender<PlayerCommand>) -> mpsc::Sender<MprisCommand> {
     let (mpris_tx, mut mpris_rx) = mpsc::channel::<MprisCommand>(32);
 
@@ -104,6 +126,10 @@ pub fn spawn_mpris(app_tx: mpsc::Sender<PlayerCommand>) -> mpsc::Sender<MprisCom
     mpris_tx
 }
 
+/// Wires up MPRIS control events (play/pause, next/previous, seek, volume)
+/// to `PlayerCommand`s sent back over `app_tx`, so OS-level media controls
+/// (lock screen, media keys, etc.) drive the app the same way in-app
+/// buttons do.
 fn setup_controls(player: &Rc<mpris_server::Player>, app_tx: &mpsc::Sender<PlayerCommand>) {
     let app_tx_clone = app_tx.clone();
     player.connect_play_pause(move |_| {
@@ -141,17 +167,33 @@ fn setup_controls(player: &Rc<mpris_server::Player>, app_tx: &mpsc::Sender<Playe
     });
 }
 
+/// Hashes a song path into a stable `u64`, used as the basis for both
+/// MPRIS track IDs (`track_id_for_path`) and cached art filenames
+/// (`write_art_cache`), sharing this one hash keeps the two guaranteed to
+/// agree on "which song is this" without any risk of drifting apart.
 fn track_id_hash(path: &Path) -> u64 {
     let mut hasher = DefaultHasher::new();
     path.hash(&mut hasher);
     hasher.finish()
 }
 
+/// Builds an MPRIS `TrackId` (a D-Bus object path) for a song, derived from
+/// a hash of its path. Not a real D-Bus object, just a stable identifier
+/// MPRIS clients use to distinguish tracks.
 pub fn track_id_for_path(path: &Path) -> TrackId {
     let id = track_id_hash(path);
     TrackId::try_from(format!("/org/orpheus/track/{id}")).expect("valid object path")
 }
 
+// todo: evict old cache entries
+/// Writes a song's embedded cover art to a per-user cache directory and
+/// returns a `file://` URL pointing at it.
+///
+/// MPRIS metadata's `art_url` field expects a URL, not raw image bytes, so
+/// embedded art (which only exixts as bytes read from the audio file) has
+/// to be written out to disk once before it can be reported. Returns
+/// `None` if the cache directory can't be determined or written to,
+/// rather than erroring.
 pub fn write_art_cache(path: &Path, bytes: &[u8]) -> Option<String> {
     let cache_dir = dirs::cache_dir()?.join("orpheus").join("art");
     fs::create_dir_all(&cache_dir).ok()?;

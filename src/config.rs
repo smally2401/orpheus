@@ -1,7 +1,20 @@
+//! Loads and parses `config.lua`, Orpheus's user configuration file.
+//!
+//! Config is a real Lua script, not static data. See the README in
+//! `config_examples/` for the full user-facing explanation, including why
+//! Lua was chosen and how `list_music_files` works. This file is the
+//! implementation code of that: reading the file, running it in two passes
+//! (see `load_config` and `load_lua`), and pulling typed values back out of
+//! Lua's global table.
+
 use crate::utils::expand_tilde;
 use slint::Color;
 use std::path::PathBuf;
 
+/// Fully resolved configuration, ready for the rest of the app to consume.
+///
+/// Every field has a sensible default (see `impl Default`), so a missing or
+/// partially invalid `config.lua` never prevents the app from starting.
 pub struct Config {
     pub music_dir: String,
     pub playlists: Vec<PlaylistDef>,
@@ -30,14 +43,25 @@ impl Default for Config {
     }
 }
 
+/// A single playlist as declared in `config.lua`, before its song paths
+/// have been resolved against `music_dir` or matched against the library.
+/// See `local_backend::build_playlists` for that resolution step.
 pub struct PlaylistDef {
     pub name: String,
     pub songs: Vec<String>,
+    /// If true, songs are re-sorted by artist/album/track number when
+    /// resolved, rather than kept in the order listed. Intended for
+    /// playlists generated with `list_music_files`, where listed order
+    /// is just filesystem walk order.
     pub sort: bool,
 }
 
+/// Result of locating (or creating) the user's config file.
 enum ConfigFile {
+    /// No usable config file was found or created: fall back to
+    /// `Config::default()` entirely, skipping Lua altogether.
     Default,
+    /// The file's raw contents, ready to be executed as Lua.
     Custom(String),
 }
 
@@ -50,6 +74,15 @@ album_view_bg = "#1f1d2f"
 playlists_view_bg = "#1f1d2f"
 open_playlist_view_bg = "#1f1d2f""##;
 
+/// Entry point: locates `config.lua`, then runs it to produce a `Config`.
+///
+/// Loading happens in two passes. `music_dir` is extracted first
+/// (`get_music_dir`), then the script is run again from scratch
+/// (`load_lua`) with the `list_music_files` function registered and bound
+/// to that directory. This exists because `list_music_files` needs to know
+/// `music_dir` before it can be registered, but `music_dir` itself only
+/// becomes known by running the user's script. See `load_lua` for the
+/// second half of this.
 pub fn load_config() -> Config {
     let ConfigFile::Custom(file_contents) = load_config_file() else {
         return Config::default();
@@ -60,6 +93,10 @@ pub fn load_config() -> Config {
     load_lua(&file_contents, &music_dir)
 }
 
+/// Finds `~/.config/orpheus/config.lua`, creating it with default contents
+/// on first run. Any failure along the way (no config dir, can't create
+/// it, can't read it) falls back to `ConfigFile::Default` rather than
+/// erroring out.
 fn load_config_file() -> ConfigFile {
     let Some(config_dir) = dirs::config_dir() else {
         eprintln!("Could not find config path");
@@ -88,6 +125,14 @@ fn load_config_file() -> ConfigFile {
     ConfigFile::Custom(file_contents)
 }
 
+/// Firts pass of loading: runs the script on a throwaway `Lua` instance
+/// with no custom functions registered, purely to read back `music_dir`.
+///
+/// The script is expected to potentially error partway through this pass
+/// (e.g. it may call `list_music_files`, which doesn't exist yet) so the
+/// exec error is deliberately ignored. As long as `music_dir` was assigned
+/// as a plan statement before that point, it's already sitting in globals
+/// by the time the error happens.
 fn get_music_dir(contents: &str) -> String {
     let lua = mlua::Lua::new();
     let _ = lua.load(contents).exec();
@@ -95,6 +140,9 @@ fn get_music_dir(contents: &str) -> String {
     get_music_dir_or_default(&globals, Config::default().music_dir)
 }
 
+/// Second, real pass: runs the script on a fresh `Lua` instance with
+/// `list_music_files` registered (bound to the already-resolved
+/// `music_dir`), then reads every config field back out of globals.
 fn load_lua(contents: &str, music_dir: &str) -> Config {
     let lua = mlua::Lua::new();
 
@@ -138,6 +186,12 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
     }
 }
 
+/// Reads the `playlists` global, a Lua array of `{ name, songs, sort }`
+/// tables, into `PlaylistDef`s.
+///
+/// Missing or malformed entries are skipped individually rather than
+/// failing the whole config load. Each song string that fails to
+/// convert is also dropped silently.
 fn get_playlists(globals: &mlua::Table) -> Vec<PlaylistDef> {
     let playlists_table: mlua::Table = match globals.get("playlists") {
         Ok(p) => p,
@@ -175,6 +229,12 @@ fn get_playlists(globals: &mlua::Table) -> Vec<PlaylistDef> {
     playlists
 }
 
+/// Registers `list_music_files(relative_dir) -> table of strings` as a Lua
+/// global, backed by a recursive walk of `music_dir.join(relative_dir)`.
+///
+/// Returned paths are relative to `music_dir` again (via `strip_prefix`),
+/// matching the format `PlaylistDef.songs` already expects, so scripts can
+/// feed the result straight into a playlist's `songs` field.
 fn register_list_music_files(lua: &mlua::Lua, music_dir: PathBuf) -> mlua::Result<()> {
     let func = lua.create_function(move |_, relative_dir: String| {
         let target_dir = music_dir.join(&relative_dir);
@@ -196,6 +256,8 @@ fn register_list_music_files(lua: &mlua::Lua, music_dir: PathBuf) -> mlua::Resul
     lua.globals().set("list_music_files", func)
 }
 
+/// Reads `music_dir` from globals, falling back to `default` if it's
+/// missing or not a string.
 fn get_music_dir_or_default(globals: &mlua::Table, default: String) -> String {
     match globals.get::<String>("music_dir") {
         Ok(value) => value,
@@ -203,6 +265,8 @@ fn get_music_dir_or_default(globals: &mlua::Table, default: String) -> String {
     }
 }
 
+/// Reads a hex color string from globals, falling back to `default` if the
+/// key is missing or fails hex validation (`is_valid_hex_color`).
 fn get_color_or_default(globals: &mlua::Table, key: &str, default: Color) -> Color {
     match globals.get::<String>(key) {
         Ok(value) if is_valid_hex_color(&value) => hex_to_color(&value),
@@ -210,11 +274,16 @@ fn get_color_or_default(globals: &mlua::Table, key: &str, default: Color) -> Col
     }
 }
 
+/// True if `str` is a 6-digit hex color, with or without a leading `#`.
 fn is_valid_hex_color(str: &str) -> bool {
     let stripped = str.strip_prefix("#").unwrap_or(str);
     stripped.len() == 6 && stripped.chars().all(|c| c.is_ascii_hexdigit())
 }
 
+/// Parses a `#rrbbgg` (or `rrbbgg`) string into a Slint `Color`.
+/// Malformed hex digits fall back to `0` for that channel rather than
+/// errorring, since `is_valid_hex_color` should already have filtered out
+/// anything that would fail here.
 fn hex_to_color(hex: &str) -> slint::Color {
     let stripped = hex.strip_prefix("#").unwrap_or(hex);
     let r = u8::from_str_radix(&stripped[0..2], 16).unwrap_or(0);
