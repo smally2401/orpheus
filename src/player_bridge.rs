@@ -1,3 +1,12 @@
+//! Bridges the local audio backend (`LocalBackend`) to the Slint UI and to
+//! MPRIS, and owns the app's main runtime loop.
+//!
+//! `spawn_player_bridge` sets everything up once at startup, then hands
+//! backa  command channel the UI (and MPRIS, indirectly) use to drive
+//! playback (see `PlayerCommand`). A single background task then runs
+//! forever, alternating between handling incoming commands and polling
+//! playback state on a fixed interval (see `TickState::on_tick`).
+
 use crate::AppWindow;
 use crate::SlintAlbum;
 use crate::SlintPlaylist;
@@ -17,6 +26,9 @@ use std::path::PathBuf;
 use std::time::Duration;
 use tokio::sync::mpsc;
 
+/// Something the UI (or MPRIS) wants the player to do. Sent over the
+/// channel returned by `spawn_player_bridge` and handled by
+/// `handle_command`.
 pub enum PlayerCommand {
     TogglePlay,
     Play,
@@ -29,13 +41,35 @@ pub enum PlayerCommand {
     SetVolume(f32),
     SelectPlaylist(usize),
     SelectPlaylistTrack(usize, usize),
+    // ToggleLoop,
     // ToggleShuffle,
 }
 
+/// State that needs to persist *between* ticks of the polling loop, so
+/// `on_tick` can tell what's changed since last time and avoid redundant
+/// work (or redundant MPRIS/UI updates).
 struct TickState {
+    /// The `(album_title, album_artist)` of the last track we decoded
+    /// cover art for. Art only needs re-decoding when the *album*
+    /// changes, not on every track change: many albums share one embedded
+    /// image across all their tracks, so this avoids re-running the
+    /// image resize on every track change within the same album.
     last_song_info: Option<(String, String)>,
+    /// The path of the last track we reported to MPRIS. Unlike art, MPRIS
+    /// metadata (title/artist/track id) genuinely changes per *track*, so
+    /// this is tracked separately from `last_song_info` at a finer
+    /// granularity.
     last_song_path: Option<PathBuf>,
+    /// Whether playback was paused as of the last tick. Used to detect
+    /// play/pause transitions so we only notify MPRIS when the status
+    /// actually changes, not every 100ms.
     was_paused: bool,
+    /// True once we've established the current queue has no more tracks
+    /// to advance to. Prevents calling `LocalBackend::next` every single
+    /// tick once playback reaches the end. Without this, `next()` would
+    /// be called 10 times a second doing nothing until the user picks a
+    /// new queue. Reset to `false` whenever a command changes the queue
+    /// (see `handle_command`).
     queue_exhausted: bool,
 }
 
@@ -49,6 +83,10 @@ impl TickState {
         }
     }
 
+    /// Runs one polling cycle: advances the queue if the current track
+    /// finished, syncs playback status/position to MPRIS, and pushes
+    /// updated track info (title, artist, position, art) to the UI.
+    /// Called on a fixed interval from `spawn_player_bridge`'s main loop
     fn on_tick(
         &mut self,
         local_backend: &mut LocalBackend,
@@ -134,6 +172,9 @@ impl TickState {
     }
 }
 
+/// Sets up the local backend, MPRIS, and the app's runtime loop, returning
+/// a command channel for the UI to drive playback plus the initial
+/// library/playlist data to populate the UI with at startup.
 pub fn spawn_player_bridge(
     ui: &AppWindow,
     music_dir: &str,
@@ -177,6 +218,14 @@ pub fn spawn_player_bridge(
     (tx, library, playlists)
 }
 
+/// Applies a single `Playercommand` to the backend.
+///
+/// Commands that select a new queue (`SelectAlbum`, `SelectTrack`,
+/// `SelectPlaylist`, `SelectPlaylistTrack`) and `PrevTrack` all reset
+/// `queue_exhausted`, so the tick loop knows it's fine to try advancing
+/// again (see `TickState::queue_exhausted`). `NextTrack` deliberately
+/// doesn't: if it also hits the end, `next()` returns `false` again and
+/// the flag stays accurate without needing an explicit reset.
 fn handle_command(
     command: &PlayerCommand,
     local_backend: &mut LocalBackend,
@@ -227,6 +276,9 @@ fn handle_command(
     }
 }
 
+/// Expands `music_dir` (e.g. a leading `~/`) into a real path, warning
+/// (but not failing) if it doesn't actually exist: playback will simply
+/// find no songs rather than crash.
 fn setup_music_dir(music_dir: &str) -> PathBuf {
     let path = expand_tilde(music_dir);
     if !path.exists() {
@@ -235,6 +287,8 @@ fn setup_music_dir(music_dir: &str) -> PathBuf {
     path
 }
 
+/// Converts the backend's scanned library into the Slint-facing album
+/// list, for populating the UI at startup.
 fn build_slint_library(local_backend: &LocalBackend) -> Vec<SlintAlbum> {
     let mut library: Vec<SlintAlbum> = Vec::new();
     for album in &local_backend.library {
@@ -244,6 +298,8 @@ fn build_slint_library(local_backend: &LocalBackend) -> Vec<SlintAlbum> {
     library
 }
 
+/// Converts the backend's configured playlists into the Slint-facing
+/// playlist list, for populating the UI at startup.
 fn build_slint_playlists(local_backend: &LocalBackend) -> Vec<SlintPlaylist> {
     let mut playlists: Vec<SlintPlaylist> = Vec::new();
     for (i, _) in local_backend.playlists.iter().enumerate() {

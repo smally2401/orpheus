@@ -1,3 +1,11 @@
+//! Application entry point: builds the UI, loads config, wires every
+//! Slint UI callback to a `PlayerCommand`, and hands off to the Slint
+//! event loop.
+//!
+//! This file deliberately contains no logic of its own, it just connects
+//! UI events to `player_bridge`'s command channel. See `player_bridge.rs`
+//! for what actyally happens when a command is sent.
+
 mod config;
 mod local_backend;
 mod mpris;
