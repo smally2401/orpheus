@@ -41,7 +41,7 @@ pub enum PlayerCommand {
     SetVolume(f32),
     SelectPlaylist(usize),
     SelectPlaylistTrack(usize, usize),
-    // ToggleLoop,
+    // ToggleRepeat,
     // ToggleShuffle,
 }
 

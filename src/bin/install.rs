@@ -98,8 +98,7 @@ fn get_paths() -> Result<(PathBuf, PathBuf, PathBuf)> {
 /// for that part. The permission setting block is Unix-only since
 /// Windows has no equivalent concept of a POSIX executable bit.
 fn make_files(orpheus_bin_path: PathBuf, dest_bin_dir: &Path, shortcut_dir: &Path) -> Result<()> {
-    let dest_bin_path = dest_bin_dir
-        .join(format!("orpheus{}", get_executable_extension()));
+    let dest_bin_path = dest_bin_dir.join(format!("orpheus{}", get_executable_extension()));
     fs::copy(orpheus_bin_path, &dest_bin_path)
         .context("Failed to move binary to binaries directory.")?;
 
@@ -198,8 +197,7 @@ fn make_shortcut(orpheus_bin_path: &Path, shortcut_dir: &Path) -> Result<()> {
 fn make_shortcut(orpheus_bin_path: &Path, shortcut_dir: &Path) -> Result<()> {
     use mslnk::ShellLink;
 
-    let sl = ShellLink::new(orpheus_bin_path)
-        .context("Failed to build Windows shortcut")?;
+    let sl = ShellLink::new(orpheus_bin_path).context("Failed to build Windows shortcut")?;
     sl.create_lnk(shortcut_dir.join("Orpheus.lnk"))
         .context("Failed to write Windows shortcut")?;
     Ok(())
@@ -226,7 +224,10 @@ fn get_shortcut_dir() -> Result<PathBuf> {
         anyhow::bail!("Failed to find a destination path for shortcuts.");
     };
     let shortcut_dir = appdata
-        .join("Microsoft").join("Windows").join("Start Menu").join("Programs");
+        .join("Microsoft")
+        .join("Windows")
+        .join("Start Menu")
+        .join("Programs");
     if !shortcut_dir.exists() && fs::create_dir_all(&shortcut_dir).is_err() {
         anyhow::bail!("Could not create destination directory for shortcuts.");
     }

@@ -188,7 +188,7 @@ impl LocalBackend {
 
     /// Advances to the next track in the queue, if there is one.
     /// Returns `Ok(true)` if it moved, `Ok(false)` if already at the end.
-    /// Callers use this to avoid repeatedly trying to advance once the 
+    /// Callers use this to avoid repeatedly trying to advance once the
     /// queue is exhausted (see `TickState` in `player_bridge.rs`).
     pub fn next(&mut self) -> Result<bool, Box<dyn Error>> {
         if self.index + 1 < self.queue.len() {
