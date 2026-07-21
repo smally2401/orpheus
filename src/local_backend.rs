@@ -76,6 +76,7 @@ pub struct Playlist {
 /// i.e. after a track finishes on its own (see `TickState::on_tick` in
 /// `player_bridge.rs`). Has no effect on a manual "next" click, which
 /// always advances regardless of this setting (see `next`).
+#[derive(Clone, Copy)]
 pub enum RepeatMode {
     /// Stop advancing once the queue's last track finishes.
     Off,
@@ -506,6 +507,32 @@ impl LocalBackend {
             RepeatMode::Queue => RepeatMode::Track,
             RepeatMode::Track => RepeatMode::Off,
         }
+    }
+
+    /// Sets shuffle to an explicit value (as opposed to `toggle_shuffle`,
+    /// which flips it). Used when MPRIS reports a `Shuffle` property set
+    /// rather than a toggle (see `PlayerCommand::SetShuffle`). No-ops if
+    /// already at the requested value; otherwise just defers to
+    /// `toggle_shuffle` so both paths share the same order rebuilding/
+    /// current track pinning logic rather than duplicating it here.
+    pub fn set_shuffle(&mut self, shuffle: bool) {
+        if shuffle != self.shuffle {
+            self.toggle_shuffle();
+        }
+    }
+
+    /// Sets repeat mode to an explicit value (see `set_shuffle` for why
+    /// this exists alongside `toggle_repeat`).
+    pub fn set_repeat(&mut self, repeat_mode: RepeatMode) {
+        self.repeat = repeat_mode;
+    }
+
+    pub fn is_shuffle(&self) -> bool {
+        self.shuffle
+    }
+
+    pub fn get_repeat(&self) -> RepeatMode {
+        self.repeat
     }
 }
 

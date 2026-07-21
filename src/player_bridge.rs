@@ -12,7 +12,9 @@ use crate::SlintAlbum;
 use crate::SlintPlaylist;
 use crate::config::PlaylistDef;
 use crate::local_backend::LocalBackend;
+use crate::local_backend::RepeatMode;
 use crate::mpris::MprisCommand;
+use crate::mpris::repeat_mode_to_loop_status;
 use crate::mpris::spawn_mpris;
 use crate::mpris::track_id_for_path;
 use crate::mpris::write_art_cache;
@@ -43,6 +45,8 @@ pub enum PlayerCommand {
     SelectPlaylistTrack(usize, usize),
     ToggleRepeat,
     ToggleShuffle,
+    SetRepeat(RepeatMode),
+    SetShuffle(bool),
 }
 
 /// State that needs to persist *between* ticks of the polling loop, so
@@ -225,6 +229,10 @@ pub fn spawn_player_bridge(
 /// again (see `TickState::queue_exhausted`). `NextTrack` deliberately
 /// doesn't: if it also hits the end, `next()` returns `false` again and
 /// the flag stays accurate without needing an explicit reset.
+///
+/// `ToggleShuffle`/`ToggleRepeat` also push the new state to MPRIS after
+/// updating the backend, so an in-app click stays in sync with any
+/// lock-screen/media-key widget showing shuffle/repeat state.
 fn handle_command(
     command: &PlayerCommand,
     local_backend: &mut LocalBackend,
@@ -274,9 +282,21 @@ fn handle_command(
         }
         PlayerCommand::ToggleRepeat => {
             local_backend.toggle_repeat();
+            let loop_status = repeat_mode_to_loop_status(local_backend.get_repeat());
+            let _ = mpris_tx.try_send(MprisCommand::UpdateLoopStatus(loop_status));
         }
         PlayerCommand::ToggleShuffle => {
             local_backend.toggle_shuffle();
+            let _ = mpris_tx.try_send(MprisCommand::UpdateShuffle(local_backend.is_shuffle()));
+        }
+        PlayerCommand::SetRepeat(mode) => {
+            local_backend.set_repeat(*mode);
+            let loop_status = repeat_mode_to_loop_status(local_backend.get_repeat());
+            let _ = mpris_tx.try_send(MprisCommand::UpdateLoopStatus(loop_status));
+        }
+        PlayerCommand::SetShuffle(shuffle) => {
+            local_backend.set_shuffle(*shuffle);
+            let _ = mpris_tx.try_send(MprisCommand::UpdateShuffle(local_backend.is_shuffle()));
         }
     }
 }

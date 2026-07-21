@@ -8,11 +8,13 @@
 //! pressed").
 
 use crate::player_bridge::PlayerCommand;
+use crate::local_backend::RepeatMode;
 use async_executor::LocalExecutor;
 use image::ImageFormat;
 use mpris_server::Metadata;
 use mpris_server::Time;
 use mpris_server::TrackId;
+use mpris_server::LoopStatus;
 use std::fs;
 use std::hash::DefaultHasher;
 use std::hash::Hash;
@@ -39,6 +41,8 @@ pub enum MprisCommand {
     /// listeners (distinct from `UpdatePosition`, which is the regulat
     /// polling update: see the `Seeked` signal in the MPRIS spec).
     Seeked(u64),
+    UpdateShuffle(bool),
+    UpdateLoopStatus(LoopStatus),
 }
 
 /// Spawns the MPRIS server on its own OS thread and returns a channel to
@@ -118,6 +122,16 @@ pub fn spawn_mpris(app_tx: mpsc::Sender<PlayerCommand>) -> mpsc::Sender<MprisCom
                             eprintln!("Failed to emit seeked signal: {e}");
                         }
                     }
+                    MprisCommand::UpdateShuffle(shuffle) => {
+                        if let Err(e) = player.set_shuffle(shuffle).await {
+                            eprintln!("Failed to update shuffle: {e}");
+                        }
+                    }
+                    MprisCommand::UpdateLoopStatus(loop_status) => {
+                        if let Err(e) = player.set_loop_status(loop_status).await {
+                            eprintln!("Failed to update loop status: {e}");
+                        }
+                    }
                 }
             }
         }));
@@ -165,6 +179,40 @@ fn setup_controls(player: &Rc<mpris_server::Player>, app_tx: &mpsc::Sender<Playe
     player.connect_set_position(move |_player, _track_id, pos| {
         let _ = app_tx_clone.try_send(PlayerCommand::SetPosition(pos.as_secs() as usize));
     });
+
+    let app_tx_clone = app_tx.clone();
+    player.connect_set_shuffle(move |_player, shuffle| {
+        let _ = app_tx_clone.try_send(PlayerCommand::SetShuffle(shuffle));
+    });
+
+    let app_tx_clone = app_tx.clone();
+    player.connect_set_loop_status(move |_player, loop_status| {
+        let _ = app_tx_clone.try_send(
+            PlayerCommand::SetRepeat(loop_status_to_repeat_mode(loop_status))
+        );
+    });
+}
+
+/// Converts an MPRIS `LoopStatus` (from an incoming `connect_set_loop_status`
+/// control) into our own `RepeatMode`, so the rest of the app only ever has
+/// to deal with one repeat-mode type.
+fn loop_status_to_repeat_mode(status: LoopStatus) -> RepeatMode {
+    match status {
+        LoopStatus::None => RepeatMode::Off,
+        LoopStatus::Playlist => RepeatMode::Queue,
+        LoopStatus::Track => RepeatMode::Track,
+    }
+}
+
+/// The inverse of `loop_status_to_repeat_mode`, used when reporting our
+/// current `RepeatMode` back out to MPRIS via `MprisCommand::UpdateLoopStatus`
+/// (see `player_bridge.rs`).
+pub fn repeat_mode_to_loop_status(mode: RepeatMode) -> LoopStatus {
+    match mode {
+        RepeatMode::Off => LoopStatus::None,
+        RepeatMode::Track => LoopStatus::Track,
+        RepeatMode::Queue => LoopStatus::Playlist,
+    }
 }
 
 /// Hashes a song path into a stable `u64`, used as the basis for both
