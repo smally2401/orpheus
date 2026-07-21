@@ -35,6 +35,8 @@ export component AppWindow inherits Window {
     callback play-paused-clicked();
     callback next-track-clicked();
     callback prev-track-clicked();
+    callback shuffle-clicked();
+    callback repeat-clicked();
 
     callback play-album-clicked();
     callback play-track-clicked(int);
@@ -110,6 +112,8 @@ export component AppWindow inherits Window {
             play-paused-clicked => { root.play-paused-clicked() }
             next-track-clicked => { root.next-track-clicked() }
             prev-track-clicked => { root.prev-track-clicked() }
+            shuffle-clicked => { root.shuffle-clicked() }
+            repeat-clicked => { root.repeat-clicked() }
             current-position: root.current-position;
             total-duration: root.total-duration;
             seek-requested(val) => { root.seek-requested(val) }

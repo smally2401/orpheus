@@ -161,9 +161,8 @@ fn check_path(dest_bin_dir: &Path) {
 }
 
 /// Builds the contents of a Linux `.desktop` shortcut file pointing at
-/// the installed binary. Only ever called from the Unix `make_shortcut`,
-/// but kept unconditional since it's just string formatting with no
-/// platform specific APIs involved.
+/// the installed binary.
+#[cfg(unix)]
 fn make_desktop_file(path: &str) -> String {
     format!("[Desktop Entry]\nType=Application\nName=Orpheus\nExec={path}\nTerminal=false")
 }

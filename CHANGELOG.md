@@ -2,6 +2,14 @@
 
 All notable changes to Orpheus will be documented in this file.
 
+## [0.2.0] - Unreleased
+
+### Added
+
+- Shuffle mode, toggleable during playback
+
+---
+
 ## [0.1.0] - 2026-07-20
 
 First testing release.
@@ -17,7 +25,7 @@ First testing release.
     artist's folder), with optional sorting by artist/album/track number
 - Configuration via `config.lua`, a real Lua script, not a static file:
   - Customizable UI colors
-  - Customizable music library lovation
+  - Customizable music library location
   - See `config_examples/` for example configs, including a time-of-day
     color scheme
 - MPRIS integration (Linux): playback appears in your desktop's media

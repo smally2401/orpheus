@@ -96,6 +96,16 @@ async fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
+    let tx_clone = tx.clone();
+    ui.on_shuffle_clicked(move || {
+        let _ = tx_clone.try_send(PlayerCommand::ToggleShuffle);
+    });
+
+    let tx_clone = tx.clone();
+    ui.on_repeat_clicked(move || {
+        let _ = tx_clone.try_send(PlayerCommand::ToggleRepeat);
+    });
+
     let library_model = ModelRc::new(VecModel::from(library));
     ui.set_albums(library_model);
 

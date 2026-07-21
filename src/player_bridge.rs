@@ -41,8 +41,8 @@ pub enum PlayerCommand {
     SetVolume(f32),
     SelectPlaylist(usize),
     SelectPlaylistTrack(usize, usize),
-    // ToggleRepeat,
-    // ToggleShuffle,
+    ToggleRepeat,
+    ToggleShuffle,
 }
 
 /// State that needs to persist *between* ticks of the polling loop, so
@@ -272,6 +272,12 @@ fn handle_command(
         PlayerCommand::SelectPlaylistTrack(playlist_i, track_i) => {
             let _ = local_backend.select_playlist_track(*playlist_i, *track_i);
             tick_state.queue_exhausted = false;
+        }
+        PlayerCommand::ToggleRepeat => {
+            local_backend.toggle_repeat();
+        }
+        PlayerCommand::ToggleShuffle => {
+            local_backend.toggle_shuffle();
         }
     }
 }

@@ -51,7 +51,7 @@ See [`config_examples/README.md`](config_examples/README.md) for the full
 reference, including:
 
 - All available config keys (colors, music directory, playlists)
-- How to define playlosts, including auto-generating one from a folder
+- How to define playlists, including auto-generating one from a folder
   with `list_music_files`
 - Runnable example scripts, from a plain key-value file to a
   time of day aware color scheme
@@ -72,4 +72,4 @@ improvements. Contributions, testing and bug reports are welcome.
 
 ## Changelog
 
-See `CHANGELONG.md` for release notes.
+See `CHANGELOG.md` for release notes.

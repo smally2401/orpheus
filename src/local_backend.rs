@@ -12,6 +12,7 @@ use lofty::file::TaggedFile;
 use lofty::file::TaggedFileExt;
 use lofty::picture::PictureType;
 use lofty::tag::ItemKey;
+use rand::seq::SliceRandom;
 use rodio::MixerDeviceSink;
 use rodio::Player;
 use std::collections::HashMap;
@@ -42,7 +43,7 @@ pub struct Song {
     track_number: Option<u32>,
     pub duration: Duration,
     pub art: Option<Arc<Vec<u8>>>,
-    // todo: lyrics and disc number
+    // todo: disc number
 }
 
 /// A group of songs sharing the same `(album_title, album_artist)`,
@@ -71,6 +72,12 @@ pub struct Playlist {
     pub sort: bool,
 }
 
+pub enum RepeatMode {
+    Off,
+    Queue,
+    Track,
+}
+
 /// Owns the audio device, the scanned library, and playback state.
 ///
 /// `_stream`/`player` hold onto the real audio device (dropping them
@@ -86,11 +93,25 @@ pub struct LocalBackend {
     /// `find_song_by_path` when resolving a playlist's song path back
     /// into real `Song`s.
     song_paths: HashMap<PathBuf, Arc<Song>>,
-    /// The currently active play queue. Populated by `select_album`,
-    /// `select_playlist`, etc.
+    /// The currently active play queue, in canonical (unshuffled) order.
+    /// Populated by `select_album`, `select_playlist`, etc. Always
+    /// resolved via `order`, never indexed into directly.
     queue: Vec<Arc<Song>>,
-    /// Position within `queue` of the currently playing (or paused) track.
-    index: usize, // index in current queue
+    /// A permutation of `queue`'s indices: playback walks `order`, and
+    /// `order[i]` gives the real position in `queue` for slot `i`. When
+    /// `shuffle` is off this is just `0..queue.len()` (identity); when on,
+    /// it's shuffled, with the currently playing track's real index
+    /// swapped into `order[0]`, so toggling shuffle mid-song doesn't change
+    /// what's playinh (see `toggle_shuffle`). Rebuilt any time `queue` is
+    /// replaced, so it's always the same length as `queue`.
+    order: Vec<usize>,
+    /// Position *within `order`* (not directly within `queue`) of the
+    /// currently playing (or paused) track. Resolve the actual song via
+    /// `queue[order[index]]`.
+    index: usize,
+
+    shuffle: bool,
+    repeat: RepeatMode,
 }
 
 impl LocalBackend {
@@ -160,25 +181,31 @@ impl LocalBackend {
             library,
             song_paths,
             queue: Vec::new(),
+            order: Vec::new(),
             playlists,
             index: 0,
+            shuffle: false,
+            repeat: RepeatMode::Off,
         }
     }
 
     // todo: more precise error returns
     /// Stops whatever's currently playing and starts the track at
-    /// `self.index` in `self.queue`.
+    /// `self.queue[self.order[self.index]]`.
     ///
-    /// Panics if `self.queue` is empty or `self.index` is out of bounds:
-    /// callers (`next`, `prev`, `select_*`) are responsible for only
-    /// calling this when the queue is known to be non-empty and `index`
-    /// valid. `select:playlist`/`select_playlist_track` already guard for
-    /// the empty case; see the todo there about `select_playlist_track`
-    /// not yet validating `track_index`.
+    /// Panics if `self.queue ` is empty, `self.index` is out of bounds for
+    /// `self.order`, or `self.order` is a different length than
+    /// `self.que` (shouldn't happen: `order` is always rebuilt alongside
+    /// `queue`, see `select_*` and `toggle_shuffle`). Callers (`next`,
+    /// `prev`, `select_*`) are responsible for only calling this when the
+    /// queue is known to be non-empty and `index` valid. `select_playlist`/
+    /// `select_playlist_track` already guard for the empty case, see the
+    /// todo there about `select_playlist_track` not yet validating
+    /// `track_index`.
     pub fn load_track(&mut self) -> Result<(), Box<dyn Error>> {
         self.player.stop();
 
-        let track = std::fs::File::open(&self.queue[self.index].path)?;
+        let track = std::fs::File::open(&self.queue[self.order[self.index]].path)?;
         let source = rodio::Decoder::try_from(track)?;
         self.player.append(source);
         self.player.play();
@@ -214,23 +241,49 @@ impl LocalBackend {
     }
 
     /// Replaces the queue with an album's full tracklist and starts
-    /// playing from the first track.
+    /// playing from the first track (in `order`, not necessarily
+    /// `queue`'s own first track: if shuffle is on, `order` is freshly
+    /// shuffled here, so playback starts from whichever track lands at
+    /// `order[0]`).
     pub fn select_album(&mut self, album_index: usize) -> Result<(), Box<dyn Error>> {
         self.queue = self.library[album_index].tracklist.clone();
+        self.order = (0..self.queue.len()).collect();
+
+        if self.shuffle {
+            let mut rng = rand::rng();
+            self.order.shuffle(&mut rng);
+        }
+
         self.index = 0;
         self.load_track()?;
         Ok(())
     }
 
     /// Same as `select_album`, but starts from a specific track within
-    /// the album instead of the first.
+    /// the album instead of the first. If shuffle is on, the rest of the
+    /// queue is still shuffled around it: `track_index`'s real position is
+    /// swapped into `order[0]` after shuffling, same trick as
+    /// `toggle_shuffle` uses to keep a chosen track pinned in place.
     pub fn select_album_track(
         &mut self,
         album_index: usize,
         track_index: usize,
     ) -> Result<(), Box<dyn Error>> {
         self.queue = self.library[album_index].tracklist.clone();
-        self.index = track_index;
+        self.order = (0..self.queue.len()).collect();
+
+        if self.shuffle {
+            let mut rng = rand::rng();
+            self.order.shuffle(&mut rng);
+
+            let new_pos = self.order
+                .iter().position(|&x| x == track_index).unwrap_or(0);
+            self.order.swap(0, new_pos);
+            self.index = 0;
+        } else {
+            self.index = track_index;
+        }
+
         self.load_track()?;
         Ok(())
     }
@@ -256,7 +309,7 @@ impl LocalBackend {
         if self.queue.is_empty() {
             None
         } else {
-            Some(&self.queue[self.index])
+            Some(&self.queue[self.order[self.index]])
         }
     }
 
@@ -316,31 +369,98 @@ impl LocalBackend {
         songs
     }
 
-    /// Resolves and plays an entire playlist from its first track.
-    /// No-ops (rather than erroring) if every song in the playlist failed
-    /// to resolve (e.g. all referenced files were deleted).
+    /// Resolves and plays an entire playlist from its first track (or,
+    /// with shuffle on, from whichever track a fresh shuffle of `order`
+    /// puts first, see `select_album` for the same behavior). No-ops
+    /// (rather than erroring) if every song in the playlist failed to
+    /// resolve (e.g. all referenced files were deleted).
     pub fn select_playlist(&mut self, playlist_index: usize) -> Result<(), Box<dyn Error>> {
         let queue = self.resolve_playlist(playlist_index);
         if queue.is_empty() {
             return Ok(()); // todo: maybe return an empty playlist error or something idk
         }
         self.queue = queue;
+        self.order = (0..self.queue.len()).collect();
+
+        if self.shuffle {
+            let mut rng = rand::rng();
+            self.order.shuffle(&mut rng);
+        }
+
         self.index = 0;
         self.load_track()?;
         Ok(())
     }
 
     /// Same as `select_playlist`, but starts from a specific track index
-    /// within the resolved playlist.
+    /// within the resolved playlist. Same shuffle-pinning behaviour as
+    /// `select_album_track`: with shuffle on, `tracl index`'s real
+    /// position get swapped into `order[0]` so playback still starts on
+    /// the chosen track.
     pub fn select_playlist_track(
         &mut self,
         playlist_index: usize,
         track_index: usize,
     ) -> Result<(), Box<dyn Error>> {
         self.queue = self.resolve_playlist(playlist_index);
-        self.index = track_index;
+        self.order = (0..self.queue.len()).collect();
+
+        if self.shuffle {
+            let mut rng = rand::rng();
+            self.order.shuffle(&mut rng);
+
+            let new_pos = self.order
+                .iter().position(|&x| x == track_index).unwrap_or(0);
+            self.order.swap(0, new_pos);
+            self.index = 0;
+        } else {
+            self.index = track_index;
+        }
+
         self.load_track()?;
         Ok(())
+    }
+
+    /// Flips `shuffle` and rebuilds `order` to match, without
+    /// interrupting whatever's currently playing.
+    ///
+    /// Turning shuffle *on*: reshuffles `order`, then finds wherever the
+    /// currently playing track ended up and swaps it into `order[0]`,
+    /// resetting `index` to `0` to match. Without this swap, toggling
+    /// shuffle mid-song would either restart the current track from a
+    /// different queue position or silently jump to a random one.
+    ///
+    /// Turning shuffle *off*: resets `order` to identity (`0..len`) and
+    /// restores `index` to the current track's real, unshuffled position,
+    /// so playback continues uninterrupted in canonical order from here.
+    pub fn toggle_shuffle(&mut self) {
+        self.shuffle = !self.shuffle;
+
+        if self.queue.is_empty() {
+            return;
+        }
+
+        let real_index = self.order[self.index];
+
+        if self.shuffle {
+            let mut rng = rand::rng();
+            self.order.shuffle(&mut rng);
+            let new_pos = self.order.iter()
+                .position(|&x| x == real_index).unwrap_or(0);
+            self.order.swap(0, new_pos);
+            self.index = 0;
+        } else {
+            self.order = (0..self.queue.len()).collect();
+            self.index = real_index;
+        }
+    }
+
+    pub fn toggle_repeat(&mut self) {
+        self.repeat = match self.repeat {
+            RepeatMode::Off => RepeatMode::Queue,
+            RepeatMode::Queue => RepeatMode::Track,
+            RepeatMode::Track => RepeatMode::Off,
+        }
     }
 }
 

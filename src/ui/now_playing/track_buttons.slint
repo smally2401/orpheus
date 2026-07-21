@@ -4,10 +4,21 @@ export component TrackButtons {
     callback play-paused-clicked();
     callback next-track-clicked();
     callback prev-track-clicked();
+    callback shuffle-clicked();
+    callback repeat-clicked();
 
     HorizontalLayout {
         padding-top: 10px;
         spacing: 10px;
+
+        Button {
+            width: 40px;
+            height: 40px;
+            text: "";
+            clicked => {
+                root.shuffle-clicked();
+            }
+        }
 
         Button {
             width: 40px;
@@ -33,6 +44,15 @@ export component TrackButtons {
             text: "⏭";
             clicked => {
                 root.next-track-clicked();
+            }
+        }
+
+        Button {
+            width: 40px;
+            height: 40px;
+            text: "󰑖";
+            clicked => {
+                root.repeat-clicked();
             }
         }
     }

@@ -11,6 +11,8 @@ export component NowPlayingBar {
     callback play-paused-clicked();
     callback next-track-clicked();
     callback prev-track-clicked();
+    callback shuffle-clicked();
+    callback repeat-clicked();
 
     callback volume-changed(float);
 
@@ -47,6 +49,8 @@ export component NowPlayingBar {
                         play-paused-clicked => { root.play-paused-clicked() }
                         next-track-clicked => { root.next-track-clicked() }
                         prev-track-clicked => { root.prev-track-clicked() }
+                        shuffle-clicked => { root.shuffle-clicked() }
+                        repeat-clicked => { root.repeat-clicked() }
                     }
                 }
 
