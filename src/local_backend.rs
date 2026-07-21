@@ -72,9 +72,16 @@ pub struct Playlist {
     pub sort: bool,
 }
 
+/// Controls what `next` does once it's called with `from_click: false`,
+/// i.e. after a track finishes on its own (see `TickState::on_tick` in
+/// `player_bridge.rs`). Has no effect on a manual "next" click, which
+/// always advances regardless of this setting (see `next`).
 pub enum RepeatMode {
+    /// Stop advancing once the queue's last track finishes.
     Off,
+    /// Once the last track finishes, wrap back around to the first.
     Queue,
+    /// Replay the same track from the start every time it finishes.
     Track,
 }
 
@@ -214,16 +221,51 @@ impl LocalBackend {
     }
 
     /// Advances to the next track in the queue, if there is one.
-    /// Returns `Ok(true)` if it moved, `Ok(false)` if already at the end.
-    /// Callers use this to avoid repeatedly trying to advance once the
-    /// queue is exhausted (see `TickState` in `player_bridge.rs`).
-    pub fn next(&mut self) -> Result<bool, Box<dyn Error>> {
-        if self.index + 1 < self.queue.len() {
-            self.index += 1;
-            self.load_track()?;
-            Ok(true)
-        } else {
-            Ok(false)
+    /// Returns `Ok(true)` if playback moved/restarted, `Ok(false)` if
+    /// already at the end and nothing happened. Callers use this to avoid
+    /// repeatedly trying to advance once the queue is exhaused (see
+    /// `TickState` in `player_bridge.rs`).
+    ///
+    /// `from_click` distinguishes a manual "next" press from an automatic
+    /// advance after a track finishes on its own:
+    /// - `from_click: true` (manual): always steps forward one track,
+    ///   ignoring `self.repeat` entirely. Even in `RepeatMode::Track`,
+    ///   clicking next should skip to the next track, not replay the
+    ///   current one.
+    /// - `from_click: false` (automatic, called from the tick loop):
+    ///   behaviour depends on `self.repeat`. `Off` behaves like the manual
+    ///   case. `Queue` wraps back to index `0` instead of stopping, and
+    ///   always returns `Ok(true)` so `queue_exhausted` never latches.
+    ///   `Track` reloads the same track in plave via `load_track`.
+    pub fn next(&mut self, from_click: bool) -> Result<bool, Box<dyn Error>> {
+        if from_click {
+            if self.index + 1 < self.queue.len() {
+                self.index += 1;
+                self.load_track()?;
+                return Ok(true);
+            }
+            return Ok(false);
+        }
+
+        match self.repeat {
+            RepeatMode::Off => {
+                if self.index + 1 < self.queue.len() {
+                    self.index += 1;
+                    self.load_track()?;
+                    return Ok(true);
+                }
+                Ok(false)
+            }
+            RepeatMode::Queue => {
+                self.index = if self.index + 1 == self.queue.len() { 0 }
+                    else { self.index + 1 };
+                self.load_track()?;
+                Ok(true)
+            }
+            RepeatMode::Track => {
+                self.load_track()?;
+                Ok(true)
+            }
         }
     }
 
@@ -455,6 +497,9 @@ impl LocalBackend {
         }
     }
 
+    /// Cycles `self.reoeat`: `Off` -> `Queue` -> `Track` -> `Off`. Only
+    /// changes what happens the *next* time a track finishes naturally,
+    /// doesn't touch anything currently playing (see `next`).
     pub fn toggle_repeat(&mut self) {
         self.repeat = match self.repeat {
             RepeatMode::Off => RepeatMode::Queue,

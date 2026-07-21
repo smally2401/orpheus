@@ -94,8 +94,7 @@ impl TickState {
         ui: &slint::Weak<AppWindow>,
     ) {
         if local_backend.track_finished() && !self.queue_exhausted {
-            // todo: include loop back to track 0 option
-            self.queue_exhausted = !local_backend.next().unwrap_or(false);
+            self.queue_exhausted = !local_backend.next(false).unwrap_or(false);
         }
 
         let is_paused = local_backend.is_paused();
@@ -244,7 +243,7 @@ fn handle_command(
             local_backend.pause();
         }
         PlayerCommand::NextTrack => {
-            let _ = local_backend.next();
+            let _ = local_backend.next(true);
         }
         PlayerCommand::PrevTrack => {
             let _ = local_backend.prev();

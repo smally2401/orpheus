@@ -7,6 +7,7 @@ All notable changes to Orpheus will be documented in this file.
 ### Added
 
 - Shuffle mode, toggleable during playback
+- Repeat mode, toggleable between off, queue and track modes
 
 ---
 
