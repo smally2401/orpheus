@@ -25,8 +25,8 @@ use crate::utils::expand_tilde;
 use crate::utils::playlist_rust_to_slint;
 use mpris_server::PlaybackStatus;
 use slint::ComponentHandle;
-use slint::ModelRc;
 use slint::Model;
+use slint::ModelRc;
 use slint::VecModel;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -127,12 +127,10 @@ impl TickState {
             let total_duration = track.duration.as_secs();
 
             let current_album = (track.album_title.clone(), track.album_artist.clone());
-            let new_art_bytes = if self.last_song_info.as_ref() == Some(&current_album) {
-                None
-            } else {
+            let album_changed = self.last_song_info.as_ref() != Some(&current_album);
+            if album_changed {
                 self.last_song_info = Some(current_album);
-                track.art.clone()
-            };
+            }
 
             let current_song_path = track.path.clone();
             if self.last_song_path != Some(current_song_path) {
@@ -153,14 +151,17 @@ impl TickState {
                 });
             }
 
+            let track_art = track.art.clone();
             let _ = slint::invoke_from_event_loop(move || {
                 if let Some(ui_instance) = ui_weak_clone.upgrade() {
                     ui_instance.set_current_track_title(title.into());
                     ui_instance.set_current_artist(artist.into());
                     ui_instance.set_current_position(current_position as i32);
                     ui_instance.set_total_duration(total_duration as i32);
-                    if let Some(bytes) = new_art_bytes {
-                        ui_instance.set_current_art(art_rust_to_slint(Some(bytes.as_slice())));
+                    if album_changed {
+                        ui_instance.set_current_art(art_rust_to_slint(
+                            track_art.as_deref().map(Vec::as_slice)
+                        ));
                     }
                 }
             });
@@ -173,7 +174,7 @@ impl TickState {
                     ui_instance.set_current_artist("---".into());
                     ui_instance.set_current_position(0);
                     ui_instance.set_total_duration(0);
-                    ui_instance.set_current_art(slint::Image::default());
+                    ui_instance.set_current_art(art_rust_to_slint(None));
                 }
             });
         }
@@ -345,9 +346,9 @@ fn open_playlist(i: usize, local_backend: &LocalBackend, ui: &slint::Weak<AppWin
             .enumerate()
             .map(|(idx, song)| {
                 tokio::task::spawn(async move {
-                    let decoded = tokio::task::spawn_blocking(move || {
-                        decode_song_with_art(&song)
-                    }).await.ok()?;
+                    let decoded = tokio::task::spawn_blocking(move || decode_song_with_art(&song))
+                        .await
+                        .ok()?;
                     Some((idx, decoded))
                 })
             })
@@ -368,13 +369,13 @@ fn open_playlist(i: usize, local_backend: &LocalBackend, ui: &slint::Weak<AppWin
                     if ui_instance.get_viewing_playlist_index() != i as i32 {
                         return;
                     }
-                    
+
                     let slint_song = SlintSongWithArt {
                         title: decoded.title.into(),
                         artist: decoded.artist.into(),
                         art: raw_art_to_slint_image(decoded.art),
                     };
-                    
+
                     let tracks = ui_instance.get_viewing_playlist().tracks;
                     if let Some(vec_model) =
                         tracks.as_any().downcast_ref::<VecModel<SlintSongWithArt>>()

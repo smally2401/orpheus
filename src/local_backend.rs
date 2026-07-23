@@ -258,8 +258,11 @@ impl LocalBackend {
                 Ok(false)
             }
             RepeatMode::Queue => {
-                self.index = if self.index + 1 == self.queue.len() { 0 }
-                    else { self.index + 1 };
+                self.index = if self.index + 1 == self.queue.len() {
+                    0
+                } else {
+                    self.index + 1
+                };
                 self.load_track()?;
                 Ok(true)
             }
@@ -319,8 +322,11 @@ impl LocalBackend {
             let mut rng = rand::rng();
             self.order.shuffle(&mut rng);
 
-            let new_pos = self.order
-                .iter().position(|&x| x == track_index).unwrap_or(0);
+            let new_pos = self
+                .order
+                .iter()
+                .position(|&x| x == track_index)
+                .unwrap_or(0);
             self.order.swap(0, new_pos);
             self.index = 0;
         } else {
@@ -452,8 +458,11 @@ impl LocalBackend {
             let mut rng = rand::rng();
             self.order.shuffle(&mut rng);
 
-            let new_pos = self.order
-                .iter().position(|&x| x == track_index).unwrap_or(0);
+            let new_pos = self
+                .order
+                .iter()
+                .position(|&x| x == track_index)
+                .unwrap_or(0);
             self.order.swap(0, new_pos);
             self.index = 0;
         } else {
@@ -488,8 +497,11 @@ impl LocalBackend {
         if self.shuffle {
             let mut rng = rand::rng();
             self.order.shuffle(&mut rng);
-            let new_pos = self.order.iter()
-                .position(|&x| x == real_index).unwrap_or(0);
+            let new_pos = self
+                .order
+                .iter()
+                .position(|&x| x == real_index)
+                .unwrap_or(0);
             self.order.swap(0, new_pos);
             self.index = 0;
         } else {

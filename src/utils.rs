@@ -15,6 +15,34 @@ use slint::VecModel;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+/// `Send`-safe stand-in for `SlintSongWithArt`, for use across a
+/// `spawn_blocking` boundary (see `DecodedArt` for why `SlintSongWithArt`
+/// itself can't cross one). Convert to the real Slint struct with
+/// `raw_art_to_slint_image` once back on the UI thread: see
+/// `player_bridge.rs`'s streaming playlist-loading, which is what this
+/// exists for.
+pub struct DecodedSong {
+    pub title: String,
+    pub artist: String,
+    pub art: DecodedArt,
+}
+
+/// Plain, `Send`-safe decoded art: width/height/RGB bytes, no
+/// `slint::Image` involved. `slint::Image` itself isn't `Send` (it's
+/// backed by an `Rc`-like handle internally), so it can only ever be
+/// constructed on the thread that will actually use it. This exists so
+/// the expensive decode/resize work can still happen on a
+/// `tokio::task::spawn_blocking` thread. See `decode_art` (safe anywhere)
+/// and `raw_art_to_slint_image` (UI thread only).
+pub struct DecodedArt {
+    pub width: u32,
+    pub height: u32,
+    pub rgb: Vec<u8>,
+}
+
+/// Placeholder cover art, embedded at compile time.
+const PLACEHOLDER_ART: &[u8] = include_bytes!("../assets/images/cover_placeholder.png");
+
 /// Converts a single `Song` into its Slint-facing representation.
 pub fn song_rust_to_slint(song: &Song) -> SlintSong {
     SlintSong {
@@ -42,71 +70,45 @@ pub fn album_rust_to_slint(album: &Album) -> SlintAlbum {
     }
 }
 
-/// Plain, `Send`-safe decoded art: width/height/RGB bytes, no
-/// `slint::Image` involved. `slint::Image` itself isn't `Send` (it's
-/// backed by an `Rc`-like handle internally), so it can only ever be
-/// constructed on the thread that will actually use it - this exists so
-/// the expensive decode/resize work can still happen on a
-/// `tokio::task::spawn_blocking` thread. See `decode_art` (safe anywhere)
-/// and `raw_art_to_slint_image` (UI thread only).
-pub struct DecodedArt {
-    pub width: u32,
-    pub height: u32,
-    pub rgb: Vec<u8>,
+/// Returns the provided art bytes if present and valid, otherwise the
+/// bundled placeholder. Used anywhere that needs a guaranteed non-empty
+/// image (playlist tracks, album covers, now playing art).
+pub fn art_or_placeholder(art: Option<&[u8]>) -> &[u8] {
+    art.filter(|b| !b.is_empty()).unwrap_or(PLACEHOLDER_ART)
 }
 
 /// The `Send`-safe half of art conversion: decodes and resizes to a fixed
 /// 100x100 thumbnail, same as `art_rust_to_slint`, but stops short of
 /// building a `slint::Image`. Safe to call from any thread, including
 /// `spawn_blocking`.
-pub fn decode_art(art: Option<&[u8]>) -> Option<DecodedArt> {
-    let image = image::load_from_memory(art?).ok()?;
+pub fn decode_art(art: Option<&[u8]>) -> DecodedArt {
+    let bytes = art_or_placeholder(art);
+    let image = image::load_from_memory(bytes)
+        .expect("placeholder art is a valid image");
     let image = image.resize(100, 100, FilterType::Lanczos3).into_rgb8();
-    Some(DecodedArt {
+    DecodedArt {
         width: image.width(),
         height: image.height(),
         rgb: image.into_raw(),
-    })
+    }
 }
 
 /// The other half: wraps already-`decode_art`-ed bytes into a real
 /// `slint::Image`. Must run on the thread that will use the resulting
 /// image (in practice, the UI thread, e.g. inside
 /// `slint::invoke_from_event_loop`).
-pub fn raw_art_to_slint_image(art: Option<DecodedArt>) -> slint::Image {
-    match art {
-        Some(art) => {
-            let buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(
-                &art.rgb, art.width, art.height,
-            );
-            slint::Image::from_rgb8(buffer)
-        }
-        None => slint::Image::default(),
-    }
+pub fn raw_art_to_slint_image(art: DecodedArt) -> slint::Image {
+    let buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(
+        &art.rgb, art.width, art.height,
+    );
+    slint::Image::from_rgb8(buffer)
 }
 
-/// Decodes raw ebedded cover-art bytes into a Slint `Image`, resizing to a
-/// fixed 100x100 thumbnail.
-///
-/// Returns a default (empty) image if there's no art, or if the bytes fail
-/// to decode as an image, so callers don't need to handle that case
-/// separately. For synchronous callers on the UI thread only (e.g.
-/// `album_rust_to_slint`); see `decode_art`/`raw_art_to_slint_image` for
-/// the split version usable from a background thread.
+/// Decodes raw embedded cover art bytes into a Slint `Image`, resizing to a
+/// fixed 100x100 thumbnail. Falls back to a bundled placeholder image if
+/// no art is present.
 pub fn art_rust_to_slint(art: Option<&[u8]>) -> slint::Image {
     raw_art_to_slint_image(decode_art(art))
-}
-
-/// `Send`-safe stand-in for `SlintSongWithArt`, for use across a
-/// `spawn_blocking` boundary (see `DecodedArt` for why `SlintSongWithArt`
-/// itself can't cross one). Convert to the real Slint struct with
-/// `raw_art_to_slint_image` once back on the UI thread: see
-/// `player_bridge.rs`'s streaming playlist-loading, which is what this
-/// exists for.
-pub struct DecodedSong {
-    pub title: String,
-    pub artist: String,
-    pub art: Option<DecodedArt>,
 }
 
 /// The `Send`-safe half of `song_rust_to_slint_with_art`. Safe to call
@@ -119,7 +121,7 @@ pub fn decode_song_with_art(song: &Song) -> DecodedSong {
     }
 }
 
-/// Builds a `SlintPlaylist` without decoding any track art. Used for the 
+/// Builds a `SlintPlaylist` without decoding any track art. Used for the
 /// sidebar list at startup: art is loaded lazily when the playlist is opened.
 pub fn playlist_rust_to_slint(playlist_index: usize, backend: &LocalBackend) -> SlintPlaylist {
     let resolved_playlist = backend.resolve_playlist(playlist_index);
@@ -127,7 +129,7 @@ pub fn playlist_rust_to_slint(playlist_index: usize, backend: &LocalBackend) -> 
     SlintPlaylist {
         name: backend.playlists[playlist_index].name.clone().into(),
         track_count: resolved_playlist.len() as i32,
-        tracks: ModelRc::new(VecModel::<SlintSongWithArt>::from(Vec::new()))
+        tracks: ModelRc::new(VecModel::<SlintSongWithArt>::from(Vec::new())),
     }
 }
 
@@ -143,4 +145,3 @@ pub fn expand_tilde(path: &str) -> PathBuf {
         PathBuf::from(path)
     }
 }
-

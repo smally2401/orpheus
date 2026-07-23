@@ -8,6 +8,7 @@ All notable changes to Orpheus will be documented in this file.
 
 - Shuffle mode, toggleable during playback
 - Repeat mode, toggleable between off, queue and track modes
+- Playlists now show album art for each track
 
 ---
 

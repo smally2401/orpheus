@@ -7,14 +7,14 @@
 //! `PlayerCommand`s flow out (MPRIS -> app, e.g. "the OS media key was
 //! pressed").
 
-use crate::player_bridge::PlayerCommand;
 use crate::local_backend::RepeatMode;
+use crate::player_bridge::PlayerCommand;
 use async_executor::LocalExecutor;
 use image::ImageFormat;
+use mpris_server::LoopStatus;
 use mpris_server::Metadata;
 use mpris_server::Time;
 use mpris_server::TrackId;
-use mpris_server::LoopStatus;
 use std::fs;
 use std::hash::DefaultHasher;
 use std::hash::Hash;
@@ -187,9 +187,9 @@ fn setup_controls(player: &Rc<mpris_server::Player>, app_tx: &mpsc::Sender<Playe
 
     let app_tx_clone = app_tx.clone();
     player.connect_set_loop_status(move |_player, loop_status| {
-        let _ = app_tx_clone.try_send(
-            PlayerCommand::SetRepeat(loop_status_to_repeat_mode(loop_status))
-        );
+        let _ = app_tx_clone.try_send(PlayerCommand::SetRepeat(loop_status_to_repeat_mode(
+            loop_status,
+        )));
     });
 }
 
