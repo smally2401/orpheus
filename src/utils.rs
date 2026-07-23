@@ -14,20 +14,51 @@ use slint::VecModel;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-/// Converts a single `Song` into its Slint-facing representation.
+/// Converts a single `Song` into its Slint-facing representation, with
+/// `art` left as a default (empty) image.
 ///
-/// Only carries the fields the UI actually displays (title, artist),
-/// deliberately not a 1:1 mirror of `Song`.
+/// Used for album tracklists (see `tracklist_rust_to_slint`):
+/// `album_view.slint` doesn't render per-track art (it shows the album's
+/// own cover in its header instead), so decoding art here would be pure
+/// wasted work. See `song_rust_to_slint_with_art` for the variant that
+/// actually decodes it, used for playlists.
 pub fn song_rust_to_slint(song: &Song) -> SlintSong {
     SlintSong {
         title: song.title.clone().into(),
         artist: song.artist.clone().into(),
+        art: slint::Image::default(),
+    }
+}
+
+/// Same as `song_rust_to_slint`, but also decodes the song's own embedded
+/// art via `art_rust_to_slint`. Used for playlist tracks, since a playlist
+/// can mix songs from different albums, so each row needs its own art
+/// rather than falling back to a single playlist level cover (see
+/// `open_playlist_view.slint`).
+pub fn song_rust_to_slint_with_art(song: &Song) -> SlintSong {
+    SlintSong {
+        title: song.title.clone().into(),
+        artist: song.artist.clone().into(),
+        art: art_rust_to_slint(song.art.as_deref().map(Vec::as_slice)),
     }
 }
 
 /// Converts a tracklist into the `ModelRc` Slint expects for list items.
+/// Uses the art-free `song_rust_to_slint`, see `playlist_tracklist_rust_to_slint`
+/// for the playlist equivalent that includes per-track art,
 pub fn tracklist_rust_to_slint(tracklist: &[Arc<Song>]) -> ModelRc<SlintSong> {
     let slint_tracklist: Vec<SlintSong> = tracklist.iter().map(|s| song_rust_to_slint(s)).collect();
+
+    ModelRc::new(VecModel::from(slint_tracklist))
+}
+
+/// Same as `tracklist_rust_to_slint`, but includes each track's own
+/// decoded art (see `song_rust_to_slint_with_art`). Used for playlists.
+pub fn playlist_tracklist_rust_to_slint(tracklist: &[Arc<Song>]) -> ModelRc<SlintSong> {
+    let slint_tracklist: Vec<SlintSong> = tracklist
+        .iter()
+        .map(|s| song_rust_to_slint_with_art(s))
+        .collect();
 
     ModelRc::new(VecModel::from(slint_tracklist))
 }
@@ -49,7 +80,7 @@ pub fn album_rust_to_slint(album: &Album) -> SlintAlbum {
 ///
 /// Returns a default (empty) image if there's no art, or if the bytes fail
 /// to decode as an image, so callers don't need to handle that case
-/// separately
+/// separately.
 pub fn art_rust_to_slint(art: Option<&[u8]>) -> slint::Image {
     match art {
         Some(art) => match image::load_from_memory(art) {
@@ -81,7 +112,7 @@ pub fn playlist_rust_to_slint(playlist_index: usize, backend: &LocalBackend) -> 
     SlintPlaylist {
         name: backend.playlists[playlist_index].name.clone().into(),
         track_count: resolved_playlist.len() as i32,
-        tracks: tracklist_rust_to_slint(&resolved_playlist),
+        tracks: playlist_tracklist_rust_to_slint(&resolved_playlist),
     }
 }
 

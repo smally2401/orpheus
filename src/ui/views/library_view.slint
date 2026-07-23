@@ -1,5 +1,6 @@
 import { ListView } from "std-widgets.slint";
 import { SlintAlbum } from "../types.slint";
+import { EntryRow } from "entry_row.slint";
 
 export component LibraryView {
     in property <[SlintAlbum]> albums: [];
@@ -9,37 +10,11 @@ export component LibraryView {
     Rectangle {
         background: root.bg-color;
         ListView {
-            for entry[i] in root.albums: TouchArea {
-                height: 65px;
-                Rectangle {
-                    HorizontalLayout {
-                        padding-left: 20px;
-                        spacing: 10px;
-                        VerticalLayout {
-                            alignment: center;
-                            Image {
-                                source: entry.art;
-                                width: 40px;
-                                height: 40px;
-                            }
-                        }
-                        VerticalLayout {
-                            spacing: 4px;
-                            alignment: center;
-                            Text {
-                                text: entry.title;
-                                font-size: 15px;
-                            }
-                            Text {
-                                text: entry.artist;
-                                font-size: 12px;
-                            }
-                        }
-                    }
-                }
-                clicked => {
-                    album-opened(i);
-                }
+            for entry[i] in root.albums: EntryRow {
+                thumbnail: entry.art;
+                title: entry.title;
+                subtitle: entry.artist;
+                entry-clicked => { root.album-opened(i) }
             }
         }
     }

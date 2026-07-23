@@ -1,5 +1,6 @@
 import { SlintAlbum, SlintSong } from "../types.slint";
 import { Button, ListView } from "std-widgets.slint";
+import { DetailViewHeader } from "detail_view_header.slint";
 
 export component AlbumView {
     in property <SlintAlbum> album;
@@ -15,43 +16,11 @@ export component AlbumView {
             padding: 20px;
             spacing: 10px;
 
-            HorizontalLayout {
-                alignment: start;
-                spacing: 10px;
-
-                VerticalLayout {
-                    alignment: center;
-                    Image {
-                        source: album.art;
-                        width: 80px;
-                        height: 80px;
-                    }
-                }
-
-                VerticalLayout {
-                    horizontal-stretch: 0;
-
-                    Text {
-                        text: root.album.title;
-                        font-size: 28px;
-                        font-weight: 700;
-                    }
-
-                    Text {
-                        text: root.album.artist;
-                        font-size: 18px;
-                    }
-                }
-
-                Button {
-                    text: "▶";
-                    width: 70px;
-                    height: 70px;
-                    clicked => {
-                        root.play-album-clicked();
-                    }
-                }
-
+            DetailViewHeader {
+                art: root.album.art;
+                title: root.album.title;
+                subtitle: root.album.artist;
+                play-clicked => { root.play-album-clicked() }
             }
 
             ListView {

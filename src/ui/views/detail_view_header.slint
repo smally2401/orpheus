@@ -1,0 +1,45 @@
+import { Button } from "std-widgets.slint";
+
+export component DetailViewHeader {
+    in property <image> art;
+    in property <string> title;
+    in property <string> subtitle;
+
+    callback play-clicked();
+
+    HorizontalLayout {
+        alignment: start;
+        spacing: 10px;
+
+        VerticalLayout {
+            alignment: center;
+            Image {
+                source: root.art;
+                width: 80px;
+                height: 80px;
+            }
+        }
+
+        VerticalLayout {
+            horizontal-stretch: 0;
+
+            Text {
+                text: root.title;
+                font-size: 28px;
+                font-weight: 700;
+            }
+
+            Text {
+                text: root.subtitle;
+                font-size: 18px;
+            }
+        }
+
+        Button {
+            text: "▶";
+            width: 70px;
+            height: 70px;
+            clicked => { root.play-clicked(); }
+        }
+    }
+}

@@ -1,5 +1,6 @@
 import { ListView } from "std-widgets.slint";
 import { SlintPlaylist } from "../types.slint";
+import { EntryRow } from "entry_row.slint";
 
 export component PlaylistsView {
     in property <[SlintPlaylist]> playlists: [];
@@ -7,39 +8,13 @@ export component PlaylistsView {
     callback playlist-opened(int);
 
     Rectangle {
-        background: bg-color;
+        background: root.bg-color;
         ListView {
-            for entry[i] in root.playlists: TouchArea {
-                height: 65px;
-                Rectangle {
-                    HorizontalLayout {
-                        padding-left: 20px;
-                        spacing: 10px;
-                        VerticalLayout {
-                            alignment: center;
-                            Image {
-                                source: @image-url("../../../assets/images/cover_placeholder.png");
-                                width: 40px;
-                                height: 40px;
-                            }
-                        }
-                        VerticalLayout {
-                            spacing: 4px;
-                            alignment: center;
-                            Text {
-                                text: entry.name;
-                                font-size: 15px;
-                            }
-                            Text {
-                                text: "TRACK_COUNT tracks";
-                                font-size: 12px;
-                            }
-                        }
-                    }
-                }
-                clicked => {
-                    playlist-opened(i);
-                }
+            for entry[i] in root.playlists: EntryRow {
+                thumbnail: @image-url("../../../assets/images/cover_placeholder.png");
+                title: entry.name;
+                subtitle: "TRACK_COUNT tracks";
+                entry-clicked => { root.playlist-opened(i) }
             }
         }
     }

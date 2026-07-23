@@ -1,5 +1,6 @@
 import { SlintPlaylist } from "../types.slint";
-import { Button, ListView } from "std-widgets.slint";
+import { Button, ListView, StandardButton } from "std-widgets.slint";
+import { DetailViewHeader } from "detail_view_header.slint";
 
 export component OpenPlaylistView {
     in property <SlintPlaylist> playlist;
@@ -14,42 +15,11 @@ export component OpenPlaylistView {
             padding: 20px;
             spacing: 10px;
 
-            HorizontalLayout {
-                alignment: start;
-                spacing: 10px;
-
-                VerticalLayout {
-                    alignment: center;
-                    Image {
-                        source: @image-url("../../../assets/images/cover_placeholder.png");
-                        width: 80px;
-                        height: 80px;
-                    }
-                }
-
-                VerticalLayout {
-                    horizontal-stretch: 0;
-
-                    Text {
-                        text: root.playlist.name;
-                        font-size: 28px;
-                        font-weight: 700;
-                    }
-                    
-                    Text {
-                        text: "TRACK_COUNT tracks";
-                        font-size: 18px;
-                    }
-                }
-
-                Button {
-                    text: "▶";
-                    width: 70px;
-                    height: 70px;
-                    clicked => {
-                        root.play-playlist-clicked();
-                    }
-                }
+            DetailViewHeader {
+                art: @image-url("../../../assets/images/cover_placeholder.png");
+                title: root.playlist.name;
+                subtitle: "TRACK_COUNT tracks";
+                play-clicked => { root.play-playlist-clicked() }
             }
 
             // todo: add album art for each track
@@ -62,7 +32,7 @@ export component OpenPlaylistView {
                             VerticalLayout {
                                 alignment: center;
                                 Image {
-                                    source: @image-url("../../../assets/images/cover_placeholder.png");
+                                    source: entry.art;
                                     width: 40px;
                                     height: 40px;
                                 }
