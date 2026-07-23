@@ -106,6 +106,11 @@ async fn main() -> Result<(), slint::PlatformError> {
         let _ = tx_clone.try_send(PlayerCommand::ToggleRepeat);
     });
 
+    let tx_clone = tx.clone();
+    ui.on_playlist_opened(move |playlist_index| {
+        let _ = tx_clone.try_send(PlayerCommand::OpenPlaylist(playlist_index as usize));
+    });
+
     let library_model = ModelRc::new(VecModel::from(library));
     ui.set_albums(library_model);
 

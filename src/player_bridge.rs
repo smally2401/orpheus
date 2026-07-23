@@ -2,7 +2,7 @@
 //! MPRIS, and owns the app's main runtime loop.
 //!
 //! `spawn_player_bridge` sets everything up once at startup, then hands
-//! backa  command channel the UI (and MPRIS, indirectly) use to drive
+//! back a command channel the UI (and MPRIS, indirectly) use to drive
 //! playback (see `PlayerCommand`). A single background task then runs
 //! forever, alternating between handling incoming commands and polling
 //! playback state on a fixed interval (see `TickState::on_tick`).
@@ -10,6 +10,7 @@
 use crate::AppWindow;
 use crate::SlintAlbum;
 use crate::SlintPlaylist;
+use crate::SlintSongWithArt;
 use crate::config::PlaylistDef;
 use crate::local_backend::LocalBackend;
 use crate::local_backend::RepeatMode;
@@ -24,6 +25,9 @@ use crate::utils::expand_tilde;
 use crate::utils::playlist_rust_to_slint;
 use mpris_server::PlaybackStatus;
 use slint::ComponentHandle;
+use slint::ModelRc;
+use slint::Model;
+use slint::VecModel;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -47,6 +51,7 @@ pub enum PlayerCommand {
     ToggleShuffle,
     SetRepeat(RepeatMode),
     SetShuffle(bool),
+    OpenPlaylist(usize),
 }
 
 /// State that needs to persist *between* ticks of the polling loop, so
@@ -205,7 +210,7 @@ pub fn spawn_player_bridge(
 
                 maybe_command = rx.recv() => {
                     if let Some(command) = maybe_command {
-                        handle_command(&command, &mut local_backend, &mpris_tx, &mut tick_state);
+                        handle_command(&command, &mut local_backend, &mpris_tx, &mut tick_state, &ui);
                     } else {
                         break;
                     }
@@ -238,6 +243,7 @@ fn handle_command(
     local_backend: &mut LocalBackend,
     mpris_tx: &mpsc::Sender<MprisCommand>,
     tick_state: &mut TickState,
+    ui: &slint::Weak<AppWindow>,
 ) {
     match command {
         // todo: remove let _ and handle stuff
@@ -298,7 +304,87 @@ fn handle_command(
             local_backend.set_shuffle(*shuffle);
             let _ = mpris_tx.try_send(MprisCommand::UpdateShuffle(local_backend.is_shuffle()));
         }
+        PlayerCommand::OpenPlaylist(i) => {
+            open_playlist(*i, local_backend, ui);
+        }
     }
+}
+
+/// Loads a playlist's tracklist with per-song art, decoding cover images
+/// in parallel on a background task while preserving track order.
+///
+/// The UI is updated immediately with an empty playlist, then tracks are
+/// streamed in as their art finishes decoding. Track order is preserved
+/// by collecting all results, sorting by original index, then pushing
+/// sequentially.
+fn open_playlist(i: usize, local_backend: &LocalBackend, ui: &slint::Weak<AppWindow>) {
+    let resolved = local_backend.resolve_playlist(i);
+    let name = local_backend.playlists[i].name.clone();
+    let track_count = resolved.len() as i32;
+
+    let ui_weak = ui.clone();
+    let _ = slint::invoke_from_event_loop(move || {
+        if let Some(ui_instance) = ui_weak.upgrade() {
+            ui_instance.set_viewing_playlist_index(i as i32);
+            ui_instance.set_viewing_playlist(SlintPlaylist {
+                name: name.into(),
+                track_count,
+                tracks: ModelRc::new(VecModel::<SlintSongWithArt>::from(Vec::new())),
+            });
+        }
+    });
+
+    let ui_weak = ui.clone();
+    tokio::spawn(async move {
+        use crate::utils::DecodedSong;
+        use crate::utils::decode_song_with_art;
+        use crate::utils::raw_art_to_slint_image;
+
+        let handles: Vec<_> = resolved
+            .into_iter()
+            .enumerate()
+            .map(|(idx, song)| {
+                tokio::task::spawn(async move {
+                    let decoded = tokio::task::spawn_blocking(move || {
+                        decode_song_with_art(&song)
+                    }).await.ok()?;
+                    Some((idx, decoded))
+                })
+            })
+            .collect();
+
+        let mut results: Vec<(usize, DecodedSong)> = Vec::new();
+        for handle in handles {
+            if let Some((idx, decoded)) = handle.await.ok().flatten() {
+                results.push((idx, decoded));
+            }
+        }
+        results.sort_by_key(|(idx, _)| *idx);
+
+        for (_, decoded) in results {
+            let ui_weak = ui_weak.clone();
+            let _ = slint::invoke_from_event_loop(move || {
+                if let Some(ui_instance) = ui_weak.upgrade() {
+                    if ui_instance.get_viewing_playlist_index() != i as i32 {
+                        return;
+                    }
+                    
+                    let slint_song = SlintSongWithArt {
+                        title: decoded.title.into(),
+                        artist: decoded.artist.into(),
+                        art: raw_art_to_slint_image(decoded.art),
+                    };
+                    
+                    let tracks = ui_instance.get_viewing_playlist().tracks;
+                    if let Some(vec_model) =
+                        tracks.as_any().downcast_ref::<VecModel<SlintSongWithArt>>()
+                    {
+                        vec_model.push(slint_song);
+                    }
+                }
+            });
+        }
+    });
 }
 
 /// Expands `music_dir` (e.g. a leading `~/`) into a real path, warning

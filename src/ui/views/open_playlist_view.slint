@@ -22,7 +22,6 @@ export component OpenPlaylistView {
                 play-clicked => { root.play-playlist-clicked() }
             }
 
-            // todo: add album art for each track
             ListView {
                 for entry[i] in root.playlist.tracks: TouchArea {
                     height : 65px;

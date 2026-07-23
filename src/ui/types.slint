@@ -1,6 +1,11 @@
 export struct SlintSong {
     title: string,
     artist: string,
+}
+
+export struct SlintSongWithArt {
+    title: string,
+    artist: string,
     art: image,
 }
 
@@ -15,5 +20,5 @@ export struct SlintAlbum {
 export struct SlintPlaylist {
     name: string,
     track_count: int,
-    tracks: [SlintSong],
+    tracks: [SlintSongWithArt],
 }
