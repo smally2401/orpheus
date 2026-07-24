@@ -70,6 +70,9 @@ pub struct Playlist {
     /// album, then track number, instead of returning them in the order
     /// listed. Set from `PlaylistDef.sort`.
     pub sort: bool,
+    /// Optional absolute path to a custom cover image. Resolved from
+    /// `PlaylistDef.art` relative to `music_dir` during `build_playlists`.
+    pub art: Option<PathBuf>,
 }
 
 /// Controls what `next` does once it's called with `from_click: false`,
@@ -618,6 +621,7 @@ fn build_playlists(path: &Path, playlist_defs: Vec<PlaylistDef>) -> Vec<Playlist
             name: def.name,
             songs: def.songs.iter().map(|s| path.join(s)).collect(),
             sort: def.sort,
+            art: def.art.map(|a| path.join(a)),
         })
         .collect()
 }

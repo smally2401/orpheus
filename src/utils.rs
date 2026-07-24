@@ -83,8 +83,7 @@ pub fn art_or_placeholder(art: Option<&[u8]>) -> &[u8] {
 /// `spawn_blocking`.
 pub fn decode_art(art: Option<&[u8]>) -> DecodedArt {
     let bytes = art_or_placeholder(art);
-    let image = image::load_from_memory(bytes)
-        .expect("placeholder art is a valid image");
+    let image = image::load_from_memory(bytes).expect("placeholder art is a valid image");
     let image = image.resize(100, 100, FilterType::Lanczos3).into_rgb8();
     DecodedArt {
         width: image.width(),
@@ -97,7 +96,7 @@ pub fn decode_art(art: Option<&[u8]>) -> DecodedArt {
 /// `slint::Image`. Must run on the thread that will use the resulting
 /// image (in practice, the UI thread, e.g. inside
 /// `slint::invoke_from_event_loop`).
-pub fn raw_art_to_slint_image(art: DecodedArt) -> slint::Image {
+pub fn raw_art_to_slint_image(art: &DecodedArt) -> slint::Image {
     let buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(
         &art.rgb, art.width, art.height,
     );
@@ -108,7 +107,19 @@ pub fn raw_art_to_slint_image(art: DecodedArt) -> slint::Image {
 /// fixed 100x100 thumbnail. Falls back to a bundled placeholder image if
 /// no art is present.
 pub fn art_rust_to_slint(art: Option<&[u8]>) -> slint::Image {
-    raw_art_to_slint_image(decode_art(art))
+    raw_art_to_slint_image(&decode_art(art))
+}
+
+/// Reads an image file from disk and decodes it into a Slint `Image`.
+///
+/// Returns the bundled placeholder if the path is `None`, the file doesn't
+/// exist, or the bytes fail to decode as an image.
+pub fn get_art_from_path(path: Option<PathBuf>) -> slint::Image {
+    let contents = match path {
+        Some(path) => std::fs::read(path).ok(),
+        None => None,
+    };
+    art_rust_to_slint(contents.as_deref())
 }
 
 /// The `Send`-safe half of `song_rust_to_slint_with_art`. Safe to call
@@ -130,6 +141,7 @@ pub fn playlist_rust_to_slint(playlist_index: usize, backend: &LocalBackend) -> 
         name: backend.playlists[playlist_index].name.clone().into(),
         track_count: resolved_playlist.len() as i32,
         tracks: ModelRc::new(VecModel::<SlintSongWithArt>::from(Vec::new())),
+        art: get_art_from_path(backend.playlists[playlist_index].art.clone()),
     }
 }
 

@@ -22,6 +22,7 @@ use crate::mpris::write_art_cache;
 use crate::utils::album_rust_to_slint;
 use crate::utils::art_rust_to_slint;
 use crate::utils::expand_tilde;
+use crate::utils::get_art_from_path;
 use crate::utils::playlist_rust_to_slint;
 use mpris_server::PlaybackStatus;
 use slint::ComponentHandle;
@@ -160,7 +161,7 @@ impl TickState {
                     ui_instance.set_total_duration(total_duration as i32);
                     if album_changed {
                         ui_instance.set_current_art(art_rust_to_slint(
-                            track_art.as_deref().map(Vec::as_slice)
+                            track_art.as_deref().map(Vec::as_slice),
                         ));
                     }
                 }
@@ -322,6 +323,7 @@ fn open_playlist(i: usize, local_backend: &LocalBackend, ui: &slint::Weak<AppWin
     let resolved = local_backend.resolve_playlist(i);
     let name = local_backend.playlists[i].name.clone();
     let track_count = resolved.len() as i32;
+    let art_path = local_backend.playlists[i].art.clone();
 
     let ui_weak = ui.clone();
     let _ = slint::invoke_from_event_loop(move || {
@@ -331,6 +333,7 @@ fn open_playlist(i: usize, local_backend: &LocalBackend, ui: &slint::Weak<AppWin
                 name: name.into(),
                 track_count,
                 tracks: ModelRc::new(VecModel::<SlintSongWithArt>::from(Vec::new())),
+                art: get_art_from_path(art_path),
             });
         }
     });
@@ -373,7 +376,7 @@ fn open_playlist(i: usize, local_backend: &LocalBackend, ui: &slint::Weak<AppWin
                     let slint_song = SlintSongWithArt {
                         title: decoded.title.into(),
                         artist: decoded.artist.into(),
-                        art: raw_art_to_slint_image(decoded.art),
+                        art: raw_art_to_slint_image(&decoded.art),
                     };
 
                     let tracks = ui_instance.get_viewing_playlist().tracks;

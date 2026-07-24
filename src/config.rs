@@ -54,6 +54,11 @@ pub struct PlaylistDef {
     /// playlists generated with `list_music_files`, where listed order
     /// is just filesystem walk order.
     pub sort: bool,
+    /// Optional path to a custom cover image for this playlist, relative
+    /// to `music_dir`. If set, the image is loaded and displayed as the
+    /// playlist's cover art. Falls back to the bundled placeholder if the
+    /// oath is missing or the image fails to load.
+    pub art: Option<String>,
 }
 
 /// Result of locating (or creating) the user's config file.
@@ -216,6 +221,8 @@ fn get_playlists(globals: &mlua::Table) -> Vec<PlaylistDef> {
             Err(_) => continue,
         };
 
+        let art: Option<String> = entry_table.get("art").ok();
+
         let songs: Vec<String> = songs_table
             .sequence_values::<String>()
             .filter_map(std::result::Result::ok)
@@ -223,7 +230,12 @@ fn get_playlists(globals: &mlua::Table) -> Vec<PlaylistDef> {
 
         let sort: bool = entry_table.get("sort").unwrap_or(false);
 
-        playlists.push(PlaylistDef { name, songs, sort });
+        playlists.push(PlaylistDef {
+            name,
+            songs,
+            sort,
+            art,
+        });
     }
 
     playlists

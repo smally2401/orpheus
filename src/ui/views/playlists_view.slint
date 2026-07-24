@@ -11,7 +11,7 @@ export component PlaylistsView {
         background: root.bg-color;
         ListView {
             for entry[i] in root.playlists: EntryRow {
-                thumbnail: @image-url("../../../assets/images/cover_placeholder.png");
+                thumbnail: entry.art;
                 title: entry.name;
                 subtitle: "TRACK_COUNT tracks";
                 entry-clicked => { root.playlist-opened(i) }

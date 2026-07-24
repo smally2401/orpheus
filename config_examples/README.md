@@ -33,6 +33,7 @@ Each entry in `playlists` is a table with:
 | `name` | string | yes | Display name of the playlist. |
 | `songs` | table of strings | yes | Song paths, relative to `music_dir`. |
 | `sort` | boolean | no (default `false`) | If `true`, songs are sorted by album artist, then album name, then track number, instead of kept in the order lsited. |
+| `art` | string | no | Path to a custom cover image, relative to `music_dir`. |
 
 ```lua
 playlists = {
@@ -41,7 +42,8 @@ playlists = {
         songs = {
             "joy-division/unknown-pleasures/01-disorder.mp3",
             "pink-floyd/animals/02-dogs.flac",
-        }
+        },
+        art = "covers/unknown-pleasures.jpg"
     }
 }
 ```

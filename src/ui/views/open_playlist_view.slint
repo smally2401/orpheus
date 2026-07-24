@@ -16,7 +16,7 @@ export component OpenPlaylistView {
             spacing: 10px;
 
             DetailViewHeader {
-                art: @image-url("../../../assets/images/cover_placeholder.png");
+                art: root.playlist.art;
                 title: root.playlist.name;
                 subtitle: "TRACK_COUNT tracks";
                 play-clicked => { root.play-playlist-clicked() }
