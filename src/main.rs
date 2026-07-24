@@ -12,26 +12,52 @@ mod mpris;
 mod player_bridge;
 mod utils;
 
+use crate::config::Theme;
+use crate::config::load_config;
 use crate::player_bridge::PlayerCommand;
+use crate::player_bridge::spawn_player_bridge;
 use slint::ModelRc;
 use slint::VecModel;
+use tokio::sync::mpsc::Sender;
 
 slint::include_modules!();
 
 #[tokio::main]
 async fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
-    let config = config::load_config();
-    let (tx, library, playlists) =
-        player_bridge::spawn_player_bridge(&ui, &config.music_dir, config.playlists);
+    let config = load_config();
+    let (tx, library, playlists) = spawn_player_bridge(&ui, &config.music_dir, config.playlists);
 
-    ui.set_sidebar_bg(config.sidebar_bg);
-    ui.set_now_playing_bg(config.now_playing_bar_bg);
-    ui.set_library_view_bg(config.library_view_bg);
-    ui.set_album_view_bg(config.album_view_bg);
-    ui.set_playlists_view_bg(config.playlists_view_bg);
-    ui.set_open_playlist_view_bg(config.open_playlist_view_bg);
+    apply_theme(&ui, &config.theme);
 
+    wire_callbacks(&ui, &tx);
+
+    let library_model = ModelRc::new(VecModel::from(library));
+    ui.set_albums(library_model);
+
+    let playlists_model = ModelRc::new(VecModel::from(playlists));
+    ui.set_playlists(playlists_model);
+
+    ui.run()
+}
+
+/// Applies the user's color theme to the UI.
+fn apply_theme(ui: &AppWindow, theme: &Theme) {
+    ui.set_sidebar_bg(theme.sidebar_bg);
+    ui.set_now_playing_bg(theme.now_playing_bar_bg);
+    ui.set_library_view_bg(theme.library_view_bg);
+    ui.set_album_view_bg(theme.album_view_bg);
+    ui.set_playlists_view_bg(theme.playlists_view_bg);
+    ui.set_open_playlist_view_bg(theme.open_playlist_view_bg);
+}
+
+/// Attaches every Slint UI callback to a `PlayerCommand` sent over `tx`.
+///
+/// Most callbacks are simple fire-and-forget: they clone `tx`, move it into
+/// the closure, and `try_send` the corresponding command. Callbacks that
+/// need to read UI state (e.g. which album is currently being viewed) take
+/// a `Weak<AppWindows>` and `upgrade()` it inside the closure.
+fn wire_callbacks(ui: &AppWindow, tx: &Sender<PlayerCommand>) {
     let tx_clone = tx.clone();
     ui.on_play_paused_clicked(move || {
         let _ = tx_clone.try_send(PlayerCommand::TogglePlay);
@@ -110,12 +136,4 @@ async fn main() -> Result<(), slint::PlatformError> {
     ui.on_playlist_opened(move |playlist_index| {
         let _ = tx_clone.try_send(PlayerCommand::OpenPlaylist(playlist_index as usize));
     });
-
-    let library_model = ModelRc::new(VecModel::from(library));
-    ui.set_albums(library_model);
-
-    let playlists_model = ModelRc::new(VecModel::from(playlists));
-    ui.set_playlists(playlists_model);
-
-    ui.run()
 }

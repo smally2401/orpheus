@@ -11,14 +11,8 @@ use crate::utils::expand_tilde;
 use slint::Color;
 use std::path::PathBuf;
 
-/// Fully resolved configuration, ready for the rest of the app to consume.
-///
-/// Every field has a sensible default (see `impl Default`), so a missing or
-/// partially invalid `config.lua` never prevents the app from starting.
-pub struct Config {
-    pub music_dir: String,
-    pub playlists: Vec<PlaylistDef>,
-
+/// The UI color palette.
+pub struct Theme {
     pub sidebar_bg: Color,
     pub now_playing_bar_bg: Color,
     pub library_view_bg: Color,
@@ -27,18 +21,35 @@ pub struct Config {
     pub open_playlist_view_bg: Color,
 }
 
-impl Default for Config {
-    fn default() -> Config {
-        Config {
-            music_dir: String::from("~/Music"),
-            playlists: Vec::new(),
-
+impl Default for Theme {
+    fn default() -> Theme {
+        Theme {
             sidebar_bg: Color::from_rgb_u8(0x0e, 0x10, 0x1d),
             now_playing_bar_bg: Color::from_rgb_u8(0x0a, 0x0a, 0x0f),
             library_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
             album_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
             playlists_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
             open_playlist_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
+        }
+    }
+}
+
+/// Fully resolved configuration, ready for the rest of the app to consume.
+///
+/// Every field has a sensible default (see `impl Default`), so a missing or
+/// partially invalid `config.lua` never prevents the app from starting.
+pub struct Config {
+    pub music_dir: String,
+    pub playlists: Vec<PlaylistDef>,
+    pub theme: Theme,
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            music_dir: String::from("~/Music"),
+            playlists: Vec::new(),
+            theme: Theme::default(),
         }
     }
 }
@@ -57,7 +68,7 @@ pub struct PlaylistDef {
     /// Optional path to a custom cover image for this playlist, relative
     /// to `music_dir`. If set, the image is loaded and displayed as the
     /// playlist's cover art. Falls back to the bundled placeholder if the
-    /// oath is missing or the image fails to load.
+    /// path is missing or the image fails to load.
     pub art: Option<String>,
 }
 
@@ -165,29 +176,40 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
 
     let playlists = get_playlists(&globals);
 
-    let sidebar_bg = get_color_or_default(&globals, "sidebar_bg", defaults.sidebar_bg);
-    let now_playing_bar_bg =
-        get_color_or_default(&globals, "now_playing_bar_bg", defaults.now_playing_bar_bg);
+    let sidebar_bg = get_color_or_default(&globals, "sidebar_bg", defaults.theme.sidebar_bg);
+    let now_playing_bar_bg = get_color_or_default(
+        &globals,
+        "now_playing_bar_bg",
+        defaults.theme.now_playing_bar_bg,
+    );
     let library_view_bg =
-        get_color_or_default(&globals, "library_view_bg", defaults.library_view_bg);
-    let album_view_bg = get_color_or_default(&globals, "album_view_bg", defaults.album_view_bg);
-    let playlists_view_bg =
-        get_color_or_default(&globals, "playlists_view_bg", defaults.playlists_view_bg);
+        get_color_or_default(&globals, "library_view_bg", defaults.theme.library_view_bg);
+    let album_view_bg =
+        get_color_or_default(&globals, "album_view_bg", defaults.theme.album_view_bg);
+    let playlists_view_bg = get_color_or_default(
+        &globals,
+        "playlists_view_bg",
+        defaults.theme.playlists_view_bg,
+    );
     let open_playlist_view_bg = get_color_or_default(
         &globals,
         "open_playlist_view_bg",
-        defaults.open_playlist_view_bg,
+        defaults.theme.open_playlist_view_bg,
     );
 
-    Config {
-        music_dir: music_dir.to_string(),
-        playlists,
+    let theme = Theme {
         sidebar_bg,
         now_playing_bar_bg,
         library_view_bg,
         album_view_bg,
         playlists_view_bg,
         open_playlist_view_bg,
+    };
+
+    Config {
+        music_dir: music_dir.to_string(),
+        playlists,
+        theme,
     }
 }
 

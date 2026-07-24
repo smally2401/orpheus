@@ -213,7 +213,7 @@ impl LocalBackend {
     /// `select_playlist_track` already guard for the empty case, see the
     /// todo there about `select_playlist_track` not yet validating
     /// `track_index`.
-    pub fn load_track(&mut self) -> Result<(), Box<dyn Error>> {
+    fn load_track(&mut self) -> Result<(), Box<dyn Error>> {
         self.player.stop();
 
         let track = std::fs::File::open(&self.queue[self.order[self.index]].path)?;
@@ -340,87 +340,6 @@ impl LocalBackend {
         Ok(())
     }
 
-    pub fn toggle_play(&mut self) {
-        if self.player.is_paused() {
-            self.player.play();
-        } else {
-            self.player.pause();
-        }
-    }
-
-    pub fn play(&mut self) {
-        self.player.play();
-    }
-
-    pub fn pause(&mut self) {
-        self.player.pause();
-    }
-
-    /// The currently selected track, or `None` if no queue is active.
-    pub fn get_current_song(&self) -> Option<&Arc<Song>> {
-        if self.queue.is_empty() {
-            None
-        } else {
-            Some(&self.queue[self.order[self.index]])
-        }
-    }
-
-    /// True once the current track has finished playing (the underlying
-    /// player's buffer is empty). Doesn't distinguish "finished" from
-    /// "nothing was ever loaded", both look the same to `rodio`.
-    pub fn track_finished(&self) -> bool {
-        self.player.empty()
-    }
-
-    pub fn get_current_position(&self) -> Duration {
-        self.player.get_pos()
-    }
-
-    pub fn is_paused(&self) -> bool {
-        self.player.is_paused()
-    }
-
-    pub fn set_position(&mut self, position: usize) -> Result<(), Box<dyn Error>> {
-        self.player.try_seek(Duration::from_secs(position as u64))?;
-        Ok(())
-    }
-
-    pub fn set_volume(&mut self, volume: f32) {
-        self.player.set_volume(volume);
-    }
-
-    /// O(1) lookup of a known song by its path, backed by `song_paths`.
-    pub fn find_song_by_path(&self, path: &Path) -> Option<&Arc<Song>> {
-        self.song_paths.get(path)
-    }
-
-    /// Resolves a playlist's stored song paths into actual `Song`s, using
-    /// the current library. Songs that no longer exist on disk (or were
-    /// never in the library to begin with) are silently dropped rather
-    /// than causing an error.
-    ///
-    /// If the playlist has `sort` set, results are additionally sorted by
-    /// artist, then album, then track number (see `Playlist.sort` for why).
-    pub fn resolve_playlist(&self, playlist_index: usize) -> Vec<Arc<Song>> {
-        let mut songs: Vec<Arc<Song>> = self.playlists[playlist_index]
-            .songs
-            .iter()
-            .filter_map(|path| self.find_song_by_path(path))
-            .cloned()
-            .collect();
-
-        if self.playlists[playlist_index].sort {
-            songs.sort_by(|a, b| {
-                a.album_artist
-                    .cmp(&b.album_artist)
-                    .then(a.album_title.cmp(&b.album_title))
-                    .then(a.track_number.cmp(&b.track_number))
-            });
-        }
-
-        songs
-    }
-
     /// Resolves and plays an entire playlist from its first track (or,
     /// with shuffle on, from whichever track a fresh shuffle of `order`
     /// puts first, see `select_album` for the same behavior). No-ops
@@ -476,6 +395,87 @@ impl LocalBackend {
         Ok(())
     }
 
+    pub fn toggle_play(&mut self) {
+        if self.player.is_paused() {
+            self.player.play();
+        } else {
+            self.player.pause();
+        }
+    }
+
+    pub fn play(&mut self) {
+        self.player.play();
+    }
+
+    pub fn pause(&mut self) {
+        self.player.pause();
+    }
+
+    pub fn set_position(&mut self, position: usize) -> Result<(), Box<dyn Error>> {
+        self.player.try_seek(Duration::from_secs(position as u64))?;
+        Ok(())
+    }
+
+    pub fn set_volume(&mut self, volume: f32) {
+        self.player.set_volume(volume);
+    }
+
+    /// The currently selected track, or `None` if no queue is active.
+    pub fn get_current_song(&self) -> Option<&Arc<Song>> {
+        if self.queue.is_empty() {
+            None
+        } else {
+            Some(&self.queue[self.order[self.index]])
+        }
+    }
+
+    pub fn get_current_position(&self) -> Duration {
+        self.player.get_pos()
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.player.is_paused()
+    }
+
+    /// True once the current track has finished playing (the underlying
+    /// player's buffer is empty). Doesn't distinguish "finished" from
+    /// "nothing was ever loaded", both look the same to `rodio`.
+    pub fn track_finished(&self) -> bool {
+        self.player.empty()
+    }
+
+    /// O(1) lookup of a known song by its path, backed by `song_paths`.
+    fn find_song_by_path(&self, path: &Path) -> Option<&Arc<Song>> {
+        self.song_paths.get(path)
+    }
+
+    /// Resolves a playlist's stored song paths into actual `Song`s, using
+    /// the current library. Songs that no longer exist on disk (or were
+    /// never in the library to begin with) are silently dropped rather
+    /// than causing an error.
+    ///
+    /// If the playlist has `sort` set, results are additionally sorted by
+    /// artist, then album, then track number (see `Playlist.sort` for why).
+    pub fn resolve_playlist(&self, playlist_index: usize) -> Vec<Arc<Song>> {
+        let mut songs: Vec<Arc<Song>> = self.playlists[playlist_index]
+            .songs
+            .iter()
+            .filter_map(|path| self.find_song_by_path(path))
+            .cloned()
+            .collect();
+
+        if self.playlists[playlist_index].sort {
+            songs.sort_by(|a, b| {
+                a.album_artist
+                    .cmp(&b.album_artist)
+                    .then(a.album_title.cmp(&b.album_title))
+                    .then(a.track_number.cmp(&b.track_number))
+            });
+        }
+
+        songs
+    }
+
     /// Flips `shuffle` and rebuilds `order` to match, without
     /// interrupting whatever's currently playing.
     ///
@@ -513,17 +513,6 @@ impl LocalBackend {
         }
     }
 
-    /// Cycles `self.reoeat`: `Off` -> `Queue` -> `Track` -> `Off`. Only
-    /// changes what happens the *next* time a track finishes naturally,
-    /// doesn't touch anything currently playing (see `next`).
-    pub fn toggle_repeat(&mut self) {
-        self.repeat = match self.repeat {
-            RepeatMode::Off => RepeatMode::Queue,
-            RepeatMode::Queue => RepeatMode::Track,
-            RepeatMode::Track => RepeatMode::Off,
-        }
-    }
-
     /// Sets shuffle to an explicit value (as opposed to `toggle_shuffle`,
     /// which flips it). Used when MPRIS reports a `Shuffle` property set
     /// rather than a toggle (see `PlayerCommand::SetShuffle`). No-ops if
@@ -533,6 +522,17 @@ impl LocalBackend {
     pub fn set_shuffle(&mut self, shuffle: bool) {
         if shuffle != self.shuffle {
             self.toggle_shuffle();
+        }
+    }
+
+    /// Cycles `self.reoeat`: `Off` -> `Queue` -> `Track` -> `Off`. Only
+    /// changes what happens the *next* time a track finishes naturally,
+    /// doesn't touch anything currently playing (see `next`).
+    pub fn toggle_repeat(&mut self) {
+        self.repeat = match self.repeat {
+            RepeatMode::Off => RepeatMode::Queue,
+            RepeatMode::Queue => RepeatMode::Track,
+            RepeatMode::Track => RepeatMode::Off,
         }
     }
 
