@@ -13,24 +13,76 @@ use std::path::PathBuf;
 
 /// The UI color palette.
 pub struct Theme {
-    pub sidebar_bg: Color,
-    pub now_playing_bar_bg: Color,
-    pub library_view_bg: Color,
-    pub album_view_bg: Color,
-    pub playlists_view_bg: Color,
-    pub open_playlist_view_bg: Color,
+    pub bg: Background,
+    pub text_color: TextColor,
 }
 
+pub struct Background {
+    pub sidebar: Color,
+    pub now_playing_bar: Color,
+    pub library_view: Color,
+    pub album_view: Color,
+    pub playlists_view: Color,
+    pub open_playlist_view: Color,
+}
+
+pub struct TextColor {
+    pub now_playing_song: Color,
+    pub now_playing_artist: Color,
+    pub detail_view_header_title: Color,
+    pub detail_view_header_subtitle: Color,
+    pub library_list_title: Color,
+    pub library_list_subtitle: Color,
+    pub album_list_title: Color,
+    pub album_list_subtitle: Color,
+}
+
+pub struct TextSize {
+    pub now_playing_song: u32,
+    pub now_playing_artist: u32,
+    pub detail_view_header_title: u32,
+    pub detail_view_header_subtitle: u32,
+    pub library_list_title: u32,
+    pub library_list_subtitle: u32,
+    pub album_list_title: u32,
+    pub album_list_subtitle: u32,
+}
+
+// todo: separate defaults for each struct
 impl Default for Theme {
     fn default() -> Theme {
-        Theme {
-            sidebar_bg: Color::from_rgb_u8(0x0e, 0x10, 0x1d),
-            now_playing_bar_bg: Color::from_rgb_u8(0x0a, 0x0a, 0x0f),
-            library_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
-            album_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
-            playlists_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
-            open_playlist_view_bg: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
-        }
+        let bg = Background {
+            sidebar: Color::from_rgb_u8(0x0e, 0x10, 0x1d),
+            now_playing_bar: Color::from_rgb_u8(0x0a, 0x0a, 0x0f),
+            library_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
+            album_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
+            playlists_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
+            open_playlist_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
+        };
+
+        let text_color = TextColor {
+            now_playing_song: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            now_playing_artist: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            detail_view_header_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            detail_view_header_subtitle: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            library_list_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            library_list_subtitle: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            album_list_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            album_list_subtitle: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+        };
+
+        let text_size = TextSize {
+            now_playing_song: 15,
+            now_playing_artist: 12,
+            detail_view_header_title: 28,
+            detail_view_header_subtitle: 18,
+            library_list_title: 15,
+            library_list_subtitle: 12,
+            album_list_title: 15,
+            album_list_subtitle: 12,
+        };
+
+        Theme { bg, text_color }
     }
 }
 
@@ -88,7 +140,16 @@ now_playing_bar_bg = "#0a0a0f"
 library_view_bg = "#1f1d2f"
 album_view_bg = "#1f1d2f"
 playlists_view_bg = "#1f1d2f"
-open_playlist_view_bg = "#1f1d2f""##;
+open_playlist_view_bg = "#1f1d2f"
+
+now_playing_song_text_color = "#cdd6f4"
+now_playing_artist_text_color = "#cdd6f4"
+detail_view_header_title_text_color = "#cdd6f4"
+detail_view_header_subtitle_text_color = "#cdd6f4"
+library_list_title_text_color = "#cdd6f4"
+library_list_subtitle_text_color = "#cdd6f4"
+album_list_title_text_color = "#cdd6f4"
+album_list_subtitle_text_color = "#cdd6f4""##;
 
 /// Entry point: locates `config.lua`, then runs it to produce a `Config`.
 ///
@@ -176,35 +237,89 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
 
     let playlists = get_playlists(&globals);
 
-    let sidebar_bg = get_color_or_default(&globals, "sidebar_bg", defaults.theme.sidebar_bg);
+    let sidebar_bg = get_color_or_default(&globals, "sidebar_bg", defaults.theme.bg.sidebar);
     let now_playing_bar_bg = get_color_or_default(
         &globals,
         "now_playing_bar_bg",
-        defaults.theme.now_playing_bar_bg,
+        defaults.theme.bg.now_playing_bar,
     );
     let library_view_bg =
-        get_color_or_default(&globals, "library_view_bg", defaults.theme.library_view_bg);
+        get_color_or_default(&globals, "library_view_bg", defaults.theme.bg.library_view);
     let album_view_bg =
-        get_color_or_default(&globals, "album_view_bg", defaults.theme.album_view_bg);
+        get_color_or_default(&globals, "album_view_bg", defaults.theme.bg.album_view);
     let playlists_view_bg = get_color_or_default(
         &globals,
         "playlists_view_bg",
-        defaults.theme.playlists_view_bg,
+        defaults.theme.bg.playlists_view,
     );
     let open_playlist_view_bg = get_color_or_default(
         &globals,
         "open_playlist_view_bg",
-        defaults.theme.open_playlist_view_bg,
+        defaults.theme.bg.open_playlist_view,
     );
 
-    let theme = Theme {
-        sidebar_bg,
-        now_playing_bar_bg,
-        library_view_bg,
-        album_view_bg,
-        playlists_view_bg,
-        open_playlist_view_bg,
+    let bg = Background {
+        sidebar: sidebar_bg,
+        now_playing_bar: now_playing_bar_bg,
+        library_view: library_view_bg,
+        album_view: album_view_bg,
+        playlists_view: playlists_view_bg,
+        open_playlist_view: open_playlist_view_bg,
     };
+
+    let now_playing_song_text_color = get_color_or_default(
+        &globals,
+        "now_playing_song_text_color",
+        defaults.theme.text_color.now_playing_song,
+    );
+    let now_playing_artist_text_color = get_color_or_default(
+        &globals,
+        "now_playing_artist_text_color",
+        defaults.theme.text_color.now_playing_artist,
+    );
+    let detail_view_header_title_text_color = get_color_or_default(
+        &globals,
+        "detail_view_header_title_text_color",
+        defaults.theme.text_color.detail_view_header_title,
+    );
+    let detail_view_header_subtitle_text_color = get_color_or_default(
+        &globals,
+        "detail_view_header_subtitle_text_color",
+        defaults.theme.text_color.detail_view_header_subtitle,
+    );
+    let library_list_title_text_color = get_color_or_default(
+        &globals,
+        "library_list_title_text_color",
+        defaults.theme.text_color.library_list_title,
+    );
+    let library_list_subtitle_text_color = get_color_or_default(
+        &globals,
+        "library_list_subtitle_text_color",
+        defaults.theme.text_color.library_list_subtitle,
+    );
+    let album_list_title_text_color = get_color_or_default(
+        &globals,
+        "album_list_title_text_color",
+        defaults.theme.text_color.album_list_title,
+    );
+    let album_list_subtitle_text_color = get_color_or_default(
+        &globals,
+        "album_list_subtitle_text_color",
+        defaults.theme.text_color.album_list_subtitle,
+    );
+
+    let text_color = TextColor {
+        now_playing_song: now_playing_song_text_color,
+        now_playing_artist: now_playing_artist_text_color,
+        detail_view_header_title: detail_view_header_title_text_color,
+        detail_view_header_subtitle: detail_view_header_subtitle_text_color,
+        library_list_title: library_list_title_text_color,
+        library_list_subtitle: library_list_subtitle_text_color,
+        album_list_title: album_list_title_text_color,
+        album_list_subtitle: album_list_subtitle_text_color,
+    };
+
+    let theme = Theme { bg, text_color };
 
     Config {
         music_dir: music_dir.to_string(),

@@ -3,6 +3,9 @@ export component TrackPlayingInfo {
     in property <string> current-artist: "---";
     in property <image> current-art;
 
+    in property <color> now-playing-song-text-color;
+    in property <color> now-playing-artist-text-color;
+
     HorizontalLayout {
         spacing: 10px;
 
@@ -24,7 +27,7 @@ export component TrackPlayingInfo {
 
             Text {
                 text: root.current-track-title;
-                color: #cdd6f4;
+                color: now-playing-song-text-color;
                 font-size: 15px;
                 horizontal-alignment: left;
                 overflow: elide;
@@ -32,7 +35,7 @@ export component TrackPlayingInfo {
 
             Text {
                 text: root.current-artist;
-                color: #cdd6f4;
+                color: now-playing-artist-text-color;
                 font-size: 12px;
                 horizontal-alignment: left;
                 overflow: elide;

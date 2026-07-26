@@ -5,6 +5,9 @@ export component DetailViewHeader {
     in property <string> title;
     in property <string> subtitle;
 
+    in property <color> detail-view-header-title-text-color;
+    in property <color> detail-view-header-subtitle-text-color;
+
     callback play-clicked();
 
     HorizontalLayout {
@@ -27,11 +30,13 @@ export component DetailViewHeader {
                 text: root.title;
                 font-size: 28px;
                 font-weight: 700;
+                color: detail-view-header-title-text-color;
             }
 
             Text {
                 text: root.subtitle;
                 font-size: 18px;
+                color: detail-view-header-subtitle-text-color;
             }
         }
 

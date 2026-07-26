@@ -7,6 +7,9 @@ export component LibraryView {
     in property <color> bg-color;
     callback album-opened(int);
 
+    in property <color> library-list-title-text-color;
+    in property <color> library-list-subtitle-text-color;
+
     Rectangle {
         background: root.bg-color;
         ListView {
@@ -15,6 +18,8 @@ export component LibraryView {
                 title: entry.title;
                 subtitle: entry.artist;
                 entry-clicked => { root.album-opened(i) }
+                library-list-title-text-color: root.library-list-title-text-color;
+                library-list-subtitle-text-color: root.library-list-subtitle-text-color;
             }
         }
     }

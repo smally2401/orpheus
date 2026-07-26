@@ -4,7 +4,7 @@ A local-first music player built in Rust, with a UI powered by
 [Slint](https://slint.dev) and a configuration system that's a real Lua
 script instead of a static file.
 
-> **Status:** early, actively developed (`v0.1.0`). Expect rough edges.
+> **Status:** early, actively developed (`v0.2.0`). Expect rough edges.
 
 <!-- todo: screenshots -->
 <!-- library view -->

@@ -9,6 +9,11 @@ export component AlbumView {
     callback play-album-clicked;
     callback play-track-clicked(int);
 
+    in property <color> detail-view-header-title-text-color;
+    in property <color> detail-view-header-subtitle-text-color;
+    in property <color> album-list-title-text-color;
+    in property <color> album-list-subtitle-text-color;
+
     Rectangle {
     background: root.bg-color;
 
@@ -20,6 +25,8 @@ export component AlbumView {
                 art: root.album.art;
                 title: root.album.title;
                 subtitle: root.album.artist;
+                detail-view-header-title-text-color: root.detail-view-header-title-text-color;
+                detail-view-header-subtitle-text-color: root.detail-view-header-subtitle-text-color;
                 play-clicked => { root.play-album-clicked() }
             }
 
@@ -33,10 +40,12 @@ export component AlbumView {
                             Text { 
                                 text: entry.title;
                                 font-size: 15px;
+                                color: root.album-list-title-text-color;
                             }
                             Text { 
                                 text: entry.artist;
                                 font-size: 12px;
+                                color: root.album-list-subtitle-text-color;
                             }
                         }
                     }

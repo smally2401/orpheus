@@ -22,6 +22,9 @@ export component NowPlayingBar {
 
     in property <color> bg-color;
 
+    in property <color> now-playing-song-text-color;
+    in property <color> now-playing-artist-text-color;
+
     Rectangle {
         height: 80px;
         background: root.bg-color;
@@ -37,6 +40,9 @@ export component NowPlayingBar {
                 current-track-title: root.current-track-title;
                 current-artist: root.current-artist;
                 current-art: root.current-art;
+
+                now-playing-song-text-color: root.now-playing-song-text-color;
+                now-playing-artist-text-color: root.now-playing-artist-text-color;
             }
 
             VerticalLayout {

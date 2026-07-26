@@ -43,12 +43,21 @@ async fn main() -> Result<(), slint::PlatformError> {
 
 /// Applies the user's color theme to the UI.
 fn apply_theme(ui: &AppWindow, theme: &Theme) {
-    ui.set_sidebar_bg(theme.sidebar_bg);
-    ui.set_now_playing_bg(theme.now_playing_bar_bg);
-    ui.set_library_view_bg(theme.library_view_bg);
-    ui.set_album_view_bg(theme.album_view_bg);
-    ui.set_playlists_view_bg(theme.playlists_view_bg);
-    ui.set_open_playlist_view_bg(theme.open_playlist_view_bg);
+    ui.set_sidebar_bg(theme.bg.sidebar);
+    ui.set_now_playing_bg(theme.bg.now_playing_bar);
+    ui.set_library_view_bg(theme.bg.library_view);
+    ui.set_album_view_bg(theme.bg.album_view);
+    ui.set_playlists_view_bg(theme.bg.playlists_view);
+    ui.set_open_playlist_view_bg(theme.bg.open_playlist_view);
+
+    ui.set_now_playing_song_text_color(theme.text_color.now_playing_song);
+    ui.set_now_playing_artist_text_color(theme.text_color.now_playing_artist);
+    ui.set_detail_view_header_title_text_color(theme.text_color.detail_view_header_title);
+    ui.set_detail_view_header_subtitle_text_color(theme.text_color.detail_view_header_subtitle);
+    ui.set_library_list_title_text_color(theme.text_color.library_list_title);
+    ui.set_library_list_subtitle_text_color(theme.text_color.library_list_subtitle);
+    ui.set_album_list_title_text_color(theme.text_color.album_list_title);
+    ui.set_album_list_subtitle_text_color(theme.text_color.album_list_subtitle);
 }
 
 /// Attaches every Slint UI callback to a `PlayerCommand` sent over `tx`.

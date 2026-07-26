@@ -9,6 +9,15 @@ if hour >= 22 or hour <= 7 then
     album_view_bg = "#1f1d2f"
     playlists_view_bg = "#1f1d2f"
     open_playlist_view_bg = "#1f1d2f"
+
+    now_playing_song_text_color = "#cdd6f4"
+    now_playing_artist_text_color = "#cdd6f4"
+    detail_view_header_title_text_color = "#cdd6f4"
+    detail_view_header_subtitle_text_color = "#cdd6f4"
+    library_list_title_text_color = "#cdd6f4"
+    library_list_subtitle_text_color = "#cdd6f4"
+    album_list_title_text_color = "#cdd6f4"
+    album_list_subtitle_text_color = "#cdd6f4"
 else
     -- daytime
     sidebar_bg = "#e6e8f5"
@@ -17,4 +26,13 @@ else
     album_view_bg = "#d6d4eb"
     playlists_view_bg = "#d6d4eb"
     open_playlist_view_bg = "#d6d4eb"
+
+    now_playing_song_text_color = "#1a1a1a"
+    now_playing_artist_text_color = "#1a1a1a"
+    detail_view_header_title_text_color = "#1a1a1a"
+    detail_view_header_subtitle_text_color = "#1a1a1a"
+    library_list_title_text_color = "#1a1a1a"
+    library_list_subtitle_text_color = "#1a1a1a"
+    album_list_title_text_color = "#1a1a1a"
+    album_list_subtitle_text_color = "#1a1a1a"
 end

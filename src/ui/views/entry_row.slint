@@ -3,6 +3,9 @@ export component EntryRow {
     in property <string> title;
     in property <string> subtitle;
 
+    in property <color> library-list-title-text-color;
+    in property <color> library-list-subtitle-text-color;
+
     callback entry-clicked();
 
     height: 65px;
@@ -28,10 +31,12 @@ export component EntryRow {
                     Text {
                         text: root.title;
                         font-size: 15px;
+                        color: root.library-list-title-text-color;
                     }
                     Text {
                         text: root.subtitle;
                         font-size: 12px;
+                        color: root.library-list-subtitle-text-color;
                     }
                 }
             }

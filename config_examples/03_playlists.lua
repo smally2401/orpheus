@@ -4,7 +4,8 @@ playlists = {
         songs = {
             "the-beatles/abbey-road/something.mp3",
             "metallica/black-album/enter-sandman.flac",
-        }
+        },
+        covers = "covers/cool-ass-pic.jpg"
     },
     {
         name = "Joy Division Discography",

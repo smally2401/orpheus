@@ -56,6 +56,15 @@ export component AppWindow inherits Window {
     in property <color> playlists-view-bg;
     in property <color> open-playlist-view-bg;
 
+    in property <color> now-playing-song-text-color;
+    in property <color> now-playing-artist-text-color;
+    in property <color> detail-view-header-title-text-color;
+    in property <color> detail-view-header-subtitle-text-color;
+    in property <color> library-list-title-text-color;
+    in property <color> library-list-subtitle-text-color;
+    in property <color> album-list-title-text-color;
+    in property <color> album-list-subtitle-text-color;
+
     VerticalLayout {
 
         HorizontalLayout {
@@ -73,6 +82,10 @@ export component AppWindow inherits Window {
                     AlbumView {
                         album: root.viewing-album;
                         bg-color: root.album-view-bg;
+                        detail-view-header-title-text-color: root.detail-view-header-title-text-color;
+                        detail-view-header-subtitle-text-color: root.detail-view-header-subtitle-text-color;
+                        album-list-title-text-color: root.album-list-title-text-color;
+                        album-list-subtitle-text-color: root.album-list-subtitle-text-color;
                         play-album-clicked => { root.play-album-clicked() }
                         play-track-clicked(idx) => { root.play-track-clicked(idx) }
                     }
@@ -81,6 +94,8 @@ export component AppWindow inherits Window {
                     LibraryView {
                         albums: root.albums;
                         bg-color: root.library-view-bg;
+                        library-list-title-text-color: root.library-list-title-text-color;
+                        library-list-subtitle-text-color: root.library-list-subtitle-text-color;
                         album-opened(i) => {
                             root.current-view = View.Album;
                             root.viewing-album = root.albums[i];
@@ -91,6 +106,10 @@ export component AppWindow inherits Window {
                 if root.current-view == View.OpenPlaylist:
                     OpenPlaylistView {
                         bg-color: root.open-playlist-view-bg;
+                        detail-view-header-title-text-color: root.detail-view-header-title-text-color;
+                        detail-view-header-subtitle-text-color: root.detail-view-header-subtitle-text-color;
+                        album-list-title-text-color: root.album-list-title-text-color;
+                        album-list-subtitle-text-color: root.album-list-subtitle-text-color;
                         playlist: root.viewing-playlist;
                         play-playlist-clicked => { root.play-playlist-clicked() }
                         play-playlist-track-clicked(idx) => { root.play-playlist-track-clicked(idx) }
@@ -99,6 +118,8 @@ export component AppWindow inherits Window {
                 if root.current-view == View.Playlists:
                     PlaylistsView {
                         bg-color: root.playlists-view-bg;
+                        library-list-title-text-color: root.library-list-title-text-color;
+                        library-list-subtitle-text-color: root.library-list-subtitle-text-color;
                         playlists: root.playlists;
                         playlist-opened(i) => {
                             root.current-view = View.OpenPlaylist;
@@ -124,6 +145,8 @@ export component AppWindow inherits Window {
             volume-changed(vol) => { root.volume-changed(vol) }
             current-art: root.current-art;
             bg-color: root.now-playing-bg;
+            now-playing-song-text-color: root.now-playing-song-text-color;
+            now-playing-artist-text-color: root.now-playing-artist-text-color;
         }
     }
 }

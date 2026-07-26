@@ -6,6 +6,11 @@ export component OpenPlaylistView {
     in property <SlintPlaylist> playlist;
     in property <color> bg-color;
 
+    in property <color> detail-view-header-title-text-color;
+    in property <color> detail-view-header-subtitle-text-color;
+    in property <color> album-list-title-text-color;
+    in property <color> album-list-subtitle-text-color;
+
     callback play-playlist-clicked;
     callback play-playlist-track-clicked(int);
 
@@ -19,6 +24,8 @@ export component OpenPlaylistView {
                 art: root.playlist.art;
                 title: root.playlist.name;
                 subtitle: "TRACK_COUNT tracks";
+                detail-view-header-title-text-color: root.detail-view-header-title-text-color;
+                detail-view-header-subtitle-text-color: root.detail-view-header-subtitle-text-color;
                 play-clicked => { root.play-playlist-clicked() }
             }
 
@@ -42,10 +49,12 @@ export component OpenPlaylistView {
                                 Text {
                                     text: entry.title;
                                     font-size: 15px;
+                                    color: root.album-list-title-text-color;
                                 }
                                 Text {
                                     text: entry.artist;
                                     font-size: 12px;
+                                    color: root.album-list-subtitle-text-color;
                                 }
                             }
                         }
