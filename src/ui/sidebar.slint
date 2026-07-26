@@ -3,6 +3,7 @@ export component Sidebar {
     callback playlists-selected();
 
     in property <color> bg-color;
+    in property <color> sidebar-text-color;
 
     width: 150px;
 
@@ -24,6 +25,7 @@ export component Sidebar {
                     Text {
                         text: "Library";
                         font-size: 18px;
+                        color: root.sidebar-text-color;
                     }
                     clicked => { library-selected() }
                 }
@@ -39,6 +41,7 @@ export component Sidebar {
                     Text {
                         text: "Playlists";
                         font-size: 18px;
+                        color: root.sidebar-text-color;
                     }
                     clicked => { playlists-selected() }
                 }

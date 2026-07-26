@@ -10,6 +10,9 @@ All notable changes to Orpheus will be documented in this file.
 - Repeat mode, toggleable between off, queue and track modes
 - Playlists now show album art for each track
 - Custom images for playlists
+- New Lua settings:
+  - Text color
+  - Text size
 
 ---
 

@@ -19,6 +19,15 @@ See the `config_examples/` folder for runnable examples.
 | `album_view_bg` | string (hex color) | `"#1f1d2f"` | Background color of an opened album. |
 | `playlists_view_bg` | string (hex color) | `"#1f1d2f"` | Background color of the playlists section. |
 | `open_playlist_view_bg` | string (hex color) | `"#1f1d2f"` | Background color of an opened playlist. |
+| `sidebar_text_color` | string (hex color) | `#cdd6f4` | Color of sidebar text. |
+| `now_playing_song_text_color` | string (hex color) | `#cdd6f4` | Color of song title text in bottom bar. |
+| `now_playing_artist_text_color` | string (hex color) | `#cdd6f4` | Color of artist name text in bottom bar. |
+| `detail_view_header_title_text_color` | string (hex color) | `#cdd6f4` | Color of the album/playlist title at the top of an open album/playlist. |
+| `detail_view_header_subtitle_text_color` | string (hex color) | `#cdd6f4` | Color of the subtitle below the header title (artist/track count). |
+| `library_list_title_text_color` | string (hex color) | `#cdd6f4` | Color of the album/playlist title in the list views. |
+| `library_list_subtitle_text_color` | string (hex color) | `#cdd6f4` | Color of the subtitle below the entry title (artist/track count). |
+| `album_list_title_text_color` | string (hex color) | `#cdd6g4` | Color of the song titles inside open album/playlist views. |
+| `album_list_subtitle_text_color` | string (hex color) | `#cdd6g4` | Color of the artist names inside open album/playlist views. |
 | `playlists` | table | `{}` | A list of playlist definitions. See below. |
 
 Colors must be 6-digit hex strings, with or without a leading `#`. Anything

@@ -50,6 +50,7 @@ fn apply_theme(ui: &AppWindow, theme: &Theme) {
     ui.set_playlists_view_bg(theme.bg.playlists_view);
     ui.set_open_playlist_view_bg(theme.bg.open_playlist_view);
 
+    ui.set_sidebar_text_color(theme.text_color.sidebar);
     ui.set_now_playing_song_text_color(theme.text_color.now_playing_song);
     ui.set_now_playing_artist_text_color(theme.text_color.now_playing_artist);
     ui.set_detail_view_header_title_text_color(theme.text_color.detail_view_header_title);

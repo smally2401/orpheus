@@ -56,6 +56,7 @@ export component AppWindow inherits Window {
     in property <color> playlists-view-bg;
     in property <color> open-playlist-view-bg;
 
+    in property <color> sidebar-text-color;
     in property <color> now-playing-song-text-color;
     in property <color> now-playing-artist-text-color;
     in property <color> detail-view-header-title-text-color;
@@ -74,6 +75,7 @@ export component AppWindow inherits Window {
                 library-selected => { root.current-view = View.Library }
                 playlists-selected => { root.current-view = View.Playlists }
                 bg-color: root.sidebar-bg;
+                sidebar-text-color: root.sidebar-text-color;
             }
 
             VerticalLayout {

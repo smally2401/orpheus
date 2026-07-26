@@ -27,6 +27,7 @@ pub struct Background {
 }
 
 pub struct TextColor {
+    pub sidebar: Color,
     pub now_playing_song: Color,
     pub now_playing_artist: Color,
     pub detail_view_header_title: Color,
@@ -61,6 +62,7 @@ impl Default for Theme {
         };
 
         let text_color = TextColor {
+            sidebar: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
             now_playing_song: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
             now_playing_artist: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
             detail_view_header_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
@@ -142,6 +144,7 @@ album_view_bg = "#1f1d2f"
 playlists_view_bg = "#1f1d2f"
 open_playlist_view_bg = "#1f1d2f"
 
+sidebar_text_color = "#cdd6f4"
 now_playing_song_text_color = "#cdd6f4"
 now_playing_artist_text_color = "#cdd6f4"
 detail_view_header_title_text_color = "#cdd6f4"
@@ -267,6 +270,7 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
         open_playlist_view: open_playlist_view_bg,
     };
 
+    let sidebar_text_color = get_color_or_default(&globals, "sidebar_text_color", defaults.theme.text_color.sidebar);
     let now_playing_song_text_color = get_color_or_default(
         &globals,
         "now_playing_song_text_color",
@@ -309,6 +313,7 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
     );
 
     let text_color = TextColor {
+        sidebar: sidebar_text_color,
         now_playing_song: now_playing_song_text_color,
         now_playing_artist: now_playing_artist_text_color,
         detail_view_header_title: detail_view_header_title_text_color,
