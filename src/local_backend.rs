@@ -186,7 +186,7 @@ impl LocalBackend {
 
         let playlists = build_playlists(path, playlist_defs);
 
-        LocalBackend {
+        Self {
             _stream: stream,
             player,
             library,

@@ -11,12 +11,6 @@ use crate::utils::expand_tilde;
 use slint::Color;
 use std::path::PathBuf;
 
-/// The UI color palette.
-pub struct Theme {
-    pub bg: Background,
-    pub text_color: TextColor,
-}
-
 pub struct Background {
     pub sidebar: Color,
     pub now_playing_bar: Color,
@@ -24,6 +18,19 @@ pub struct Background {
     pub album_view: Color,
     pub playlists_view: Color,
     pub open_playlist_view: Color,
+}
+
+impl Default for Background {
+    fn default() -> Self {
+        Self {
+            sidebar: Color::from_rgb_u8(0x0e, 0x10, 0x1d),
+            now_playing_bar: Color::from_rgb_u8(0x0a, 0x0a, 0x0f),
+            library_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
+            album_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
+            playlists_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
+            open_playlist_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
+        }
+    }
 }
 
 pub struct TextColor {
@@ -38,7 +45,24 @@ pub struct TextColor {
     pub album_list_subtitle: Color,
 }
 
+impl Default for TextColor {
+    fn default() -> Self {
+        Self {
+            sidebar: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            now_playing_song: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            now_playing_artist: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            detail_view_header_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            detail_view_header_subtitle: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            library_list_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            library_list_subtitle: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            album_list_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            album_list_subtitle: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+        }
+    }
+}
+
 pub struct TextSize {
+    pub sidebar: u32,
     pub now_playing_song: u32,
     pub now_playing_artist: u32,
     pub detail_view_header_title: u32,
@@ -49,31 +73,10 @@ pub struct TextSize {
     pub album_list_subtitle: u32,
 }
 
-// todo: separate defaults for each struct
-impl Default for Theme {
-    fn default() -> Theme {
-        let bg = Background {
-            sidebar: Color::from_rgb_u8(0x0e, 0x10, 0x1d),
-            now_playing_bar: Color::from_rgb_u8(0x0a, 0x0a, 0x0f),
-            library_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
-            album_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
-            playlists_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
-            open_playlist_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
-        };
-
-        let text_color = TextColor {
-            sidebar: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            now_playing_song: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            now_playing_artist: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            detail_view_header_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            detail_view_header_subtitle: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            library_list_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            library_list_subtitle: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            album_list_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            album_list_subtitle: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-        };
-
-        let text_size = TextSize {
+impl Default for TextSize {
+    fn default() -> Self {
+        Self {
+            sidebar: 18,
             now_playing_song: 15,
             now_playing_artist: 12,
             detail_view_header_title: 28,
@@ -82,10 +85,16 @@ impl Default for Theme {
             library_list_subtitle: 12,
             album_list_title: 15,
             album_list_subtitle: 12,
-        };
-
-        Theme { bg, text_color }
+        }
     }
+}
+
+/// The UI color palette.
+#[derive(Default)]
+pub struct Theme {
+    pub bg: Background,
+    pub text_color: TextColor,
+    pub text_size: TextSize,
 }
 
 /// Fully resolved configuration, ready for the rest of the app to consume.
@@ -240,79 +249,91 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
 
     let playlists = get_playlists(&globals);
 
-    let sidebar_bg = get_color_or_default(&globals, "sidebar_bg", defaults.theme.bg.sidebar);
-    let now_playing_bar_bg = get_color_or_default(
-        &globals,
-        "now_playing_bar_bg",
-        defaults.theme.bg.now_playing_bar,
-    );
-    let library_view_bg =
-        get_color_or_default(&globals, "library_view_bg", defaults.theme.bg.library_view);
-    let album_view_bg =
-        get_color_or_default(&globals, "album_view_bg", defaults.theme.bg.album_view);
-    let playlists_view_bg = get_color_or_default(
-        &globals,
-        "playlists_view_bg",
-        defaults.theme.bg.playlists_view,
-    );
+    let bg = load_backgrounds(&globals, &defaults.theme.bg);
+    let text_color = load_text_colors(&globals, &defaults.theme.text_color);
+    let text_size = load_text_sizes(&globals, &defaults.theme.text_size);
+
+    let theme = Theme {
+        bg,
+        text_color,
+        text_size,
+    };
+
+    Config {
+        music_dir: music_dir.to_string(),
+        playlists,
+        theme,
+    }
+}
+
+fn load_backgrounds(globals: &mlua::Table, defaults: &Background) -> Background {
+    let sidebar_bg = get_color_or_default(globals, "sidebar_bg", defaults.sidebar);
+    let now_playing_bar_bg =
+        get_color_or_default(globals, "now_playing_bar_bg", defaults.now_playing_bar);
+    let library_view_bg = get_color_or_default(globals, "library_view_bg", defaults.library_view);
+    let album_view_bg = get_color_or_default(globals, "album_view_bg", defaults.album_view);
+    let playlists_view_bg =
+        get_color_or_default(globals, "playlists_view_bg", defaults.playlists_view);
     let open_playlist_view_bg = get_color_or_default(
-        &globals,
+        globals,
         "open_playlist_view_bg",
-        defaults.theme.bg.open_playlist_view,
+        defaults.open_playlist_view,
     );
 
-    let bg = Background {
+    Background {
         sidebar: sidebar_bg,
         now_playing_bar: now_playing_bar_bg,
         library_view: library_view_bg,
         album_view: album_view_bg,
         playlists_view: playlists_view_bg,
         open_playlist_view: open_playlist_view_bg,
-    };
+    }
+}
 
-    let sidebar_text_color = get_color_or_default(&globals, "sidebar_text_color", defaults.theme.text_color.sidebar);
+fn load_text_colors(globals: &mlua::Table, defaults: &TextColor) -> TextColor {
+    let sidebar_text_color = get_color_or_default(globals, "sidebar_text_color", defaults.sidebar);
     let now_playing_song_text_color = get_color_or_default(
-        &globals,
+        globals,
         "now_playing_song_text_color",
-        defaults.theme.text_color.now_playing_song,
+        defaults.now_playing_song,
     );
     let now_playing_artist_text_color = get_color_or_default(
-        &globals,
+        globals,
         "now_playing_artist_text_color",
-        defaults.theme.text_color.now_playing_artist,
+        defaults.now_playing_artist,
     );
     let detail_view_header_title_text_color = get_color_or_default(
-        &globals,
+        globals,
         "detail_view_header_title_text_color",
-        defaults.theme.text_color.detail_view_header_title,
+        defaults.detail_view_header_title,
     );
     let detail_view_header_subtitle_text_color = get_color_or_default(
-        &globals,
+        globals,
         "detail_view_header_subtitle_text_color",
-        defaults.theme.text_color.detail_view_header_subtitle,
+        defaults.detail_view_header_subtitle,
     );
     let library_list_title_text_color = get_color_or_default(
-        &globals,
+        globals,
         "library_list_title_text_color",
-        defaults.theme.text_color.library_list_title,
+        defaults.library_list_title,
     );
     let library_list_subtitle_text_color = get_color_or_default(
-        &globals,
+        globals,
         "library_list_subtitle_text_color",
-        defaults.theme.text_color.library_list_subtitle,
+        defaults.library_list_subtitle,
     );
     let album_list_title_text_color = get_color_or_default(
-        &globals,
+        globals,
         "album_list_title_text_color",
-        defaults.theme.text_color.album_list_title,
+        defaults.album_list_title,
     );
     let album_list_subtitle_text_color = get_color_or_default(
-        &globals,
+        globals,
         "album_list_subtitle_text_color",
-        defaults.theme.text_color.album_list_subtitle,
+        defaults.album_list_subtitle,
     );
 
-    let text_color = TextColor {
+    TextColor {
         sidebar: sidebar_text_color,
         now_playing_song: now_playing_song_text_color,
         now_playing_artist: now_playing_artist_text_color,
@@ -322,14 +343,48 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
         library_list_subtitle: library_list_subtitle_text_color,
         album_list_title: album_list_title_text_color,
         album_list_subtitle: album_list_subtitle_text_color,
-    };
+    }
+}
 
-    let theme = Theme { bg, text_color };
+fn load_text_sizes(globals: &mlua::Table, defaults: &TextSize) -> TextSize {
+    let sidebar_text_size = globals
+        .get::<u32>("sidebar_text_size")
+        .unwrap_or(defaults.sidebar);
+    let now_playing_song_text_size = globals
+        .get::<u32>("now_playing_song_text_size")
+        .unwrap_or(defaults.now_playing_song);
+    let now_playing_artist_text_size = globals
+        .get::<u32>("now_playing_artist_text_size")
+        .unwrap_or(defaults.now_playing_artist);
+    let detail_view_header_title_text_size = globals
+        .get::<u32>("detail_view_header_title_text_size")
+        .unwrap_or(defaults.detail_view_header_title);
+    let detail_view_header_subtitle_text_size = globals
+        .get::<u32>("detail_view_header_subtitle_text_size")
+        .unwrap_or(defaults.detail_view_header_subtitle);
+    let library_list_title_text_size = globals
+        .get::<u32>("library_list_title_text_size")
+        .unwrap_or(defaults.library_list_title);
+    let library_list_subtitle_text_size = globals
+        .get::<u32>("library_list_subtitle_text_size")
+        .unwrap_or(defaults.library_list_subtitle);
+    let album_list_title_text_size = globals
+        .get::<u32>("album_list_title_text_size")
+        .unwrap_or(defaults.album_list_title);
+    let album_list_subtitle_text_size = globals
+        .get::<u32>("album_list_subtitle_text_size")
+        .unwrap_or(defaults.album_list_subtitle);
 
-    Config {
-        music_dir: music_dir.to_string(),
-        playlists,
-        theme,
+    TextSize {
+        sidebar: sidebar_text_size,
+        now_playing_song: now_playing_song_text_size,
+        now_playing_artist: now_playing_artist_text_size,
+        detail_view_header_title: detail_view_header_title_text_size,
+        detail_view_header_subtitle: detail_view_header_subtitle_text_size,
+        library_list_title: library_list_title_text_size,
+        library_list_subtitle: library_list_subtitle_text_size,
+        album_list_title: album_list_title_text_size,
+        album_list_subtitle: album_list_subtitle_text_size,
     }
 }
 
