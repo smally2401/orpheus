@@ -16,3 +16,13 @@ library_list_title_text_color = "#cdd6f4"
 library_list_subtitle_text_color = "#cdd6f4"
 album_list_title_text_color = "#cdd6f4"
 album_list_subtitle_text_color = "#cdd6f4"
+
+sidebar_text_size = 18
+now_playing_song_text_size = 15
+now_playing_artist_text_size = 12
+detail_view_header_title_text_size = 28
+detail_view_header_subtitle_text_size = 18
+library_list_title_text_size = 15
+library_list_subtitle_text_size = 12
+album_list_title_text_size = 15
+album_list_subtitle_text_size = 12

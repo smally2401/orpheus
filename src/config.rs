@@ -62,15 +62,15 @@ impl Default for TextColor {
 }
 
 pub struct TextSize {
-    pub sidebar: u32,
-    pub now_playing_song: u32,
-    pub now_playing_artist: u32,
-    pub detail_view_header_title: u32,
-    pub detail_view_header_subtitle: u32,
-    pub library_list_title: u32,
-    pub library_list_subtitle: u32,
-    pub album_list_title: u32,
-    pub album_list_subtitle: u32,
+    pub sidebar: i32,
+    pub now_playing_song: i32,
+    pub now_playing_artist: i32,
+    pub detail_view_header_title: i32,
+    pub detail_view_header_subtitle: i32,
+    pub library_list_title: i32,
+    pub library_list_subtitle: i32,
+    pub album_list_title: i32,
+    pub album_list_subtitle: i32,
 }
 
 impl Default for TextSize {
@@ -161,7 +161,18 @@ detail_view_header_subtitle_text_color = "#cdd6f4"
 library_list_title_text_color = "#cdd6f4"
 library_list_subtitle_text_color = "#cdd6f4"
 album_list_title_text_color = "#cdd6f4"
-album_list_subtitle_text_color = "#cdd6f4""##;
+album_list_subtitle_text_color = "#cdd6f4"
+
+sidebar_text_size = 18
+now_playing_song_text_size = 15
+now_playing_artist_text_size = 12
+detail_view_header_title_text_size = 28
+detail_view_header_subtitle_text_size = 18
+library_list_title_text_size = 15
+library_list_subtitle_text_size = 12
+album_list_title_text_size = 15
+album_list_subtitle_text_size = 12
+"##;
 
 /// Entry point: locates `config.lua`, then runs it to produce a `Config`.
 ///
@@ -214,7 +225,7 @@ fn load_config_file() -> ConfigFile {
     ConfigFile::Custom(file_contents)
 }
 
-/// Firts pass of loading: runs the script on a throwaway `Lua` instance
+/// First pass of loading: runs the script on a throwaway `Lua` instance
 /// with no custom functions registered, purely to read back `music_dir`.
 ///
 /// The script is expected to potentially error partway through this pass
@@ -348,31 +359,31 @@ fn load_text_colors(globals: &mlua::Table, defaults: &TextColor) -> TextColor {
 
 fn load_text_sizes(globals: &mlua::Table, defaults: &TextSize) -> TextSize {
     let sidebar_text_size = globals
-        .get::<u32>("sidebar_text_size")
+        .get::<i32>("sidebar_text_size")
         .unwrap_or(defaults.sidebar);
     let now_playing_song_text_size = globals
-        .get::<u32>("now_playing_song_text_size")
+        .get::<i32>("now_playing_song_text_size")
         .unwrap_or(defaults.now_playing_song);
     let now_playing_artist_text_size = globals
-        .get::<u32>("now_playing_artist_text_size")
+        .get::<i32>("now_playing_artist_text_size")
         .unwrap_or(defaults.now_playing_artist);
     let detail_view_header_title_text_size = globals
-        .get::<u32>("detail_view_header_title_text_size")
+        .get::<i32>("detail_view_header_title_text_size")
         .unwrap_or(defaults.detail_view_header_title);
     let detail_view_header_subtitle_text_size = globals
-        .get::<u32>("detail_view_header_subtitle_text_size")
+        .get::<i32>("detail_view_header_subtitle_text_size")
         .unwrap_or(defaults.detail_view_header_subtitle);
     let library_list_title_text_size = globals
-        .get::<u32>("library_list_title_text_size")
+        .get::<i32>("library_list_title_text_size")
         .unwrap_or(defaults.library_list_title);
     let library_list_subtitle_text_size = globals
-        .get::<u32>("library_list_subtitle_text_size")
+        .get::<i32>("library_list_subtitle_text_size")
         .unwrap_or(defaults.library_list_subtitle);
     let album_list_title_text_size = globals
-        .get::<u32>("album_list_title_text_size")
+        .get::<i32>("album_list_title_text_size")
         .unwrap_or(defaults.album_list_title);
     let album_list_subtitle_text_size = globals
-        .get::<u32>("album_list_subtitle_text_size")
+        .get::<i32>("album_list_subtitle_text_size")
         .unwrap_or(defaults.album_list_subtitle);
 
     TextSize {
@@ -388,7 +399,7 @@ fn load_text_sizes(globals: &mlua::Table, defaults: &TextSize) -> TextSize {
     }
 }
 
-/// Reads the `playlists` global, a Lua array of `{ name, songs, sort }`
+/// Reads the `playlists` global, a Lua array of `{ name, songs, sort, art }`
 /// tables, into `PlaylistDef`s.
 ///
 /// Missing or malformed entries are skipped individually rather than

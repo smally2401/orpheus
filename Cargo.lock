@@ -3769,6 +3769,7 @@ dependencies = [
  "mlua",
  "mpris-server",
  "mslnk",
+ "paste",
  "rand 0.10.2",
  "rodio",
  "slint",

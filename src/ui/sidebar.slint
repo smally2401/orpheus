@@ -4,6 +4,7 @@ export component Sidebar {
 
     in property <color> bg-color;
     in property <color> sidebar-text-color;
+    in property <int> sidebar-text-size;
 
     width: 150px;
 
@@ -24,7 +25,7 @@ export component Sidebar {
                 TouchArea {
                     Text {
                         text: "Library";
-                        font-size: 18px;
+                        font-size: sidebar-text-size * 1px;
                         color: root.sidebar-text-color;
                     }
                     clicked => { library-selected() }
@@ -40,7 +41,7 @@ export component Sidebar {
                 TouchArea {
                     Text {
                         text: "Playlists";
-                        font-size: 18px;
+                        font-size: sidebar-text-size * 1px;
                         color: root.sidebar-text-color;
                     }
                     clicked => { playlists-selected() }

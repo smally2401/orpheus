@@ -5,6 +5,8 @@ export component TrackPlayingInfo {
 
     in property <color> now-playing-song-text-color;
     in property <color> now-playing-artist-text-color;
+    in property <int> now-playing-song-text-size;
+    in property <int> now-playing-artist-text-size;
 
     HorizontalLayout {
         spacing: 10px;
@@ -27,16 +29,16 @@ export component TrackPlayingInfo {
 
             Text {
                 text: root.current-track-title;
-                color: now-playing-song-text-color;
-                font-size: 15px;
+                color: root.now-playing-song-text-color;
+                font-size: root.now-playing-song-text-size * 1px;
                 horizontal-alignment: left;
                 overflow: elide;
             }
 
             Text {
                 text: root.current-artist;
-                color: now-playing-artist-text-color;
-                font-size: 12px;
+                color: root.now-playing-artist-text-color;
+                font-size: root.now-playing-artist-text-size * 1px;
                 horizontal-alignment: left;
                 overflow: elide;
             }

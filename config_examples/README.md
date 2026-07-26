@@ -28,6 +28,15 @@ See the `config_examples/` folder for runnable examples.
 | `library_list_subtitle_text_color` | string (hex color) | `#cdd6f4` | Color of the subtitle below the entry title (artist/track count). |
 | `album_list_title_text_color` | string (hex color) | `#cdd6g4` | Color of the song titles inside open album/playlist views. |
 | `album_list_subtitle_text_color` | string (hex color) | `#cdd6g4` | Color of the artist names inside open album/playlist views. |
+| `sidebar_text_size` | int (px) | 18 | Size of sidebar text. |
+| `now_playing_song_text_size` | int (px) | 15 | Size of song title text in bottom bar. |
+| `now_playing_artist_text_size` | int (px) | 12 | Size of artist name size in bottom bar. |
+| `detail_view_header_title_text_size` | int (px) | 28 | Size of the album/playlist title at the top of an open album/playlist. |
+| `detail_view_header_subtitle_text_size` | int (px) | 18 | Size of the subtitle below the header title (artist/track count). |
+| `library_list_title_text_size` | int (px) | 15 | Size of the album/playlist title in the list views. |
+| `library_list_subtitle_text_size` | int (px) | 12 | Size of the subtitle below the entry title (artist/track count). |
+| `album_list_title_text_color` | int (px) | 15 | Size of the song titles inside open album/playlist views. |
+| `album_list_subtitle_text_color` | int (px) | 12 | Size of the artist names inside open album/playlist views. |
 | `playlists` | table | `{}` | A list of playlist definitions. See below. |
 
 Colors must be 6-digit hex strings, with or without a leading `#`. Anything
