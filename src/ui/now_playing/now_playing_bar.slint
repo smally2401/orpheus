@@ -20,6 +20,8 @@ export component NowPlayingBar {
     in property <string> current-artist: "---";
     in property <image> current-art;
 
+    in property <float> current-volume;
+
     in property <color> bg-color;
 
     in property <color> now-playing-song-text-color;
@@ -78,6 +80,7 @@ export component NowPlayingBar {
                 horizontal-stretch: 1;
                 min-width: 0;
                 preferred-width: 0;
+                current-volume: root.current-volume;
                 volume-changed(val) => { root.volume-changed(val) }
             }
         }

@@ -13,6 +13,7 @@ See the `config_examples/` folder for runnable examples.
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `music_dir` | string | `"~/Music"` | Path to your music library. `~/` is expanded to your home directory. |
+| `default_volume` | float (0.0-1.0) | 1.0 | Volume when opening the app. |
 | `sidebar_bg` | string (hex color) | `"#0e101d"` | Background color of the sidebar. |
 | `now_playing_bar_bg` | string (hex color) | `"#0a0a0f"` | Background color of the bottom bat. |
 | `library_view_bg` | string (hex color) | `"#1f1d2f"` | Background color of the library. |

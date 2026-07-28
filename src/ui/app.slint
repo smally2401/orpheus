@@ -28,6 +28,7 @@ export component AppWindow inherits Window {
     in property <image> current-art;
     in property <int> current-position: 0;
     in property <int> total-duration: 0;
+    in property <float> current-volume;
 
     in property <[SlintPlaylist]> playlists: [];
     in-out property <SlintPlaylist> viewing-playlist;
@@ -169,6 +170,7 @@ export component AppWindow inherits Window {
             current-track-title: root.current-track-title;
             current-artist: root.current-artist;
             volume-changed(vol) => { root.volume-changed(vol) }
+            current-volume: root.current-volume;
             current-art: root.current-art;
             bg-color: root.now-playing-bar-bg;
             now-playing-song-text-color: root.now-playing-song-text-color;

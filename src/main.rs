@@ -28,7 +28,8 @@ slint::include_modules!();
 async fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
     let config = load_config();
-    let (tx, library, playlists) = spawn_player_bridge(&ui, &config.music_dir, config.playlists);
+    let (tx, library, playlists) = spawn_player_bridge(&ui, &config.music_dir, config.playlists, config.default_volume);
+    ui.set_current_volume(config.default_volume);
 
     apply_theme(&ui, &config.theme);
 
@@ -121,8 +122,12 @@ fn wire_callbacks(ui: &AppWindow, tx: &Sender<PlayerCommand>) {
     });
 
     let tx_clone = tx.clone();
+    let ui_weak = ui.as_weak();
     ui.on_volume_changed(move |volume| {
         let _ = tx_clone.try_send(PlayerCommand::SetVolume(volume));
+        if let Some(ui) = ui_weak.upgrade() {
+            ui.set_current_volume(volume);
+        }
     });
 
     let tx_clone = tx.clone();

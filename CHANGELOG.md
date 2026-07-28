@@ -13,6 +13,7 @@ All notable changes to Orpheus will be documented in this file.
 - New Lua settings:
   - Text color
   - Text size
+  - Default volume
 
 ### Known limitations
 

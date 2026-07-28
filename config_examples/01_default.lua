@@ -1,4 +1,5 @@
 music_dir = "~/Music"
+default_volume = 1.0
 
 sidebar_bg = "#0e101d"
 now_playing_bar_bg = "#0a0a0f"

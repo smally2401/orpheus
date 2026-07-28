@@ -103,6 +103,7 @@ pub struct Theme {
 /// partially invalid `config.lua` never prevents the app from starting.
 pub struct Config {
     pub music_dir: String,
+    pub default_volume: f32,
     pub playlists: Vec<PlaylistDef>,
     pub theme: Theme,
 }
@@ -111,6 +112,7 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             music_dir: String::from("~/Music"),
+            default_volume: 1.0,
             playlists: Vec::new(),
             theme: Theme::default(),
         }
@@ -145,6 +147,7 @@ enum ConfigFile {
 }
 
 const DEFAULT_CONFIG_FILE: &str = r##"music_dir = "~/Music"
+default_volume = 1.0
 
 sidebar_bg = "#0e101d"
 now_playing_bar_bg = "#0a0a0f"
@@ -258,6 +261,10 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
     let globals = lua.globals();
     let defaults = Config::default();
 
+    let default_volume = globals
+        .get::<f32>("default_volume")
+        .unwrap_or(defaults.default_volume);
+
     let playlists = get_playlists(&globals);
 
     let bg = load_backgrounds(&globals, &defaults.theme.bg);
@@ -272,6 +279,7 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
 
     Config {
         music_dir: music_dir.to_string(),
+        default_volume: default_volume.min(1.0),
         playlists,
         theme,
     }

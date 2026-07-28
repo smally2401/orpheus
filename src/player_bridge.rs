@@ -189,13 +189,14 @@ pub fn spawn_player_bridge(
     ui: &AppWindow,
     music_dir: &str,
     playlist_defs: Vec<PlaylistDef>,
+    default_volume: f32,
 ) -> (
     mpsc::Sender<PlayerCommand>,
     Vec<SlintAlbum>,
     Vec<SlintPlaylist>,
 ) {
     let path = setup_music_dir(music_dir);
-    let mut local_backend = LocalBackend::new(&path, playlist_defs);
+    let mut local_backend = LocalBackend::new(&path, playlist_defs, default_volume);
     let library = build_slint_library(&local_backend);
     let playlists = build_slint_playlists(&local_backend);
 

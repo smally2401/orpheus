@@ -132,7 +132,7 @@ impl LocalBackend {
     ///
     /// Files that fail to read (corrupt, unsupported, permission denied,
     /// etc.) are silently skipped rather than aborting the whole scan.
-    pub fn new(path: &Path, playlist_defs: Vec<PlaylistDef>) -> Self {
+    pub fn new(path: &Path, playlist_defs: Vec<PlaylistDef>, default_volume: f32) -> Self {
         let entries = WalkDir::new(path)
             .into_iter()
             .filter_map(std::result::Result::ok);
@@ -185,6 +185,7 @@ impl LocalBackend {
         let player = rodio::Player::connect_new(mixer);
 
         let playlists = build_playlists(path, playlist_defs);
+        player.set_volume(default_volume);
 
         Self {
             _stream: stream,
