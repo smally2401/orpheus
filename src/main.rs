@@ -8,19 +8,19 @@
 
 mod config;
 mod local_backend;
+mod macros;
 mod mpris;
 mod player_bridge;
 mod utils;
-mod macros;
 
 use crate::config::Theme;
 use crate::config::load_config;
 use crate::player_bridge::PlayerCommand;
 use crate::player_bridge::spawn_player_bridge;
+use paste::paste;
 use slint::ModelRc;
 use slint::VecModel;
 use tokio::sync::mpsc::Sender;
-use paste::paste;
 
 slint::include_modules!();
 

@@ -14,6 +14,15 @@ All notable changes to Orpheus will be documented in this file.
   - Text color
   - Text size
 
+### Known limitations
+
+- macOS is not yet supported (Linux and Windows only)
+- Windows installer support hasn't been tested on a real Windows machine
+  yet
+- Playlists can't be created or edited from within the app
+- Control buttons don't render correctly if user doesn't have a font
+  that supports them installed
+
 ---
 
 ## [0.1.0] - 2026-07-20

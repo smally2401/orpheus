@@ -7,6 +7,8 @@ export component DetailViewHeader {
 
     in property <color> detail-view-header-title-text-color;
     in property <color> detail-view-header-subtitle-text-color;
+    in property <int> detail-view-header-title-text-size;
+    in property <int> detail-view-header-subtitle-text-size;
 
     callback play-clicked();
 
@@ -28,14 +30,14 @@ export component DetailViewHeader {
 
             Text {
                 text: root.title;
-                font-size: 28px;
+                font-size: root.detail-view-header-title-text-size * 1px;
                 font-weight: 700;
                 color: detail-view-header-title-text-color;
             }
 
             Text {
                 text: root.subtitle;
-                font-size: 18px;
+                font-size: root.detail-view-header-subtitle-text-size * 1px;
                 color: detail-view-header-subtitle-text-color;
             }
         }

@@ -8,6 +8,7 @@ import { PlaylistsView } from "views/playlists_view.slint";
 import { OpenPlaylistView } from "views/open_playlist_view.slint";
 
 import "../../assets/fonts/NotoSans-Regular.ttf";
+import "../../assets/fonts/HurmitNerdFont-Regular.otf";
 
 enum View { Library, Album, Playlists, OpenPlaylist }
 
@@ -97,8 +98,12 @@ export component AppWindow inherits Window {
                         bg-color: root.album-view-bg;
                         detail-view-header-title-text-color: root.detail-view-header-title-text-color;
                         detail-view-header-subtitle-text-color: root.detail-view-header-subtitle-text-color;
+                        detail-view-header-title-text-size: root.detail-view-header-title-text-size;
+                        detail-view-header-subtitle-text-size: root.detail-view-header-subtitle-text-size;
                         album-list-title-text-color: root.album-list-title-text-color;
                         album-list-subtitle-text-color: root.album-list-subtitle-text-color;
+                        album-list-title-text-size: root.album-list-title-text-size;
+                        album-list-subtitle-text-size: root.album-list-subtitle-text-size;
                         play-album-clicked => { root.play-album-clicked() }
                         play-track-clicked(idx) => { root.play-track-clicked(idx) }
                     }
@@ -109,6 +114,8 @@ export component AppWindow inherits Window {
                         bg-color: root.library-view-bg;
                         library-list-title-text-color: root.library-list-title-text-color;
                         library-list-subtitle-text-color: root.library-list-subtitle-text-color;
+                        library-list-title-text-size: root.library-list-title-text-size;
+                        library-list-subtitle-text-size: root.library-list-subtitle-text-size;
                         album-opened(i) => {
                             root.current-view = View.Album;
                             root.viewing-album = root.albums[i];
@@ -121,8 +128,12 @@ export component AppWindow inherits Window {
                         bg-color: root.open-playlist-view-bg;
                         detail-view-header-title-text-color: root.detail-view-header-title-text-color;
                         detail-view-header-subtitle-text-color: root.detail-view-header-subtitle-text-color;
+                        detail-view-header-title-text-size: root.detail-view-header-title-text-size;
+                        detail-view-header-subtitle-text-size: root.detail-view-header-subtitle-text-size;
                         album-list-title-text-color: root.album-list-title-text-color;
                         album-list-subtitle-text-color: root.album-list-subtitle-text-color;
+                        album-list-title-text-size: root.album-list-title-text-size;
+                        album-list-subtitle-text-size: root.album-list-subtitle-text-size;
                         playlist: root.viewing-playlist;
                         play-playlist-clicked => { root.play-playlist-clicked() }
                         play-playlist-track-clicked(idx) => { root.play-playlist-track-clicked(idx) }
@@ -133,6 +144,8 @@ export component AppWindow inherits Window {
                         bg-color: root.playlists-view-bg;
                         library-list-title-text-color: root.library-list-title-text-color;
                         library-list-subtitle-text-color: root.library-list-subtitle-text-color;
+                        library-list-title-text-size: root.library-list-title-text-size;
+                        library-list-subtitle-text-size: root.library-list-subtitle-text-size;
                         playlists: root.playlists;
                         playlist-opened(i) => {
                             root.current-view = View.OpenPlaylist;

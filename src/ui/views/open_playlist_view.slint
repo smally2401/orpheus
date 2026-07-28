@@ -8,8 +8,12 @@ export component OpenPlaylistView {
 
     in property <color> detail-view-header-title-text-color;
     in property <color> detail-view-header-subtitle-text-color;
+    in property <int> detail-view-header-title-text-size;
+    in property <int> detail-view-header-subtitle-text-size;
     in property <color> album-list-title-text-color;
     in property <color> album-list-subtitle-text-color;
+    in property <int> album-list-title-text-size;
+    in property <int> album-list-subtitle-text-size;
 
     callback play-playlist-clicked;
     callback play-playlist-track-clicked(int);
@@ -26,6 +30,8 @@ export component OpenPlaylistView {
                 subtitle: "TRACK_COUNT tracks";
                 detail-view-header-title-text-color: root.detail-view-header-title-text-color;
                 detail-view-header-subtitle-text-color: root.detail-view-header-subtitle-text-color;
+                detail-view-header-title-text-size: root.detail-view-header-title-text-size;
+                detail-view-header-subtitle-text-size: root.detail-view-header-subtitle-text-size;
                 play-clicked => { root.play-playlist-clicked() }
             }
 
@@ -48,12 +54,12 @@ export component OpenPlaylistView {
                                 alignment: center;
                                 Text {
                                     text: entry.title;
-                                    font-size: 15px;
+                                    font-size: root.album-list-title-text-size * 1px;
                                     color: root.album-list-title-text-color;
                                 }
                                 Text {
                                     text: entry.artist;
-                                    font-size: 12px;
+                                    font-size: root.album-list-subtitle-text-size * 1px;
                                     color: root.album-list-subtitle-text-color;
                                 }
                             }
