@@ -15,11 +15,11 @@ mod utils;
 
 use std::collections::HashMap;
 
-use crate::config::KeyAction;
-use crate::config::KeyCombo;
-use crate::config::Theme;
+use crate::config::keys::KeyAction;
+use crate::config::keys::KeyCombo;
+use crate::config::theme::Theme;
 use crate::config::WindowState;
-use crate::config::key_string_to_key_name;
+use crate::config::keys::key_string_to_key_name;
 use crate::config::load_config;
 use crate::player_bridge::PlayerCommand;
 use crate::player_bridge::spawn_player_bridge;

@@ -11,7 +11,7 @@ use crate::AppWindow;
 use crate::SlintAlbum;
 use crate::SlintPlaylist;
 use crate::SlintSongWithArt;
-use crate::config::PlaylistDef;
+use crate::config::playlist::PlaylistDef;
 use crate::local_backend::LocalBackend;
 use crate::local_backend::RepeatMode;
 use crate::mpris::MprisCommand;

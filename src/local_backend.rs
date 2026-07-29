@@ -6,7 +6,7 @@
 //! everything else in the app (UI, MPRIS) talks to it through its public
 //! methods rather than touching playback state directly.
 
-use crate::config::PlaylistDef;
+use crate::config::playlist::PlaylistDef;
 use lofty::file::AudioFile;
 use lofty::file::TaggedFile;
 use lofty::file::TaggedFileExt;
