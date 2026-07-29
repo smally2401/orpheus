@@ -34,6 +34,21 @@ export component AppWindow inherits Window {
     in-out property <SlintPlaylist> viewing-playlist;
     in-out property <int> viewing-playlist-index;
 
+    forward-focus: key-handler;
+    callback key_pressed_event(key: string, ctrl: bool, shift: bool, alt: bool);
+
+    key-handler := FocusScope {
+        key-pressed(event) => {
+            root.key_pressed_event(
+                event.text,
+                event.modifiers.control,
+                event.modifiers.shift,
+                event.modifiers.alt,
+            );
+            return accept;
+        }
+    }
+
     callback play-paused-clicked();
     callback next-track-clicked();
     callback prev-track-clicked();

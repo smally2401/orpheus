@@ -8,3 +8,22 @@ macro_rules! theme_apply {
         )*
     };
 }
+
+#[macro_export]
+macro_rules! define_keys {
+    ($ ( $key:ident ),* $(,)?) => {
+        pub const VALID_KEYS: &[&str] = &[
+            $( stringify!($key) ),*
+        ];
+
+        pub fn key_string_to_key_name(s: SharedString) -> Option<String> {
+            $(
+                if s == SharedString::from(Key::$key) {
+                    return Some(stringify!($key).to_string());
+                }
+            )*
+
+            None
+        }
+    };
+}

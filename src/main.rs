@@ -13,9 +13,14 @@ mod mpris;
 mod player_bridge;
 mod utils;
 
+use std::collections::HashMap;
+
+use crate::config::KeyAction;
+use crate::config::KeyCombo;
 use crate::config::Theme;
 use crate::config::WindowState;
 use crate::config::load_config;
+use crate::config::key_string_to_key_name;
 use crate::player_bridge::PlayerCommand;
 use crate::player_bridge::spawn_player_bridge;
 use paste::paste;
@@ -41,6 +46,7 @@ async fn main() -> Result<(), slint::PlatformError> {
     apply_theme(&ui, &config.theme);
 
     wire_callbacks(&ui, &tx);
+    handle_keymaps(&config.keymaps, &ui, &tx);
 
     let library_model = ModelRc::new(VecModel::from(library));
     ui.set_albums(library_model);
@@ -57,6 +63,21 @@ fn apply_window_config(ui: &AppWindow, window_state: &WindowState) {
         ui.window().set_size(LogicalSize::new(width, height));
     }
     ui.window().set_maximized(window_state.maximized);
+}
+
+fn handle_keymaps(
+    keymaps: &HashMap<KeyCombo, KeyAction>,
+    ui: &AppWindow,
+    tx: &Sender<PlayerCommand>,
+) {
+    let keymaps = keymaps.clone();
+    let tx_clone = tx.clone();
+    let ui_weak = ui.as_weak();
+
+    ui.on_key_pressed_event(move |key, ctrl, shift, alt| {
+        println!("KEY PRESSED\nKEY: {:?}\nCTRL: {ctrl}\nSHIFT: {shift}\nALT: {alt}",
+            key_string_to_key_name(key));
+    });
 }
 
 /// Applies the user's color theme to the UI.

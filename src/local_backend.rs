@@ -550,6 +550,10 @@ impl LocalBackend {
     pub fn get_repeat(&self) -> RepeatMode {
         self.repeat
     }
+
+    pub fn get_volume(&self) -> f32 {
+        self.player.volume()
+    }
 }
 
 /// Builds a `Song` from a sucessfully read `TaggedFile`.

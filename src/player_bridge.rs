@@ -45,7 +45,11 @@ pub enum PlayerCommand {
     SelectAlbum(usize),
     SelectTrack(usize, usize),
     SetPosition(usize),
+    SeekForward,
+    SeekBackward,
     SetVolume(f32),
+    VolumeUp,
+    VolumeDown,
     SelectPlaylist(usize),
     SelectPlaylistTrack(usize, usize),
     ToggleRepeat,
@@ -278,8 +282,28 @@ fn handle_command(
             let _ = local_backend.set_position(*dur);
             let _ = mpris_tx.try_send(MprisCommand::Seeked(*dur as u64));
         }
+        PlayerCommand::SeekForward => {
+            let current_pos = local_backend.get_current_position().as_secs();
+            let new_pos = current_pos + 10;
+            let _ = local_backend.set_position(new_pos as usize);
+            let _ = mpris_tx.try_send(MprisCommand::Seeked(new_pos));
+        }
+        PlayerCommand::SeekBackward => {
+            let current_pos = local_backend.get_current_position().as_secs();
+            let new_pos = current_pos.saturating_sub(10);
+            let _ = local_backend.set_position(new_pos as usize);
+            let _ = mpris_tx.try_send(MprisCommand::Seeked(new_pos));
+        }
         PlayerCommand::SetVolume(vol) => {
             local_backend.set_volume(*vol);
+        }
+        PlayerCommand::VolumeUp => {
+            let vol = (local_backend.get_volume() + 0.05).clamp(0.0, 1.0);
+            local_backend.set_volume(vol);
+        }
+        PlayerCommand::VolumeDown => {
+            let vol = (local_backend.get_volume() - 0.05).clamp(0.0, 1.0);
+            local_backend.set_volume(vol);
         }
         PlayerCommand::SelectPlaylist(i) => {
             let _ = local_backend.select_playlist(*i);

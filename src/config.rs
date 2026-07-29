@@ -7,9 +7,11 @@
 //! (see `load_config` and `load_lua`), and pulling typed values back out of
 //! Lua's global table.
 
+use crate::define_keys;
 use crate::utils::expand_tilde;
-use slint::Color;
-use std::collections::HashMap; 
+use slint::platform::Key;
+use slint::{Color, SharedString};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// Window geometry and state. `width` and `height` are `None` when the user
@@ -31,128 +33,128 @@ impl Default for WindowState {
     }
 }
 
-const VALID_KEYS: &[&str] = &[
-    "Backspace",
-    "Tab",
-    "Return",
-    "Escape",
-    "Backtab",
-    "Delete",
-    "AltGr",
-    "CapsLock",
-    "ShiftR",
-    "ControlR",
-    "Meta",
-    "MetaR",
-    "Space",
-    "UpArrow",
-    "DownArrow",
-    "LeftArrow",
-    "RightArrow",
-    "F1",
-    "F2",
-    "F3",
-    "F4",
-    "F5",
-    "F6",
-    "F7",
-    "F8",
-    "F9",
-    "F10",
-    "F11",
-    "F12",
-    "F13",
-    "F14",
-    "F15",
-    "F16",
-    "F17",
-    "F18",
-    "F19",
-    "F20",
-    "F21",
-    "F22",
-    "F23",
-    "F24",
-    "Insert",
-    "Home",
-    "End",
-    "PageUp",
-    "PageDown",
-    "ScrollLock",
-    "Pause",
-    "SysReq",
-    "Stop",
-    "Menu",
-    "Back",
-    "A",
-    "B",
-    "C",
-    "D",
-    "E",
-    "F",
-    "G",
-    "H",
-    "I",
-    "J",
-    "K",
-    "L",
-    "M",
-    "N",
-    "O",
-    "P",
-    "Q",
-    "R",
-    "S",
-    "T",
-    "U",
-    "V",
-    "W",
-    "X",
-    "Y",
-    "Z",
-    "Digit0",
-    "Digit1",
-    "Digit2",
-    "Digit3",
-    "Digit4",
-    "Digit5",
-    "Digit6",
-    "Digit7",
-    "Digit8",
-    "Digit9",
-    "Circumflex",
-    "Exclamation",
-    "DoubleQuote",
-    "Hash",
-    "Dollar",
-    "Percent",
-    "Ampersand",
-    "Underscore",
-    "OpenParen",
-    "CloseParen",
-    "Asterisk",
-    "Plus",
-    "Pipe",
-    "HyphenMinus",
-    "OpenCurlyBracket",
-    "CloseCurlyBracket",
-    "Tilde",
-    "Colon",
-    "Semicolon",
-    "LessThan",
-    "Equals",
-    "GreaterThan",
-    "QuestionMark",
-    "At",
-    "Comma",
-    "Period",
-    "Slash",
-    "BackQuote",
-    "OpenBracket",
-    "BackSlash",
-    "CloseBracket",
-    "Quote",
-];
+define_keys!(
+    Backspace,
+    Tab,
+    Return,
+    Escape,
+    Backtab,
+    Delete,
+    AltGr,
+    CapsLock,
+    ShiftR,
+    ControlR,
+    Meta,
+    MetaR,
+    Space,
+    UpArrow,
+    DownArrow,
+    LeftArrow,
+    RightArrow,
+    F1,
+    F2,
+    F3,
+    F4,
+    F5,
+    F6,
+    F7,
+    F8,
+    F9,
+    F10,
+    F11,
+    F12,
+    F13,
+    F14,
+    F15,
+    F16,
+    F17,
+    F18,
+    F19,
+    F20,
+    F21,
+    F22,
+    F23,
+    F24,
+    Insert,
+    Home,
+    End,
+    PageUp,
+    PageDown,
+    ScrollLock,
+    Pause,
+    SysReq,
+    Stop,
+    Menu,
+    Back,
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    I,
+    J,
+    K,
+    L,
+    M,
+    N,
+    O,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
+    Digit0,
+    Digit1,
+    Digit2,
+    Digit3,
+    Digit4,
+    Digit5,
+    Digit6,
+    Digit7,
+    Digit8,
+    Digit9,
+    Circumflex,
+    Exclamation,
+    DoubleQuote,
+    Hash,
+    Dollar,
+    Percent,
+    Ampersand,
+    Underscore,
+    OpenParen,
+    CloseParen,
+    Asterisk,
+    Plus,
+    Pipe,
+    HyphenMinus,
+    OpenCurlyBracket,
+    CloseCurlyBracket,
+    Tilde,
+    Colon,
+    Semicolon,
+    LessThan,
+    Equals,
+    GreaterThan,
+    QuestionMark,
+    At,
+    Comma,
+    Period,
+    Slash,
+    BackQuote,
+    OpenBracket,
+    BackSlash,
+    CloseBracket,
+    Quote
+);
 
 #[derive(Clone, Copy)]
 pub enum KeyAction {
@@ -167,7 +169,7 @@ pub enum KeyAction {
     OpenPlaylists,
 }
 
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Eq, Hash, PartialEq, Clone)]
 pub struct KeyCombo {
     pub key: String,
     pub ctrl: bool,
@@ -210,7 +212,10 @@ fn default_keymaps() -> HashMap<KeyCombo, KeyAction> {
     keymaps.insert(KeyCombo::from_key("RightArrow").unwrap(), KeyAction::Next);
     keymaps.insert(KeyCombo::from_key("LeftArrow").unwrap(), KeyAction::Prev);
     keymaps.insert(KeyCombo::from_key("UpArrow").unwrap(), KeyAction::VolumeUp);
-    keymaps.insert(KeyCombo::from_key("DownArrow").unwrap(), KeyAction::VolumeDown);
+    keymaps.insert(
+        KeyCombo::from_key("DownArrow").unwrap(),
+        KeyAction::VolumeDown,
+    );
     keymaps
 }
 
@@ -519,23 +524,21 @@ fn load_keymaps(globals: &mlua::Table) -> HashMap<KeyCombo, KeyAction> {
     let mut keymaps: HashMap<KeyCombo, KeyAction> = HashMap::new();
 
     for pair in keymaps_table.pairs::<String, String>() {
-        let Ok((key, value)) = pair else {
-            continue
-        };
+        let Ok((key, value)) = pair else { continue };
 
         let Some(action) = parse_action(&key) else {
             eprintln!("Error: {key} is not a valid keymap action.");
-            continue
+            continue;
         };
 
         let Some(combo) = KeyCombo::from_key(&value) else {
             eprintln!("Error: {value} is not a valid keymap combo.");
-            continue
+            continue;
         };
 
         if keymaps.contains_key(&combo) {
             eprintln!("Error: {key} appears more than once in keymaps.");
-            continue
+            continue;
         }
 
         keymaps.insert(combo, action);
