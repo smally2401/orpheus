@@ -14,6 +14,9 @@ See the `config_examples/` folder for runnable examples.
 | --- | --- | --- | --- |
 | `music_dir` | string | `"~/Music"` | Path to your music library. `~/` is expanded to your home directory. |
 | `default_volume` | float (0.0-1.0) | 1.0 | Volume when opening the app. |
+| `window_maximized` | bool | true | Starts the app maximized. |
+| `window_width` | float | None | Window width on launch. |
+| `window_height` | float | None | Window height on launch. |
 | `sidebar_bg` | string (hex color) | `"#0e101d"` | Background color of the sidebar. |
 | `now_playing_bar_bg` | string (hex color) | `"#0a0a0f"` | Background color of the bottom bat. |
 | `library_view_bg` | string (hex color) | `"#1f1d2f"` | Background color of the library. |
@@ -42,6 +45,8 @@ See the `config_examples/` folder for runnable examples.
 
 Colors must be 6-digit hex strings, with or without a leading `#`. Anything
 else falls back to the default for that key.
+
+Both `window_width` and `window_height` must exist for them to take effect.
 
 ## Defining playlists
 

@@ -14,6 +14,7 @@ All notable changes to Orpheus will be documented in this file.
   - Text color
   - Text size
   - Default volume
+  - Window size
 
 ### Known limitations
 

@@ -18,6 +18,7 @@ use crate::config::load_config;
 use crate::player_bridge::PlayerCommand;
 use crate::player_bridge::spawn_player_bridge;
 use paste::paste;
+use slint::LogicalSize;
 use slint::ModelRc;
 use slint::VecModel;
 use tokio::sync::mpsc::Sender;
@@ -28,8 +29,18 @@ slint::include_modules!();
 async fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
     let config = load_config();
-    let (tx, library, playlists) = spawn_player_bridge(&ui, &config.music_dir, config.playlists, config.default_volume);
+    let (tx, library, playlists) = spawn_player_bridge(
+        &ui,
+        &config.music_dir,
+        config.playlists,
+        config.default_volume,
+    );
+
     ui.set_current_volume(config.default_volume);
+    if let (Some(width), Some(height)) = (config.window_state.width, config.window_state.height) {
+        ui.window().set_size(LogicalSize::new(width, height));
+    }
+    ui.window().set_maximized(config.window_state.maximized);
 
     apply_theme(&ui, &config.theme);
 

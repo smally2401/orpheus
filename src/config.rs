@@ -11,6 +11,22 @@ use crate::utils::expand_tilde;
 use slint::Color;
 use std::path::PathBuf;
 
+pub struct WindowState {
+    pub width: Option<f32>,
+    pub height: Option<f32>,
+    pub maximized: bool,
+}
+
+impl Default for WindowState {
+    fn default() -> Self {
+        Self {
+            width: None,
+            height: None,
+            maximized: true,
+        }
+    }
+}
+
 pub struct Background {
     pub sidebar: Color,
     pub now_playing_bar: Color,
@@ -104,6 +120,7 @@ pub struct Theme {
 pub struct Config {
     pub music_dir: String,
     pub default_volume: f32,
+    pub window_state: WindowState,
     pub playlists: Vec<PlaylistDef>,
     pub theme: Theme,
 }
@@ -113,6 +130,7 @@ impl Default for Config {
         Config {
             music_dir: String::from("~/Music"),
             default_volume: 1.0,
+            window_state: WindowState::default(),
             playlists: Vec::new(),
             theme: Theme::default(),
         }
@@ -148,6 +166,7 @@ enum ConfigFile {
 
 const DEFAULT_CONFIG_FILE: &str = r##"music_dir = "~/Music"
 default_volume = 1.0
+window_maximized = true
 
 sidebar_bg = "#0e101d"
 now_playing_bar_bg = "#0a0a0f"
@@ -265,6 +284,8 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
         .get::<f32>("default_volume")
         .unwrap_or(defaults.default_volume);
 
+    let window_state = load_window_state(&globals, &defaults.window_state);
+
     let playlists = get_playlists(&globals);
 
     let bg = load_backgrounds(&globals, &defaults.theme.bg);
@@ -280,8 +301,24 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
     Config {
         music_dir: music_dir.to_string(),
         default_volume: default_volume.min(1.0),
+        window_state,
         playlists,
         theme,
+    }
+}
+
+fn load_window_state(globals: &mlua::Table, defaults: &WindowState) -> WindowState {
+    let width = globals.get::<f32>("window_width").ok();
+    let height = globals.get::<f32>("window_height").ok();
+    let maximized = match globals.get::<mlua::Value>("window_maximized") {
+        Ok(mlua::Value::Boolean(b)) => b,
+        _ => defaults.maximized,
+    };
+
+    WindowState {
+        width,
+        height,
+        maximized,
     }
 }
 
