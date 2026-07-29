@@ -156,11 +156,11 @@ define_keys!(
     Quote
 );
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum KeyAction {
-    PlayPause,
-    Next,
-    Prev,
+    TogglePlay,
+    NextTrack,
+    PrevTrack,
     VolumeUp,
     VolumeDown,
     SeekForward,
@@ -169,7 +169,7 @@ pub enum KeyAction {
     OpenPlaylists,
 }
 
-#[derive(Eq, Hash, PartialEq, Clone)]
+#[derive(Eq, Hash, PartialEq, Clone, Debug)]
 pub struct KeyCombo {
     pub key: String,
     pub ctrl: bool,
@@ -208,10 +208,22 @@ impl KeyCombo {
 
 fn default_keymaps() -> HashMap<KeyCombo, KeyAction> {
     let mut keymaps: HashMap<KeyCombo, KeyAction> = HashMap::new();
-    keymaps.insert(KeyCombo::from_key("Space").unwrap(), KeyAction::PlayPause);
-    keymaps.insert(KeyCombo::from_key("RightArrow").unwrap(), KeyAction::Next);
-    keymaps.insert(KeyCombo::from_key("LeftArrow").unwrap(), KeyAction::Prev);
-    keymaps.insert(KeyCombo::from_key("UpArrow").unwrap(), KeyAction::VolumeUp);
+    keymaps.insert(
+        KeyCombo::from_key("Space").unwrap(),
+        KeyAction::TogglePlay
+    );
+    keymaps.insert(
+        KeyCombo::from_key("N").unwrap(),
+        KeyAction::NextTrack,
+    );
+    keymaps.insert(
+        KeyCombo::from_key("P").unwrap(),
+        KeyAction::PrevTrack,
+    );
+    keymaps.insert(
+        KeyCombo::from_key("UpArrow").unwrap(),
+        KeyAction::VolumeUp
+    );
     keymaps.insert(
         KeyCombo::from_key("DownArrow").unwrap(),
         KeyAction::VolumeDown,
@@ -369,8 +381,8 @@ window_maximized = true
 
 keymaps = {
     play_pause = "Space",
-    next = "RightArrow",
-    prev = "LeftArrow",
+    next = "N",
+    prev = "P",
     volume_up = "UpArrow",
     volume_down = "DownArrow",
 }
@@ -549,9 +561,9 @@ fn load_keymaps(globals: &mlua::Table) -> HashMap<KeyCombo, KeyAction> {
 
 fn parse_action(str: &str) -> Option<KeyAction> {
     match str {
-        "play_pause" => Some(KeyAction::PlayPause),
-        "next" => Some(KeyAction::Next),
-        "prev" => Some(KeyAction::Prev),
+        "play_pause" => Some(KeyAction::TogglePlay),
+        "next" => Some(KeyAction::NextTrack),
+        "prev" => Some(KeyAction::PrevTrack),
         "volume_up" => Some(KeyAction::VolumeUp),
         "volume_down" => Some(KeyAction::VolumeDown),
         "seek_forward" => Some(KeyAction::SeekForward),

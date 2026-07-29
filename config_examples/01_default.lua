@@ -4,8 +4,8 @@ window_maximized = true
 
 keymaps = {
     play_pause = "Space",
-    next = "RightArrow",
-    prev = "LeftArrow",
+    next = "N",
+    prev = "P",
     volume_up = "UpArrow",
     volume_down = "DownArrow",
 }

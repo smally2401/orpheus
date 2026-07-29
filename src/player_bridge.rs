@@ -300,10 +300,16 @@ fn handle_command(
         PlayerCommand::VolumeUp => {
             let vol = (local_backend.get_volume() + 0.05).clamp(0.0, 1.0);
             local_backend.set_volume(vol);
+            if let Some(ui) = ui.upgrade() {
+                ui.set_current_volume(vol);
+            }
         }
         PlayerCommand::VolumeDown => {
             let vol = (local_backend.get_volume() - 0.05).clamp(0.0, 1.0);
             local_backend.set_volume(vol);
+            if let Some(ui) = ui.upgrade() {
+                ui.set_current_volume(vol);
+            }
         }
         PlayerCommand::SelectPlaylist(i) => {
             let _ = local_backend.select_playlist(*i);

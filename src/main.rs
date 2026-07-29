@@ -19,8 +19,8 @@ use crate::config::KeyAction;
 use crate::config::KeyCombo;
 use crate::config::Theme;
 use crate::config::WindowState;
-use crate::config::load_config;
 use crate::config::key_string_to_key_name;
+use crate::config::load_config;
 use crate::player_bridge::PlayerCommand;
 use crate::player_bridge::spawn_player_bridge;
 use paste::paste;
@@ -75,8 +75,54 @@ fn handle_keymaps(
     let ui_weak = ui.as_weak();
 
     ui.on_key_pressed_event(move |key, ctrl, shift, alt| {
-        println!("KEY PRESSED\nKEY: {:?}\nCTRL: {ctrl}\nSHIFT: {shift}\nALT: {alt}",
-            key_string_to_key_name(key));
+        let Some(key) = key_string_to_key_name(key) else {
+            return;
+        };
+
+        let key_combo = KeyCombo {
+            key,
+            ctrl,
+            shift,
+            alt,
+        };
+
+        let Some(key_action) = keymaps.get(&key_combo) else {
+            return;
+        };
+
+        match key_action {
+            KeyAction::TogglePlay => {
+                let _ = tx_clone.try_send(PlayerCommand::TogglePlay);
+            }
+            KeyAction::NextTrack => {
+                let _ = tx_clone.try_send(PlayerCommand::NextTrack);
+            }
+            KeyAction::PrevTrack => {
+                let _ = tx_clone.try_send(PlayerCommand::PrevTrack);
+            }
+            KeyAction::VolumeUp => {
+                let _ = tx_clone.try_send(PlayerCommand::VolumeUp);
+            }
+            KeyAction::VolumeDown => {
+                let _ = tx_clone.try_send(PlayerCommand::VolumeDown);
+            }
+            KeyAction::SeekForward => {
+                let _ = tx_clone.try_send(PlayerCommand::SeekForward);
+            }
+            KeyAction::SeekBackward => {
+                let _ = tx_clone.try_send(PlayerCommand::SeekBackward);
+            }
+            KeyAction::OpenLibrary => {
+                if let Some(ui) = ui_weak.upgrade() {
+                    ui.set_current_view(View::Library);
+                }
+            }
+            KeyAction::OpenPlaylists => {
+                if let Some(ui) = ui_weak.upgrade() {
+                    ui.set_current_view(View::Playlists);
+                }
+            }
+        }
     });
 }
 
