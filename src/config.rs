@@ -9,8 +9,12 @@
 
 use crate::utils::expand_tilde;
 use slint::Color;
+use std::collections::HashMap; 
 use std::path::PathBuf;
 
+/// Window geometry and state. `width` and `height` are `None` when the user
+/// wants the window to use Slint's default (800x600) or when `maximized` is
+/// true.
 pub struct WindowState {
     pub width: Option<f32>,
     pub height: Option<f32>,
@@ -27,6 +31,191 @@ impl Default for WindowState {
     }
 }
 
+const VALID_KEYS: &[&str] = &[
+    "Backspace",
+    "Tab",
+    "Return",
+    "Escape",
+    "Backtab",
+    "Delete",
+    "AltGr",
+    "CapsLock",
+    "ShiftR",
+    "ControlR",
+    "Meta",
+    "MetaR",
+    "Space",
+    "UpArrow",
+    "DownArrow",
+    "LeftArrow",
+    "RightArrow",
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7",
+    "F8",
+    "F9",
+    "F10",
+    "F11",
+    "F12",
+    "F13",
+    "F14",
+    "F15",
+    "F16",
+    "F17",
+    "F18",
+    "F19",
+    "F20",
+    "F21",
+    "F22",
+    "F23",
+    "F24",
+    "Insert",
+    "Home",
+    "End",
+    "PageUp",
+    "PageDown",
+    "ScrollLock",
+    "Pause",
+    "SysReq",
+    "Stop",
+    "Menu",
+    "Back",
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
+    "Digit0",
+    "Digit1",
+    "Digit2",
+    "Digit3",
+    "Digit4",
+    "Digit5",
+    "Digit6",
+    "Digit7",
+    "Digit8",
+    "Digit9",
+    "Circumflex",
+    "Exclamation",
+    "DoubleQuote",
+    "Hash",
+    "Dollar",
+    "Percent",
+    "Ampersand",
+    "Underscore",
+    "OpenParen",
+    "CloseParen",
+    "Asterisk",
+    "Plus",
+    "Pipe",
+    "HyphenMinus",
+    "OpenCurlyBracket",
+    "CloseCurlyBracket",
+    "Tilde",
+    "Colon",
+    "Semicolon",
+    "LessThan",
+    "Equals",
+    "GreaterThan",
+    "QuestionMark",
+    "At",
+    "Comma",
+    "Period",
+    "Slash",
+    "BackQuote",
+    "OpenBracket",
+    "BackSlash",
+    "CloseBracket",
+    "Quote",
+];
+
+#[derive(Clone, Copy)]
+pub enum KeyAction {
+    PlayPause,
+    Next,
+    Prev,
+    VolumeUp,
+    VolumeDown,
+    SeekForward,
+    SeekBackward,
+    OpenLibrary,
+    OpenPlaylists,
+}
+
+#[derive(Eq, Hash, PartialEq)]
+pub struct KeyCombo {
+    pub key: String,
+    pub ctrl: bool,
+    pub shift: bool,
+    pub alt: bool,
+}
+
+impl KeyCombo {
+    fn from_key(key: &str) -> Option<Self> {
+        let mut final_key = String::new();
+        let mut ctrl = false;
+        let mut shift = false;
+        let mut alt = false;
+
+        for part in key.split('+') {
+            match part.to_ascii_lowercase().as_str() {
+                "control" | "ctrl" => ctrl = true,
+                "shift" => shift = true,
+                "alt" => alt = true,
+                _ => final_key = part.to_string(),
+            }
+        }
+
+        if !VALID_KEYS.contains(&final_key.as_str()) {
+            return None;
+        }
+
+        Some(Self {
+            key: final_key,
+            ctrl,
+            shift,
+            alt,
+        })
+    }
+}
+
+fn default_keymaps() -> HashMap<KeyCombo, KeyAction> {
+    let mut keymaps: HashMap<KeyCombo, KeyAction> = HashMap::new();
+    keymaps.insert(KeyCombo::from_key("Space").unwrap(), KeyAction::PlayPause);
+    keymaps.insert(KeyCombo::from_key("RightArrow").unwrap(), KeyAction::Next);
+    keymaps.insert(KeyCombo::from_key("LeftArrow").unwrap(), KeyAction::Prev);
+    keymaps.insert(KeyCombo::from_key("UpArrow").unwrap(), KeyAction::VolumeUp);
+    keymaps.insert(KeyCombo::from_key("DownArrow").unwrap(), KeyAction::VolumeDown);
+    keymaps
+}
+
+/// Background colors for every major UI region. These are applied in
+/// `main.rs` via `apply_theme`.
 pub struct Background {
     pub sidebar: Color,
     pub now_playing_bar: Color,
@@ -49,6 +238,7 @@ impl Default for Background {
     }
 }
 
+/// Text colors for every label/title/subtitle in the UI.
 pub struct TextColor {
     pub sidebar: Color,
     pub now_playing_song: Color,
@@ -77,6 +267,7 @@ impl Default for TextColor {
     }
 }
 
+/// Font sizes for every text element in the UI.
 pub struct TextSize {
     pub sidebar: i32,
     pub now_playing_song: i32,
@@ -121,6 +312,7 @@ pub struct Config {
     pub music_dir: String,
     pub default_volume: f32,
     pub window_state: WindowState,
+    pub keymaps: HashMap<KeyCombo, KeyAction>,
     pub playlists: Vec<PlaylistDef>,
     pub theme: Theme,
 }
@@ -131,6 +323,7 @@ impl Default for Config {
             music_dir: String::from("~/Music"),
             default_volume: 1.0,
             window_state: WindowState::default(),
+            keymaps: default_keymaps(),
             playlists: Vec::new(),
             theme: Theme::default(),
         }
@@ -164,9 +357,18 @@ enum ConfigFile {
     Custom(String),
 }
 
+/// Default config written to disk on first run.
 const DEFAULT_CONFIG_FILE: &str = r##"music_dir = "~/Music"
 default_volume = 1.0
 window_maximized = true
+
+keymaps = {
+    play_pause = "Space",
+    next = "RightArrow",
+    prev = "LeftArrow",
+    volume_up = "UpArrow",
+    volume_down = "DownArrow",
+}
 
 sidebar_bg = "#0e101d"
 now_playing_bar_bg = "#0a0a0f"
@@ -285,7 +487,7 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
         .unwrap_or(defaults.default_volume);
 
     let window_state = load_window_state(&globals, &defaults.window_state);
-
+    let keymaps = load_keymaps(&globals);
     let playlists = get_playlists(&globals);
 
     let bg = load_backgrounds(&globals, &defaults.theme.bg);
@@ -302,11 +504,63 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
         music_dir: music_dir.to_string(),
         default_volume: default_volume.min(1.0),
         window_state,
+        keymaps,
         playlists,
         theme,
     }
 }
 
+fn load_keymaps(globals: &mlua::Table) -> HashMap<KeyCombo, KeyAction> {
+    let keymaps_table: mlua::Table = match globals.get("keymaps") {
+        Ok(k) => k,
+        Err(_) => return default_keymaps(),
+    };
+
+    let mut keymaps: HashMap<KeyCombo, KeyAction> = HashMap::new();
+
+    for pair in keymaps_table.pairs::<String, String>() {
+        let Ok((key, value)) = pair else {
+            continue
+        };
+
+        let Some(action) = parse_action(&key) else {
+            eprintln!("Error: {key} is not a valid keymap action.");
+            continue
+        };
+
+        let Some(combo) = KeyCombo::from_key(&value) else {
+            eprintln!("Error: {value} is not a valid keymap combo.");
+            continue
+        };
+
+        if keymaps.contains_key(&combo) {
+            eprintln!("Error: {key} appears more than once in keymaps.");
+            continue
+        }
+
+        keymaps.insert(combo, action);
+    }
+
+    keymaps
+}
+
+fn parse_action(str: &str) -> Option<KeyAction> {
+    match str {
+        "play_pause" => Some(KeyAction::PlayPause),
+        "next" => Some(KeyAction::Next),
+        "prev" => Some(KeyAction::Prev),
+        "volume_up" => Some(KeyAction::VolumeUp),
+        "volume_down" => Some(KeyAction::VolumeDown),
+        "seek_forward" => Some(KeyAction::SeekForward),
+        "seek_backward" => Some(KeyAction::SeekBackward),
+        "open_library" => Some(KeyAction::OpenLibrary),
+        "open_playlists" => Some(KeyAction::OpenPlaylists),
+        _ => None,
+    }
+}
+
+/// Extract window geometry from Lua globals. `width` and `height` are
+/// optional, `maximized` defaults to true.
 fn load_window_state(globals: &mlua::Table, defaults: &WindowState) -> WindowState {
     let width = globals.get::<f32>("window_width").ok();
     let height = globals.get::<f32>("window_height").ok();
@@ -322,6 +576,7 @@ fn load_window_state(globals: &mlua::Table, defaults: &WindowState) -> WindowSta
     }
 }
 
+/// Extract all background colors from Lua globals.
 fn load_backgrounds(globals: &mlua::Table, defaults: &Background) -> Background {
     let sidebar_bg = get_color_or_default(globals, "sidebar_bg", defaults.sidebar);
     let now_playing_bar_bg =
@@ -346,6 +601,7 @@ fn load_backgrounds(globals: &mlua::Table, defaults: &Background) -> Background 
     }
 }
 
+/// Extract all text colors from Lua globals.
 fn load_text_colors(globals: &mlua::Table, defaults: &TextColor) -> TextColor {
     let sidebar_text_color = get_color_or_default(globals, "sidebar_text_color", defaults.sidebar);
     let now_playing_song_text_color = get_color_or_default(
@@ -402,6 +658,7 @@ fn load_text_colors(globals: &mlua::Table, defaults: &TextColor) -> TextColor {
     }
 }
 
+/// Extract all text sizes from Lua globals.
 fn load_text_sizes(globals: &mlua::Table, defaults: &TextSize) -> TextSize {
     let sidebar_text_size = globals
         .get::<i32>("sidebar_text_size")

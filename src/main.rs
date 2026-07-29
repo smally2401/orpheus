@@ -14,6 +14,7 @@ mod player_bridge;
 mod utils;
 
 use crate::config::Theme;
+use crate::config::WindowState;
 use crate::config::load_config;
 use crate::player_bridge::PlayerCommand;
 use crate::player_bridge::spawn_player_bridge;
@@ -36,12 +37,7 @@ async fn main() -> Result<(), slint::PlatformError> {
         config.default_volume,
     );
 
-    ui.set_current_volume(config.default_volume);
-    if let (Some(width), Some(height)) = (config.window_state.width, config.window_state.height) {
-        ui.window().set_size(LogicalSize::new(width, height));
-    }
-    ui.window().set_maximized(config.window_state.maximized);
-
+    apply_window_config(&ui, &config.window_state);
     apply_theme(&ui, &config.theme);
 
     wire_callbacks(&ui, &tx);
@@ -53,6 +49,14 @@ async fn main() -> Result<(), slint::PlatformError> {
     ui.set_playlists(playlists_model);
 
     ui.run()
+}
+
+/// Applies the user's window config.
+fn apply_window_config(ui: &AppWindow, window_state: &WindowState) {
+    if let (Some(width), Some(height)) = (window_state.width, window_state.height) {
+        ui.window().set_size(LogicalSize::new(width, height));
+    }
+    ui.window().set_maximized(window_state.maximized);
 }
 
 /// Applies the user's color theme to the UI.

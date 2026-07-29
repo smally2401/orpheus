@@ -2,6 +2,14 @@ music_dir = "~/Music"
 default_volume = 1.0
 window_maximized = true
 
+keymaps = {
+    play_pause = "Space",
+    next = "RightArrow",
+    prev = "LeftArrow",
+    volume_up = "UpArrow",
+    volume_down = "DownArrow",
+}
+
 sidebar_bg = "#0e101d"
 now_playing_bar_bg = "#0a0a0f"
 library_view_bg = "#1f1d2f"
