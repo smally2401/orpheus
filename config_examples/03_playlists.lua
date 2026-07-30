@@ -1,3 +1,5 @@
+music_dir = "~/my-stuff/music"
+
 playlists = {
     {
         name = "Rock Playlist",
@@ -5,7 +7,7 @@ playlists = {
             "the-beatles/abbey-road/something.mp3",
             "metallica/black-album/enter-sandman.flac",
         },
-        covers = "covers/cool-ass-pic.jpg"
+        art = "covers/cool-ass-pic.jpg"
     },
     {
         name = "Joy Division Discography",

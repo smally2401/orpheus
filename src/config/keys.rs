@@ -1,4 +1,4 @@
-//! Keybindings: the `eymaps` block of `config.lua`, plus the `KeyCombo`/
+//! Keybindings: the `keymaps` block of `config.lua`, plus the `KeyCombo`/
 //! `KeyAction` types the rest of the app dispatches on. `VALID_KEYS` and
 //! `key_string_to_key_name` (used by `KeyCombo::from_key`) come from the
 //! `define_keys!` macro invocation at the bottom of this file, which is the
@@ -87,7 +87,7 @@ pub(super) fn default_keymaps() -> HashMap<KeyCombo, KeyAction> {
 /// back to `default_keymaps()` entirely if the table is missing. Individual
 /// bad entries (unknown action name, unparseable combo, or a combo already
 /// bound) are logged and skipped rather than failing the whole table.
-pub (super) fn load_keymaps(globals: &mlua::Table) -> HashMap<KeyCombo, KeyAction> {
+pub(super) fn load_keymaps(globals: &mlua::Table) -> HashMap<KeyCombo, KeyAction> {
     let keymaps_table: mlua::Table = match globals.get("keymaps") {
         Ok(k) => k,
         Err(_) => return default_keymaps(),

@@ -11,6 +11,7 @@ All notable changes to Orpheus will be documented in this file.
 - Playlists now show album art for each track
 - Custom images for playlists
 - Keymaps
+- lua-language-server support
 - Other Lua settings:
   - Text color
   - Text size

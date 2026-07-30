@@ -1,0 +1,16 @@
+{
+    "workspace.library": [
+        "./meta"
+    ],
+    "diagnostics.globals": [
+        "music_dir",
+        "default_volume",
+        "window_maximized",
+        "window_width",
+        "window_height",
+        "keymaps",
+        "theme",
+        "playlists",
+        "list_music_files"
+    ]
+}

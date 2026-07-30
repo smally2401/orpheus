@@ -17,18 +17,19 @@ pub mod playlist;
 /// Lua-loading logic that turns a nested `theme` table into a `Theme`.
 pub mod theme;
 
-use crate::config::playlist::PlaylistDef;
-use crate::config::playlist::get_playlists;
 use crate::config::keys::KeyAction;
 use crate::config::keys::KeyCombo;
 use crate::config::keys::default_keymaps;
 use crate::config::keys::load_keymaps;
+use crate::config::playlist::PlaylistDef;
+use crate::config::playlist::get_playlists;
 use crate::config::theme::Theme;
 use crate::config::theme::load_backgrounds;
 use crate::config::theme::load_text_colors;
 use crate::config::theme::load_text_sizes;
 use crate::utils::expand_tilde;
 use std::collections::HashMap;
+use std::path::Path;
 use std::path::PathBuf;
 
 /// Window geometry and state. `width` and `height` are `None` when the user
@@ -134,6 +135,125 @@ theme = {
 }
 "##;
 
+/// Type annotations for `lua-language-server`, giving editors autocomplete
+/// and type-checking on `config.lua`. Written to
+/// `~/.config/orpheus/meta/orpheus.lua` on every run, so it always matches
+/// the schema this version of Orpheus actually reads. Not meant to be
+/// hand-edited, see the config README for what it documents.
+const ORPHEUS_LUA_META: &str = r#"---@meta
+
+---@alias HexColor string
+
+---@class OrpheusKeymaps
+---@field toggle_play string?
+---@field next_track string?
+---@field prev_track string?
+---@field volume_up string?
+---@field volume_down string?
+---@field seek_forward string?
+---@field seek_backward string?
+---@field open_library string?
+---@field open_playlists string?
+
+---@class OrpheusBg
+---@field sidebar HexColor?
+---@field now_playing_bar HexColor?
+---@field library_view HexColor?
+---@field album_view HexColor?
+---@field playlists_view HexColor?
+---@field open_playlist_view HexColor?
+
+---@class OrpheusTextColor
+---@field sidebar HexColor?
+---@field now_playing_song HexColor?
+---@field now_playing_artist HexColor?
+---@field detail_view_header_title HexColor?
+---@field detail_view_header_subtitle HexColor?
+---@field library_list_title HexColor?
+---@field library_list_subtitle HexColor?
+---@field album_list_title HexColor?
+---@field album_list_subtitle HexColor?
+
+---@class OrpheusTextSize
+---@field sidebar integer?
+---@field now_playing_song integer?
+---@field now_playing_artist integer?
+---@field detail_view_header_title integer?
+---@field detail_view_header_subtitle integer?
+---@field library_list_title integer?
+---@field library_list_subtitle integer?
+---@field album_list_title integer?
+---@field album_list_subtitle integer?
+
+---@class OrpheusTheme
+---@field bg OrpheusBg?
+---@field text_color OrpheusTextColor?
+---@field text_size OrpheusTextSize?
+
+---@class OrpheusPlaylist
+---@field name string
+---@field songs string[]
+---@field sort boolean?
+---@field art string?
+
+--- Path to your music library. `~` is expanded to your home directory.
+---@type string
+music_dir = "~/Music"
+
+--- Volume when opening the app, 0.0-1.0
+---@type number?
+default_volume = 1.0
+
+---@type boolean?
+window_maximized = true
+
+---@type number?
+window_width = 800
+
+---@type number?
+window_height = 600
+
+--- Maps an action name (e.g. "toggle_play") to a key combo string
+--- (e.g. "ctrl+shift+p"). See the README for valid actions and key names.
+---@type OrpheusKeymaps?
+keymaps = {}
+
+---@type OrpheusTheme?
+theme = {}
+
+---@type OrpheusPlaylist[]?
+playlists = {}
+
+--- Recursively lists every song file under `music_dir/relative_dir`,
+--- returned as paths relative to `music_dir`.
+---@param relative_dir string
+---@return string[]
+function list_music_files(relative_dir) end
+"#;
+
+/// `lua_language_server` workspace config, pointing it at `ORPHEUS_LUA_META`
+/// and declaring every config global so it isn't flagged as undefined.
+/// Written to `~/.config/orpheus/.luarc.json` only if it doesn't already
+/// exist, since (unlike `orpheus.lua`) users may reasonably extend this
+/// with their own settings.
+const DEFAULT_LUARC_JSON: &str = r#"{
+    "workspace.library": [
+        "./meta"
+    ],
+    "diagnostics.globals": [
+        "music_dir",
+        "default_volume",
+        "window_maximized",
+        "window_width",
+        "window_height",
+        "keymaps",
+        "theme",
+        "playlists",
+        "list_music_files"
+    ]
+}
+"#;
+
 /// Entry point: locates `config.lua`, then runs it to produce a `Config`.
 ///
 /// Loading happens in two passes. `music_dir` is extracted first
@@ -169,6 +289,8 @@ fn load_config_file() -> ConfigFile {
         return ConfigFile::Default;
     }
 
+    write_lsp_support_files(&config_dir);
+
     let config_path = config_dir.join("config.lua");
     if !config_path.exists() {
         if std::fs::write(config_path.as_path(), DEFAULT_CONFIG_FILE).is_err() {
@@ -183,6 +305,32 @@ fn load_config_file() -> ConfigFile {
     };
 
     ConfigFile::Custom(file_contents)
+}
+
+/// Writes the `lua-language-server` support files (`meta/orpheus.lua` and
+/// `.luarc.json`) into `config_dir`, giving editors autocomplete and type
+/// diagnostics on `config.lua`. `orpheus.lua` is rewritten every run to
+/// stay in sync with this version's schema. `.luarc.json` is only written
+/// if missing, since users may customize it. Failures are logged and
+/// otherwise ignored: thos is tooling support, not required for Orpheus
+/// to function.
+fn write_lsp_support_files(config_dir: &Path) {
+    let meta_dir = config_dir.join("meta");
+    if std::fs::create_dir_all(&meta_dir).is_err() {
+        eprintln!("Could not create meta directory");
+        return;
+    }
+
+    let meta_path = meta_dir.join("orpheus.lua");
+    if std::fs::write(&meta_path, ORPHEUS_LUA_META).is_err() {
+        eprintln!("Could not write orpheus.lua meta file");
+        return;
+    }
+
+    let luarc_path = config_dir.join(".luarc.json");
+    if !luarc_path.exists() && std::fs::write(&luarc_path, DEFAULT_LUARC_JSON).is_err() {
+        eprintln!("Could not create .luarc.json");
+    }
 }
 
 /// First pass of loading: runs the script on a throwaway `Lua` instance

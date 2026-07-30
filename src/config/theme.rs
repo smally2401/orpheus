@@ -130,11 +130,7 @@ pub(super) fn load_text_colors(globals: &mlua::Table, defaults: &TextColor) -> T
     let theme = get_table(globals, "theme");
     let text_color = theme.as_ref().and_then(|t| get_table(t, "text_color"));
 
-    let sidebar = get_color_or_default(
-        text_color.as_ref(),
-        "sidebar",
-        defaults.sidebar
-    );
+    let sidebar = get_color_or_default(text_color.as_ref(), "sidebar", defaults.sidebar);
     let now_playing_song = get_color_or_default(
         text_color.as_ref(),
         "now_playing_song",
@@ -194,11 +190,7 @@ pub(super) fn load_text_sizes(globals: &mlua::Table, defaults: &TextSize) -> Tex
     let theme = get_table(globals, "theme");
     let text_size = theme.as_ref().and_then(|t| get_table(t, "text_size"));
 
-    let sidebar = get_size_or_default(
-        text_size.as_ref(),
-        "sidebar",
-        defaults.sidebar,
-    );
+    let sidebar = get_size_or_default(text_size.as_ref(), "sidebar", defaults.sidebar);
     let now_playing_song = get_size_or_default(
         text_size.as_ref(),
         "now_playing_song",

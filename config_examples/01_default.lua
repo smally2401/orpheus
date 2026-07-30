@@ -44,4 +44,3 @@ theme = {
         album_list_subtitle = 12,
     },
 }
-

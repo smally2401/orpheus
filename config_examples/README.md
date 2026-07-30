@@ -23,6 +23,52 @@ See the `config_examples/` folder for runnable examples.
 
 Both `window_width` and `window_height` must exist for them to take effect.
 
+## Editor support
+
+Orpheus writes two files into `~/.config/orpheus/` alongside `config.lua`
+that give editors autocomplete and type-checking on your config, if you have
+[`lua-language-server`](https://github.com/LuaLS/lua-language-server) set up:
+
+- `meta/orpheus.lua`: type declarations for every config field. Rewritten
+  on every launch to stay in sync with the running version of Orpheus, so
+  don't edit it.
+
+- `.luarc.json`: workspace settings pointing the language server at
+  `meta/`. Only written once, so feel free to extend it.
+
+To get full completion on nested tables (`theme.bg.*`, individual
+`keymaps` actions, etc.), add a `---@type` comment directly above the
+relevant assignment in `config.lua`:
+
+```lua
+---@type OrpheusKeymaps
+keymaps = {
+    toggle_play = "Space",
+    -- typing here now suggests next_track, prev_track, etc.
+}
+
+---@type OrpheusTheme
+theme = {
+    -- typing here now suggests bg, text_color_text_size
+}
+```
+
+See `config_examples/` for a full config annotated this way.
+
+This isn't required, `config.lua` works identically with or without these
+annotations, but it catches mistakes (like a typo'd keymap action, or an
+int where a hex color string is expected) before you restart Orpheus to see
+them.
+
+**One gap worth knowing:** the language server checks that fields you
+provide have the right type, but doesn't flag fields that shouldn't be
+there at all. So `keymaps = { frobnicate = "F" }` won't autocomplete
+`frobnicate` (a good sign something's off), but also won't get a hard error
+if you type it out and move on. This applies to `keymaps` and `theme`'s
+nested tables alike. Orpheus itself catches this at runtime instead: check
+the terminal output when running Orpheus for warnings about unrecognized
+keys.
+
 ## Keybinds
 
 `keymaps` is a table mapping an action name to a key combo string:
