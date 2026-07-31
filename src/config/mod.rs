@@ -13,6 +13,10 @@ pub mod keys;
 /// Playlist parsing: `PlaylistDef` and the Lua-loading logic that turns a
 /// `playlists` table into a `Vec<PlaylistDef>`.
 pub mod playlist;
+/// The live runtime half of Lua integration: `current_song()`,
+/// `on_song_change`, and anything else that needs a `Lua` instance kept
+/// alive past config parse time. See `scripting::ScriptRuntime`.
+pub mod scripting;
 /// Theme parsing: `Background`, `TextColor`, `TextSize`, `Theme`, and the
 /// Lua-loading logic that turns a nested `theme` table into a `Theme`.
 pub mod theme;
@@ -263,14 +267,14 @@ const DEFAULT_LUARC_JSON: &str = r#"{
 /// `music_dir` before it can be registered, but `music_dir` itself only
 /// becomes known by running the user's script. See `load_lua` for the
 /// second half of this.
-pub fn load_config() -> Config {
+pub fn load_config() -> (Config, String) {
     let ConfigFile::Custom(file_contents) = load_config_file() else {
-        return Config::default();
+        return (Config::default(), String::new());
     };
 
     let music_dir = get_music_dir(&file_contents);
 
-    load_lua(&file_contents, &music_dir)
+    (load_lua(&file_contents, &music_dir), file_contents)
 }
 
 /// Finds `~/.config/orpheus/config.lua`, creating it with default contents

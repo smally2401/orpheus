@@ -13,13 +13,13 @@ mod mpris;
 mod player_bridge;
 mod utils;
 
-use std::collections::HashMap;
-
 use crate::config::WindowState;
 use crate::config::keys::KeyAction;
 use crate::config::keys::KeyCombo;
 use crate::config::keys::key_string_to_key_name;
 use crate::config::load_config;
+use crate::config::scripting::CurrentSong;
+use crate::config::scripting::build_runtime;
 use crate::config::theme::Theme;
 use crate::player_bridge::PlayerCommand;
 use crate::player_bridge::spawn_player_bridge;
@@ -27,6 +27,9 @@ use paste::paste;
 use slint::LogicalSize;
 use slint::ModelRc;
 use slint::VecModel;
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::Mutex;
 use tokio::sync::mpsc::Sender;
 
 slint::include_modules!();
@@ -34,12 +37,26 @@ slint::include_modules!();
 #[tokio::main]
 async fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
-    let config = load_config();
+
+    let current_song = Arc::new(Mutex::new(None));
+    let (song_tx, song_rx) = std::sync::mpsc::channel::<CurrentSong>();
+
+    let (config, contents) = load_config();
+    std::thread::spawn(move || {
+        let script_runtime = build_runtime(&contents, current_song.clone());
+        while let Ok(song) = song_rx.recv() {
+            let mut guard = current_song.lock().unwrap();
+            *guard = Some(song.clone());
+            script_runtime.fire_song_change(song);
+        }
+    });
+
     let (tx, library, playlists) = spawn_player_bridge(
         &ui,
         &config.music_dir,
         config.playlists,
         config.default_volume,
+        song_tx,
     );
 
     apply_window_config(&ui, &config.window_state);

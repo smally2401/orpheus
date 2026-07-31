@@ -12,6 +12,7 @@ use crate::SlintAlbum;
 use crate::SlintPlaylist;
 use crate::SlintSongWithArt;
 use crate::config::playlist::PlaylistDef;
+use crate::config::scripting::CurrentSong;
 use crate::local_backend::LocalBackend;
 use crate::local_backend::RepeatMode;
 use crate::mpris::MprisCommand;
@@ -85,15 +86,17 @@ struct TickState {
     /// new queue. Reset to `false` whenever a command changes the queue
     /// (see `handle_command`).
     queue_exhausted: bool,
+    song_tx: std::sync::mpsc::Sender<CurrentSong>,
 }
 
 impl TickState {
-    fn new() -> Self {
+    fn new(song_tx: std::sync::mpsc::Sender<CurrentSong>) -> Self {
         TickState {
             last_song_info: None,
             last_song_path: None,
             was_paused: true,
             queue_exhausted: true,
+            song_tx,
         }
     }
 
@@ -154,6 +157,9 @@ impl TickState {
                     length: track.duration.as_secs(),
                     art_url,
                 });
+
+                let current_song = CurrentSong::from_song(track);
+                let _ = self.song_tx.send(current_song);
             }
 
             let track_art = track.art.clone();
@@ -194,6 +200,7 @@ pub fn spawn_player_bridge(
     music_dir: &str,
     playlist_defs: Vec<PlaylistDef>,
     default_volume: f32,
+    song_tx: std::sync::mpsc::Sender<CurrentSong>,
 ) -> (
     mpsc::Sender<PlayerCommand>,
     Vec<SlintAlbum>,
@@ -210,7 +217,7 @@ pub fn spawn_player_bridge(
 
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_millis(100));
-        let mut tick_state = TickState::new();
+        let mut tick_state = TickState::new(song_tx);
 
         loop {
             tokio::select! {

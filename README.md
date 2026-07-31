@@ -72,4 +72,4 @@ improvements. Contributions, testing and bug reports are welcome.
 
 ## Changelog
 
-See `CHANGELOG.md` for release notes.
+See [`CHANGELOG.md`](CHANGELOG.md) for release notes.
