@@ -30,30 +30,30 @@ use walkdir::WalkDir;
 /// Always wrapped in `Arc` once constructed, since the same song is shared
 /// between the library's albums, the `song_paths` lookup table, and
 /// whichever queue currently has it selected.
-pub struct Song {
-    pub path: PathBuf,
+pub(crate) struct Song {
+    pub(crate) path: PathBuf,
 
-    pub title: String,
-    pub artist: String,
+    pub(crate) title: String,
+    pub(crate) artist: String,
 
-    pub album_title: String,
-    pub album_artist: String,
+    pub(crate) album_title: String,
+    pub(crate) album_artist: String,
     /// Not `pub`: only used internally for sorting a tracklist/playlist
     /// into the right order (see `resolve_playlist` and `LocalBackend::new`).
     track_number: Option<u32>,
-    pub duration: Duration,
-    pub art: Option<Arc<Vec<u8>>>,
+    pub(crate) duration: Duration,
+    pub(crate) art: Option<Arc<Vec<u8>>>,
     // todo: disc number
 }
 
 /// A group of songs sharing the same `(album_title, album_artist)`,
 /// discovered by scanning the music directory, not something the user
 /// defines directly (unlike `Playlist` below).
-pub struct Album {
-    pub title: String,
-    pub artist: String,
-    pub tracklist: Vec<Arc<Song>>,
-    pub art: Option<Arc<Vec<u8>>>,
+pub(crate) struct Album {
+    pub(crate) title: String,
+    pub(crate) artist: String,
+    pub(crate) tracklist: Vec<Arc<Song>>,
+    pub(crate) art: Option<Arc<Vec<u8>>>,
     // todo: year and genres
 }
 
@@ -63,16 +63,16 @@ pub struct Album {
 /// Stores only song *paths*, not resolved `Song`s: a playlist may
 /// reference songs that no longer exist on disk, so resolution happens
 /// lazily and safely via `resolve_playlist`.
-pub struct Playlist {
-    pub name: String,
-    pub songs: Vec<PathBuf>,
+pub(crate) struct Playlist {
+    pub(crate) name: String,
+    pub(crate) songs: Vec<PathBuf>,
     /// If true, `resolve_playlist` sorts these songs by artist, then
     /// album, then track number, instead of returning them in the order
     /// listed. Set from `PlaylistDef.sort`.
-    pub sort: bool,
+    pub(crate) sort: bool,
     /// Optional absolute path to a custom cover image. Resolved from
     /// `PlaylistDef.art` relative to `music_dir` during `build_playlists`.
-    pub art: Option<PathBuf>,
+    pub(crate) art: Option<PathBuf>,
 }
 
 /// Controls what `next` does once it's called with `from_click: false`,
@@ -80,7 +80,7 @@ pub struct Playlist {
 /// `player_bridge.rs`). Has no effect on a manual "next" click, which
 /// always advances regardless of this setting (see `next`).
 #[derive(Clone, Copy)]
-pub enum RepeatMode {
+pub(crate) enum RepeatMode {
     /// Stop advancing once the queue's last track finishes.
     Off,
     /// Once the last track finishes, wrap back around to the first.
@@ -94,12 +94,12 @@ pub enum RepeatMode {
 /// `_stream`/`player` hold onto the real audio device (dropping them
 /// tears down playback, which is why `_stream` is kept alive here even
 /// though it's never read directly).
-pub struct LocalBackend {
+pub(crate) struct LocalBackend {
     _stream: MixerDeviceSink,
     player: Player,
 
-    pub library: Vec<Album>,
-    pub playlists: Vec<Playlist>,
+    pub(crate) library: Vec<Album>,
+    pub(crate) playlists: Vec<Playlist>,
     /// Every known song, keyed by its path, for O(1) lookup. Used by
     /// `find_song_by_path` when resolving a playlist's song path back
     /// into real `Song`s.
@@ -132,7 +132,7 @@ impl LocalBackend {
     ///
     /// Files that fail to read (corrupt, unsupported, permission denied,
     /// etc.) are silently skipped rather than aborting the whole scan.
-    pub fn new(path: &Path, playlist_defs: Vec<PlaylistDef>, default_volume: f32) -> Self {
+    pub(crate) fn new(path: &Path, playlist_defs: Vec<PlaylistDef>, default_volume: f32) -> Self {
         let entries = WalkDir::new(path)
             .into_iter()
             .filter_map(std::result::Result::ok);
@@ -215,6 +215,9 @@ impl LocalBackend {
     /// todo there about `select_playlist_track` not yet validating
     /// `track_index`.
     fn load_track(&mut self) -> Result<(), Box<dyn Error>> {
+        if self.queue.is_empty() || self.index >= self.order.len() {
+            return Err("Empty queue or invalid index".into());
+        }
         self.player.stop();
 
         let track = std::fs::File::open(&self.queue[self.order[self.index]].path)?;
@@ -242,7 +245,7 @@ impl LocalBackend {
     ///   case. `Queue` wraps back to index `0` instead of stopping, and
     ///   always returns `Ok(true)` so `queue_exhausted` never latches.
     ///   `Track` reloads the same track in plave via `load_track`.
-    pub fn next(&mut self, from_click: bool) -> Result<bool, Box<dyn Error>> {
+    pub(crate) fn next(&mut self, from_click: bool) -> Result<bool, Box<dyn Error>> {
         if from_click {
             if self.index + 1 < self.queue.len() {
                 self.index += 1;
@@ -281,7 +284,7 @@ impl LocalBackend {
     /// start. Unlike `next`, there's no "did it move" signal needed here:
     /// nothing currently polls for "are we at the start" the way the tick
     /// loop polls for "did the queue just end".
-    pub fn prev(&mut self) -> Result<(), Box<dyn Error>> {
+    pub(crate) fn prev(&mut self) -> Result<(), Box<dyn Error>> {
         if self.index > 0 {
             self.index -= 1;
             self.load_track()?;
@@ -295,7 +298,7 @@ impl LocalBackend {
     /// `queue`'s own first track: if shuffle is on, `order` is freshly
     /// shuffled here, so playback starts from whichever track lands at
     /// `order[0]`).
-    pub fn select_album(&mut self, album_index: usize) -> Result<(), Box<dyn Error>> {
+    pub(crate) fn select_album(&mut self, album_index: usize) -> Result<(), Box<dyn Error>> {
         self.queue = self.library[album_index].tracklist.clone();
         self.order = (0..self.queue.len()).collect();
 
@@ -314,7 +317,7 @@ impl LocalBackend {
     /// queue is still shuffled around it: `track_index`'s real position is
     /// swapped into `order[0]` after shuffling, same trick as
     /// `toggle_shuffle` uses to keep a chosen track pinned in place.
-    pub fn select_album_track(
+    pub(crate) fn select_album_track(
         &mut self,
         album_index: usize,
         track_index: usize,
@@ -346,7 +349,7 @@ impl LocalBackend {
     /// puts first, see `select_album` for the same behavior). No-ops
     /// (rather than erroring) if every song in the playlist failed to
     /// resolve (e.g. all referenced files were deleted).
-    pub fn select_playlist(&mut self, playlist_index: usize) -> Result<(), Box<dyn Error>> {
+    pub(crate) fn select_playlist(&mut self, playlist_index: usize) -> Result<(), Box<dyn Error>> {
         let queue = self.resolve_playlist(playlist_index);
         if queue.is_empty() {
             return Ok(()); // todo: maybe return an empty playlist error or something idk
@@ -369,7 +372,7 @@ impl LocalBackend {
     /// `select_album_track`: with shuffle on, `tracl index`'s real
     /// position get swapped into `order[0]` so playback still starts on
     /// the chosen track.
-    pub fn select_playlist_track(
+    pub(crate) fn select_playlist_track(
         &mut self,
         playlist_index: usize,
         track_index: usize,
@@ -396,7 +399,7 @@ impl LocalBackend {
         Ok(())
     }
 
-    pub fn toggle_play(&mut self) {
+    pub(crate) fn toggle_play(&mut self) {
         if self.player.is_paused() {
             self.player.play();
         } else {
@@ -404,25 +407,25 @@ impl LocalBackend {
         }
     }
 
-    pub fn play(&mut self) {
+    pub(crate) fn play(&mut self) {
         self.player.play();
     }
 
-    pub fn pause(&mut self) {
+    pub(crate) fn pause(&mut self) {
         self.player.pause();
     }
 
-    pub fn set_position(&mut self, position: usize) -> Result<(), Box<dyn Error>> {
+    pub(crate) fn set_position(&mut self, position: usize) -> Result<(), Box<dyn Error>> {
         self.player.try_seek(Duration::from_secs(position as u64))?;
         Ok(())
     }
 
-    pub fn set_volume(&mut self, volume: f32) {
+    pub(crate) fn set_volume(&mut self, volume: f32) {
         self.player.set_volume(volume);
     }
 
     /// The currently selected track, or `None` if no queue is active.
-    pub fn get_current_song(&self) -> Option<&Arc<Song>> {
+    pub(crate) fn get_current_song(&self) -> Option<&Arc<Song>> {
         if self.queue.is_empty() {
             None
         } else {
@@ -430,18 +433,18 @@ impl LocalBackend {
         }
     }
 
-    pub fn get_current_position(&self) -> Duration {
+    pub(crate) fn get_current_position(&self) -> Duration {
         self.player.get_pos()
     }
 
-    pub fn is_paused(&self) -> bool {
+    pub(crate) fn is_paused(&self) -> bool {
         self.player.is_paused()
     }
 
     /// True once the current track has finished playing (the underlying
     /// player's buffer is empty). Doesn't distinguish "finished" from
     /// "nothing was ever loaded", both look the same to `rodio`.
-    pub fn track_finished(&self) -> bool {
+    pub(crate) fn track_finished(&self) -> bool {
         self.player.empty()
     }
 
@@ -457,7 +460,7 @@ impl LocalBackend {
     ///
     /// If the playlist has `sort` set, results are additionally sorted by
     /// artist, then album, then track number (see `Playlist.sort` for why).
-    pub fn resolve_playlist(&self, playlist_index: usize) -> Vec<Arc<Song>> {
+    pub(crate) fn resolve_playlist(&self, playlist_index: usize) -> Vec<Arc<Song>> {
         let mut songs: Vec<Arc<Song>> = self.playlists[playlist_index]
             .songs
             .iter()
@@ -489,7 +492,7 @@ impl LocalBackend {
     /// Turning shuffle *off*: resets `order` to identity (`0..len`) and
     /// restores `index` to the current track's real, unshuffled position,
     /// so playback continues uninterrupted in canonical order from here.
-    pub fn toggle_shuffle(&mut self) {
+    pub(crate) fn toggle_shuffle(&mut self) {
         self.shuffle = !self.shuffle;
 
         if self.queue.is_empty() {
@@ -520,7 +523,7 @@ impl LocalBackend {
     /// already at the requested value; otherwise just defers to
     /// `toggle_shuffle` so both paths share the same order rebuilding/
     /// current track pinning logic rather than duplicating it here.
-    pub fn set_shuffle(&mut self, shuffle: bool) {
+    pub(crate) fn set_shuffle(&mut self, shuffle: bool) {
         if shuffle != self.shuffle {
             self.toggle_shuffle();
         }
@@ -529,7 +532,7 @@ impl LocalBackend {
     /// Cycles `self.reoeat`: `Off` -> `Queue` -> `Track` -> `Off`. Only
     /// changes what happens the *next* time a track finishes naturally,
     /// doesn't touch anything currently playing (see `next`).
-    pub fn toggle_repeat(&mut self) {
+    pub(crate) fn toggle_repeat(&mut self) {
         self.repeat = match self.repeat {
             RepeatMode::Off => RepeatMode::Queue,
             RepeatMode::Queue => RepeatMode::Track,
@@ -539,19 +542,19 @@ impl LocalBackend {
 
     /// Sets repeat mode to an explicit value (see `set_shuffle` for why
     /// this exists alongside `toggle_repeat`).
-    pub fn set_repeat(&mut self, repeat_mode: RepeatMode) {
+    pub(crate) fn set_repeat(&mut self, repeat_mode: RepeatMode) {
         self.repeat = repeat_mode;
     }
 
-    pub fn is_shuffle(&self) -> bool {
+    pub(crate) fn is_shuffle(&self) -> bool {
         self.shuffle
     }
 
-    pub fn get_repeat(&self) -> RepeatMode {
+    pub(crate) fn get_repeat(&self) -> RepeatMode {
         self.repeat
     }
 
-    pub fn get_volume(&self) -> f32 {
+    pub(crate) fn get_volume(&self) -> f32 {
         self.player.volume()
     }
 }

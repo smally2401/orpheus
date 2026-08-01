@@ -373,7 +373,8 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
 
     let default_volume = globals
         .get::<f32>("default_volume")
-        .unwrap_or(defaults.default_volume);
+        .unwrap_or(defaults.default_volume)
+        .clamp(0.0, 1.0);
 
     let window_state = load_window_state(&globals, &defaults.window_state);
     let keymaps = load_keymaps(&globals);
@@ -391,7 +392,7 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
 
     Config {
         music_dir: music_dir.to_string(),
-        default_volume: default_volume.min(1.0),
+        default_volume,
         window_state,
         keymaps,
         playlists,

@@ -149,8 +149,7 @@ impl TickState {
                 self.last_song_info = Some(current_album);
             }
 
-            let current_song_path = track.path.clone();
-            if self.last_song_path != Some(current_song_path) {
+            if self.last_song_path.as_ref() != Some(&track.path) {
                 self.last_song_path = Some(track.path.clone());
                 self.halfway_fired = false;
 

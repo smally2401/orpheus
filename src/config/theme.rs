@@ -8,13 +8,13 @@ use slint::Color;
 
 /// Background colors for every major UI region. These are applied in
 /// `main.rs` via `apply_theme`.
-pub struct Background {
-    pub sidebar: Color,
-    pub now_playing_bar: Color,
-    pub library_view: Color,
-    pub album_view: Color,
-    pub playlists_view: Color,
-    pub open_playlist_view: Color,
+pub(crate) struct Background {
+    pub(crate) sidebar: Color,
+    pub(crate) now_playing_bar: Color,
+    pub(crate) library_view: Color,
+    pub(crate) album_view: Color,
+    pub(crate) playlists_view: Color,
+    pub(crate) open_playlist_view: Color,
 }
 
 impl Default for Background {
@@ -31,16 +31,16 @@ impl Default for Background {
 }
 
 /// Text colors for every label/title/subtitle in the UI.
-pub struct TextColor {
-    pub sidebar: Color,
-    pub now_playing_song: Color,
-    pub now_playing_artist: Color,
-    pub detail_view_header_title: Color,
-    pub detail_view_header_subtitle: Color,
-    pub library_list_title: Color,
-    pub library_list_subtitle: Color,
-    pub album_list_title: Color,
-    pub album_list_subtitle: Color,
+pub(crate) struct TextColor {
+    pub(crate) sidebar: Color,
+    pub(crate) now_playing_song: Color,
+    pub(crate) now_playing_artist: Color,
+    pub(crate) detail_view_header_title: Color,
+    pub(crate) detail_view_header_subtitle: Color,
+    pub(crate) library_list_title: Color,
+    pub(crate) library_list_subtitle: Color,
+    pub(crate) album_list_title: Color,
+    pub(crate) album_list_subtitle: Color,
 }
 
 impl Default for TextColor {
@@ -61,16 +61,16 @@ impl Default for TextColor {
 
 /// Font sizes for every text element in the UI.
 #[derive(Clone, Copy)]
-pub struct TextSize {
-    pub sidebar: i32,
-    pub now_playing_song: i32,
-    pub now_playing_artist: i32,
-    pub detail_view_header_title: i32,
-    pub detail_view_header_subtitle: i32,
-    pub library_list_title: i32,
-    pub library_list_subtitle: i32,
-    pub album_list_title: i32,
-    pub album_list_subtitle: i32,
+pub(crate) struct TextSize {
+    pub(crate) sidebar: i32,
+    pub(crate) now_playing_song: i32,
+    pub(crate) now_playing_artist: i32,
+    pub(crate) detail_view_header_title: i32,
+    pub(crate) detail_view_header_subtitle: i32,
+    pub(crate) library_list_title: i32,
+    pub(crate) library_list_subtitle: i32,
+    pub(crate) album_list_title: i32,
+    pub(crate) album_list_subtitle: i32,
 }
 
 impl Default for TextSize {
@@ -91,10 +91,10 @@ impl Default for TextSize {
 
 /// The UI color palette.
 #[derive(Default)]
-pub struct Theme {
-    pub bg: Background,
-    pub text_color: TextColor,
-    pub text_size: TextSize,
+pub(crate) struct Theme {
+    pub(crate) bg: Background,
+    pub(crate) text_color: TextColor,
+    pub(crate) text_size: TextSize,
 }
 
 /// Extract all background colors from Lua globals.

@@ -24,7 +24,7 @@ use std::rc::Rc;
 use tokio::sync::mpsc;
 
 /// A state change to report to the OS MPRIS interface.
-pub enum MprisCommand {
+pub(crate) enum MprisCommand {
     UpdateStatus(mpris_server::PlaybackStatus),
     UpdateMetadata {
         title: String,
@@ -38,7 +38,7 @@ pub enum MprisCommand {
     },
     UpdatePosition(u64),
     /// A user-initiated seek just completed, to be reported back to MPRIS
-    /// listeners (distinct from `UpdatePosition`, which is the regulat
+    /// listeners (distinct from `UpdatePosition`, which is the regular
     /// polling update: see the `Seeked` signal in the MPRIS spec).
     Seeked(u64),
     UpdateShuffle(bool),
@@ -52,7 +52,7 @@ pub enum MprisCommand {
 /// next/previous, seek, volume: see `setup_controls`) are translated into
 /// `PlayerCommand`s and sent back into the app's main command channel, so
 /// OS-level media controls behave identically to in-app UI controls.
-pub fn spawn_mpris(app_tx: mpsc::Sender<PlayerCommand>) -> mpsc::Sender<MprisCommand> {
+pub(crate) fn spawn_mpris(app_tx: mpsc::Sender<PlayerCommand>) -> mpsc::Sender<MprisCommand> {
     let (mpris_tx, mut mpris_rx) = mpsc::channel::<MprisCommand>(32);
 
     std::thread::spawn(move || {
@@ -207,7 +207,7 @@ fn loop_status_to_repeat_mode(status: LoopStatus) -> RepeatMode {
 /// The inverse of `loop_status_to_repeat_mode`, used when reporting our
 /// current `RepeatMode` back out to MPRIS via `MprisCommand::UpdateLoopStatus`
 /// (see `player_bridge.rs`).
-pub fn repeat_mode_to_loop_status(mode: RepeatMode) -> LoopStatus {
+pub(crate) fn repeat_mode_to_loop_status(mode: RepeatMode) -> LoopStatus {
     match mode {
         RepeatMode::Off => LoopStatus::None,
         RepeatMode::Track => LoopStatus::Track,
@@ -228,7 +228,7 @@ fn track_id_hash(path: &Path) -> u64 {
 /// Builds an MPRIS `TrackId` (a D-Bus object path) for a song, derived from
 /// a hash of its path. Not a real D-Bus object, just a stable identifier
 /// MPRIS clients use to distinguish tracks.
-pub fn track_id_for_path(path: &Path) -> TrackId {
+pub(crate) fn track_id_for_path(path: &Path) -> TrackId {
     let id = track_id_hash(path);
     TrackId::try_from(format!("/org/orpheus/track/{id}")).expect("valid object path")
 }
@@ -242,7 +242,7 @@ pub fn track_id_for_path(path: &Path) -> TrackId {
 /// to be written out to disk once before it can be reported. Returns
 /// `None` if the cache directory can't be determined or written to,
 /// rather than erroring.
-pub fn write_art_cache(path: &Path, bytes: &[u8]) -> Option<String> {
+pub(crate) fn write_art_cache(path: &Path, bytes: &[u8]) -> Option<String> {
     let cache_dir = dirs::cache_dir()?.join("orpheus").join("art");
     fs::create_dir_all(&cache_dir).ok()?;
 
