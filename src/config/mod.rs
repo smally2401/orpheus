@@ -9,17 +9,17 @@
 
 /// Keybinding parsing: `KeyCombo`, `KeyAction`, and the Lua-loading logic
 /// that turns a `keymaps` table into a `HashMap<KeyCombo, KeyAction>`.
-pub mod keys;
+pub(crate) mod keys;
 /// Playlist parsing: `PlaylistDef` and the Lua-loading logic that turns a
 /// `playlists` table into a `Vec<PlaylistDef>`.
-pub mod playlist;
-/// The live runtime half of Lua integration: `current_song()`,
-/// `on_song_change`, and anything else that needs a `Lua` instance kept
+pub(crate) mod playlist;
+/// The live runtime half of Lua integration: `on_song_change`,
+/// `on_song_halfway`, and anything else that needs a `Lua` instance kept
 /// alive past config parse time. See `scripting::ScriptRuntime`.
-pub mod scripting;
+pub(crate) mod scripting;
 /// Theme parsing: `Background`, `TextColor`, `TextSize`, `Theme`, and the
 /// Lua-loading logic that turns a nested `theme` table into a `Theme`.
-pub mod theme;
+pub(crate) mod theme;
 
 use crate::config::keys::KeyAction;
 use crate::config::keys::KeyCombo;
@@ -32,6 +32,7 @@ use crate::config::theme::load_backgrounds;
 use crate::config::theme::load_text_colors;
 use crate::config::theme::load_text_sizes;
 use crate::utils::expand_tilde;
+use mlua::Lua;
 use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
@@ -39,7 +40,7 @@ use std::path::PathBuf;
 /// Window geometry and state. `width` and `height` are `None` when the user
 /// wants the window to use Slint's default (800x600) or when `maximized` is
 /// true.
-pub struct WindowState {
+pub(crate) struct WindowState {
     pub width: Option<f32>,
     pub height: Option<f32>,
     pub maximized: bool,
@@ -59,13 +60,13 @@ impl Default for WindowState {
 ///
 /// Every field has a sensible default (see `impl Default`), so a missing or
 /// partially invalid `config.lua` never prevents the app from starting.
-pub struct Config {
-    pub music_dir: String,
-    pub default_volume: f32,
-    pub window_state: WindowState,
-    pub keymaps: HashMap<KeyCombo, KeyAction>,
-    pub playlists: Vec<PlaylistDef>,
-    pub theme: Theme,
+pub(crate) struct Config {
+    pub(crate) music_dir: String,
+    pub(crate) default_volume: f32,
+    pub(crate) window_state: WindowState,
+    pub(crate) keymaps: HashMap<KeyCombo, KeyAction>,
+    pub(crate) playlists: Vec<PlaylistDef>,
+    pub(crate) theme: Theme,
 }
 
 impl Default for Config {
@@ -267,7 +268,7 @@ const DEFAULT_LUARC_JSON: &str = r#"{
 /// `music_dir` before it can be registered, but `music_dir` itself only
 /// becomes known by running the user's script. See `load_lua` for the
 /// second half of this.
-pub fn load_config() -> (Config, String) {
+pub(crate) fn load_config() -> (Config, String) {
     let ConfigFile::Custom(file_contents) = load_config_file() else {
         return (Config::default(), String::new());
     };
@@ -346,7 +347,7 @@ fn write_lsp_support_files(config_dir: &Path) {
 /// as a plan statement before that point, it's already sitting in globals
 /// by the time the error happens.
 fn get_music_dir(contents: &str) -> String {
-    let lua = mlua::Lua::new();
+    let lua = Lua::new();
     let _ = lua.load(contents).exec();
     let globals = lua.globals();
     get_music_dir_or_default(&globals, Config::default().music_dir)
@@ -356,7 +357,7 @@ fn get_music_dir(contents: &str) -> String {
 /// `list_music_files` registered (bound to the already-resolved
 /// `music_dir`), then reads every config field back out of globals.
 fn load_lua(contents: &str, music_dir: &str) -> Config {
-    let lua = mlua::Lua::new();
+    let lua = Lua::new();
 
     let expanded = expand_tilde(music_dir);
     if let Err(e) = register_list_music_files(&lua, expanded) {
@@ -421,7 +422,7 @@ fn load_window_state(globals: &mlua::Table, defaults: &WindowState) -> WindowSta
 /// Returned paths are relative to `music_dir` again (via `strip_prefix`),
 /// matching the format `PlaylistDef.songs` already expects, so scripts can
 /// feed the result straight into a playlist's `songs` field.
-fn register_list_music_files(lua: &mlua::Lua, music_dir: PathBuf) -> mlua::Result<()> {
+fn register_list_music_files(lua: &Lua, music_dir: PathBuf) -> mlua::Result<()> {
     let func = lua.create_function(move |_, relative_dir: String| {
         let target_dir = music_dir.join(&relative_dir);
         let mut songs = Vec::new();

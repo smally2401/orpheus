@@ -20,6 +20,8 @@ See the `config_examples/` folder for runnable examples.
 | `keymaps` | table | see below | Custom keybindings. See below. |
 | `theme` | table | see below | UI colors and text sizes. See below. |
 | `playlists` | table | `{}` | A list of playlist definitions. See below. |
+| `on_song_change` | function | *(none)* | Called whenever the current track changes. See "Scripting hooks" below. |
+| `on_song_halfway` | function | *(none)* | Called partway through the current track. See "Scripting hooks" below. |
 
 Both `window_width` and `window_height` must exist for them to take effect.
 
@@ -280,6 +282,59 @@ playlists = {
     }
 }
 ```
+
+## Scripting hooks
+
+Orpheus exposes a small live runtime API for reacting to playback from
+your config, separate from everything above (which is only read once at
+startup). This is what powers things like scrobbling or a custom
+now-playing display, entirely from Lua.
+
+### `on_song_change`
+
+Define this as a top-level function in `config.lua` to be notified every
+time the track changes. Orpheus calls it automatically, you don't call it
+yourself.
+
+```lua
+function on_song_change(song)
+    print("now playing: " .. song.title .. " by " .. song.artist)
+end
+```
+
+`song` has the fields `title`, `artist` and `album`. Leaving `on_song_change`
+undefined is fine, it's simply never called.
+
+### `on_song_halfway`
+
+Define this as a top-level function in `config.lua` to be notified partway
+through the current track (roughly halfway through its duration). Takes no
+arguments.
+
+```lua
+function on_song_halfway()
+    print("halfway through the current track")
+end
+```
+
+This exists primarily for services like Last.fm, whose scrobbling rules
+require waiting until partway through a track before submitting a scrobble
+(rather than scrobbling immediately on `on_song_change`). Leaving it
+undefined is fine, it's simply never called.
+
+### A note on trust
+
+Unlike the rest of `config.lua`, code inside `on_song_change` and
+`on_song_halfway` runs with full access to Lua's standard library,
+including `os` and `io`, and can load native (C-compiled) Lua modules via
+`require`. This is necessary for things like the Last.fm scrobbling example,
+which needs an HTTP client. It also means a hook can run shell commands
+or read/write arbitrary files on your system. Treat scripts you didn't
+write yourself, especially ones using `require`, with the same caution
+you'd give any other shell script or executable before running them.
+
+See `config_examples/` for both a minimal example and a Last.fm scrobbling
+example built on this hook.
 
 ## Why Lua?
 

@@ -53,6 +53,7 @@ reference, including:
 - All available config keys (colors, music directory, playlists)
 - How to define playlists, including auto-generating one from a folder
   with `list_music_files`
+- Scripting hooks for reacting to playback, like `on_song_change`.
 - Runnable example scripts, from a plain key-value file to a
   time of day aware color scheme
 

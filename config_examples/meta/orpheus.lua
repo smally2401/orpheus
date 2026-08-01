@@ -54,6 +54,20 @@
 ---@field sort boolean?
 ---@field art string?
 
+--- A snapshot of the currently playing song, passed to `on_song_change`.
+--- All three fields are always present together, there's no
+--- partial/optional version of this table.
+---@class OrpheusCurrentSong
+---@field title string
+---@field artist string
+---@field album string
+
+--- The shape `on_song_change` must have if you define it.
+---@alias OrpheusSongChangeCallback fun(song: OrpheusCurrentSong)
+
+--- The shape `on_song_halfway` must have if you define it.
+---@alias OrpheusSongHalfwayCallback fun()
+
 --- Path to your music library. `~` is expanded to your home directory.
 ---@type string
 music_dir = "~/Music"
@@ -87,3 +101,18 @@ playlists = {}
 ---@param relative_dir string
 ---@return string[]
 function list_music_files(relative_dir) end
+
+--- Called by Orpheus whenever the current track changes. Define this
+--- yourself in config.lua if you want to react to song changes (e.g.
+--- scrobbling, writing a "now playing" file, notifications). Not called
+--- if left undefined.
+---@type OrpheusSongChangeCallback?
+on_song_change = nil
+
+--- Called by Orpheus partway through the current track (roughly halfway
+--- through its duration). Define this yourself if you want to react at
+--- that point specifically, e.g. Last.fm-style scrobbling, which requires
+--- waiting until partway through a track before submitting a scrobble.
+--- Not called if left undefined.
+---@type OrpheusSongHalfwayCallback?
+on_song_halfway = nil

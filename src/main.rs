@@ -5,6 +5,14 @@
 //! This file deliberately contains no logic of its own, it just connects
 //! UI events to `player_bridge`'s command channel. See `player_bridge.rs`
 //! for what actyally happens when a command is sent.
+//!
+//! It also spawns one extra, non-Slint/non-tokio thread: a dedicated
+//! script runtime thread that owns a `ScriptRuntime` (see
+//! `config::scripting`) for the app's entire lifetime. This exists
+//! because `mlua::Lua` is `!Send`, so it can never be built on one thread
+//! and handed to another, the thread below builds its own `Lua` instance
+//! via `build_runtime` and then just waits on a channel for song changes,
+//! reported by `player_bridge`'s tick loop.
 
 mod config;
 mod local_backend;
@@ -18,7 +26,7 @@ use crate::config::keys::KeyAction;
 use crate::config::keys::KeyCombo;
 use crate::config::keys::key_string_to_key_name;
 use crate::config::load_config;
-use crate::config::scripting::CurrentSong;
+use crate::config::scripting::ScriptEvent;
 use crate::config::scripting::build_runtime;
 use crate::config::theme::Theme;
 use crate::player_bridge::PlayerCommand;
@@ -28,8 +36,6 @@ use slint::LogicalSize;
 use slint::ModelRc;
 use slint::VecModel;
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::Mutex;
 use tokio::sync::mpsc::Sender;
 
 slint::include_modules!();
@@ -38,25 +44,17 @@ slint::include_modules!();
 async fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
 
-    let current_song = Arc::new(Mutex::new(None));
-    let (song_tx, song_rx) = std::sync::mpsc::channel::<CurrentSong>();
+    let (script_tx, script_rx) = std::sync::mpsc::channel::<ScriptEvent>();
 
     let (config, contents) = load_config();
-    std::thread::spawn(move || {
-        let script_runtime = build_runtime(&contents, current_song.clone());
-        while let Ok(song) = song_rx.recv() {
-            let mut guard = current_song.lock().unwrap();
-            *guard = Some(song.clone());
-            script_runtime.fire_song_change(song);
-        }
-    });
+    build_script_runtime_thread(contents, script_rx);
 
     let (tx, library, playlists) = spawn_player_bridge(
         &ui,
         &config.music_dir,
         config.playlists,
         config.default_volume,
-        song_tx,
+        script_tx,
     );
 
     apply_window_config(&ui, &config.window_state);
@@ -72,6 +70,30 @@ async fn main() -> Result<(), slint::PlatformError> {
     ui.set_playlists(playlists_model);
 
     ui.run()
+}
+
+/// Dedicated thread for `ScriptRuntime`: built here, on this thread,
+/// rather than passed in, since `mlua::Lua` can't cross threads.
+/// `fire_song_change` is called after receiving a message so a script's
+/// `on_song_change` sees consistent state if it calls `current_song()`
+/// itself.
+fn build_script_runtime_thread(
+    contents: String,
+    script_rx: std::sync::mpsc::Receiver<ScriptEvent>,
+) {
+    std::thread::spawn(move || {
+        let script_runtime = build_runtime(&contents);
+        while let Ok(event) = script_rx.recv() {
+            match event {
+                ScriptEvent::SongChanged(song) => {
+                    script_runtime.fire_song_change(song);
+                }
+                ScriptEvent::SongHalfway => {
+                    script_runtime.fire_song_halfway();
+                }
+            }
+        }
+    });
 }
 
 /// Applies the user's window config.

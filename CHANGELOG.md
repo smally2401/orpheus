@@ -12,6 +12,9 @@ All notable changes to Orpheus will be documented in this file.
 - Custom images for playlists
 - Keymaps
 - lua-language-server support
+- Lua functions:
+  - on_song_change
+  - on_song_halfway
 - Other Lua settings:
   - Text color
   - Text size

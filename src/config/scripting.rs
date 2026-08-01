@@ -1,11 +1,18 @@
 //! The live runtime half of Orpheus's Lua integration: things that can't
 //! be resolved once at config parse time because they depend on state
-//! that only exists after playback starts (`current_song`, `on_song_change`).
+//! that only exists after playback starts (`on_song_change`,
+//! `on_song_halfway`).
 
 use crate::local_backend::Song;
 use mlua::Lua;
-use std::sync::Arc;
-use std::sync::Mutex;
+
+/// A playback event reported from `player_bridge`'s tick loop to the
+/// dedicated script runtime thread (see `main.rs`), which turns each
+/// variant into the matching `ScriptRuntime` call.
+pub(crate) enum ScriptEvent {
+    SongChanged(CurrentSong),
+    SongHalfway,
+}
 
 /// Owns the `Lua` instance for the lifetime of the app, plus whatever
 /// scripted hooks the user's `config.lua` registered. Constructed once
@@ -14,13 +21,14 @@ use std::sync::Mutex;
 pub(crate) struct ScriptRuntime {
     lua: Lua,
     on_song_change: Option<mlua::RegistryKey>,
+    on_song_halfway: Option<mlua::RegistryKey>,
 }
 
 impl ScriptRuntime {
-    /// Wraps an already executed `Lua` instance (see `load_lua` in
-    /// `mod.rs`, which registers `current_song` and runs the script
-    /// before calling this) into a `ScriptRuntime`, capturing
-    /// `on_song_change` if the script defined one.
+    /// Wraps an already executed `Lua` instance into a `ScriptRuntime`,
+    /// capturing `on_song_change` and `on_song_halfway` if the script
+    /// defined them. Either, both, or neither may be present: each is
+    /// independently optional.
     pub(super) fn new(lua: Lua) -> Self {
         let on_song_change = lua
             .globals()
@@ -28,13 +36,20 @@ impl ScriptRuntime {
             .ok()
             .and_then(|f| lua.create_registry_value(f).ok());
 
+        let on_song_halfway = lua
+            .globals()
+            .get::<mlua::Function>("on_song_halfway")
+            .ok()
+            .and_then(|f| lua.create_registry_value(f).ok());
+
         Self {
             lua,
             on_song_change,
+            on_song_halfway,
         }
     }
 
-    /// Calls the user's `on_song_change(song)`, if one was regustered.
+    /// Calls the user's `on_song_change(song)`, if one was registered.
     /// Errors from the script are logged and otherwise ignored, so a bug
     /// in someone's `config.lua` can't interrupt playback.
     pub(crate) fn fire_song_change(&self, song: CurrentSong) {
@@ -55,13 +70,32 @@ impl ScriptRuntime {
             eprintln!("Error in on_song_change: {e}");
         }
     }
+
+    /// Calls the user's `on_song_halfway()`, if one was registered. Takes
+    /// no arguments, unlike `fire_song_change`, since by the time this
+    /// fires the script already knows what's playing from the
+    /// `on_song_change` call it received earlier for the same track.
+    /// Errors from the script are logged and otherwise ignored, so a bug
+    /// in someone's `config.lua` can't interrupt playback.
+    pub(crate) fn fire_song_halfway(&self) {
+        let Some(key) = &self.on_song_halfway else {
+            return;
+        };
+
+        let Ok(func) = self.lua.registry_value::<mlua::Function>(key) else {
+            return;
+        };
+
+        if let Err(e) = func.call::<()>(()) {
+            eprintln!("Error in on_song_halfway: {e}");
+        }
+    }
 }
 
-/// A snapshot of the currently playing song, as exposed to Lua via
-/// `current_song()` and passed to `on_song_change`. Deliberately a
-/// separate type from `local_backend::Song` (same relationship as
-/// `PlaylistDef` to `Playlist`): only the fields a script actually needs,
-/// decoupled from playback/tag-reading internals.
+/// A snapshot of the currently playing song, passed to `on_song_change`.
+/// Deliberately a separate type from `local_backend::Song` (same
+/// relationship as `PlaylistDef` to `Playlist`): only the fields a
+/// script actually needs, decoupled frm playback/tag-reading internals.
 #[derive(Clone)]
 pub(crate) struct CurrentSong {
     pub title: String,
@@ -80,8 +114,8 @@ impl CurrentSong {
         }
     }
 
-    /// Converts to the Lua table shape `current_song()` and
-    /// `on_song_change` hand to scripts: `{ title, artist, album }`.
+    /// Converts to the Lua table shape passed to `on_song_change`:
+    /// `{ title, artist, album }`.
     fn into_lua_table(self, lua: &Lua) -> mlua::Result<mlua::Table> {
         let table = lua.create_table()?;
         table.set("title", self.title)?;
@@ -91,32 +125,7 @@ impl CurrentSong {
     }
 }
 
-/// Registers `current_song() -> table?` as a Lua global, backed by
-/// `current`. Returns `nil` when nothing's playing, so scripts can write
-/// `if current_song() then ... end`.
-///
-/// Must be called before the config script is executed (same requirement
-/// as `register_list_music_files` in `mod.rs`), in case the script calls
-/// `current_song()` at the top level rather than only from inside a hook.
-pub(super) fn register_current_song(
-    lua: &Lua,
-    current: Arc<Mutex<Option<CurrentSong>>>,
-) -> mlua::Result<()> {
-    let func = lua.create_function(move |lua, ()| {
-        let guard = current.lock().unwrap();
-        match &*guard {
-            Some(song) => song.clone().into_lua_table(lua).map(mlua::Value::Table),
-            None => Ok(mlua::Value::Nil),
-        }
-    })?;
-
-    lua.globals().set("current_song", func)
-}
-
-/// Builds a fresh `ScriptRuntime` from `contents`, registering
-/// `current_song` (backed by `current`) before running the script so a
-/// top-level `current_song()` call works, same as `register_current_song`'s
-/// requirement in `mod.rs`.
+/// Builds a fresh `ScriptRuntime` from `contents`.
 ///
 /// Must be called on whatever thread will own the resulting
 /// `ScriptRuntime` for its entire lifetime: `mlua::Lua` is not `Send`, so
@@ -124,19 +133,12 @@ pub(super) fn register_current_song(
 /// afterward. See `main.rs`'s dedicated script runtime thread, which calls
 /// this immediately after spawning, rather than receiving an already built
 /// `ScriptRuntime` from elsewhere.
-pub(crate) fn build_runtime(
-    contents: &str,
-    current: Arc<Mutex<Option<CurrentSong>>>,
-) -> ScriptRuntime {
-    let lua = Lua::new();
-
-    if let Err(e) = register_current_song(&lua, current) {
-        eprintln!("Could not register current_song: {e}");
-    };
+pub(crate) fn build_runtime(contents: &str) -> ScriptRuntime {
+    let lua = unsafe { Lua::unsafe_new() };
 
     if let Err(e) = lua.load(contents).exec() {
         eprintln!("Error building the script runtime: {e}");
-    };
+    }
 
     ScriptRuntime::new(lua)
 }

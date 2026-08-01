@@ -13,6 +13,7 @@ use crate::SlintPlaylist;
 use crate::SlintSongWithArt;
 use crate::config::playlist::PlaylistDef;
 use crate::config::scripting::CurrentSong;
+use crate::config::scripting::ScriptEvent;
 use crate::local_backend::LocalBackend;
 use crate::local_backend::RepeatMode;
 use crate::mpris::MprisCommand;
@@ -37,7 +38,7 @@ use tokio::sync::mpsc;
 /// Something the UI (or MPRIS) wants the player to do. Sent over the
 /// channel returned by `spawn_player_bridge` and handled by
 /// `handle_command`.
-pub enum PlayerCommand {
+pub(crate) enum PlayerCommand {
     TogglePlay,
     Play,
     Pause,
@@ -86,24 +87,32 @@ struct TickState {
     /// new queue. Reset to `false` whenever a command changes the queue
     /// (see `handle_command`).
     queue_exhausted: bool,
-    song_tx: std::sync::mpsc::Sender<CurrentSong>,
+    halfway_fired: bool,
+    /// Reports song changes to the dedicated script runtime thread (see
+    /// `main.rs`), so `config.lua`'s `on_song_change` can be called and
+    /// `current_song()` can stay up to date. Sent alongside the existing
+    /// MPRIS metadata update in `on_tick`, since both fire on exactly the
+    /// same "track changed" condition.
+    script_tx: std::sync::mpsc::Sender<ScriptEvent>,
 }
 
 impl TickState {
-    fn new(song_tx: std::sync::mpsc::Sender<CurrentSong>) -> Self {
+    fn new(script_tx: std::sync::mpsc::Sender<ScriptEvent>) -> Self {
         TickState {
             last_song_info: None,
             last_song_path: None,
             was_paused: true,
             queue_exhausted: true,
-            song_tx,
+            halfway_fired: false,
+            script_tx,
         }
     }
 
     /// Runs one polling cycle: advances the queue if the current track
-    /// finished, syncs playback status/position to MPRIS, and pushes
-    /// updated track info (title, artist, position, art) to the UI.
-    /// Called on a fixed interval from `spawn_player_bridge`'s main loop
+    /// finished, syncs playback status/position to MPRIS, reports song
+    /// changes to the script runtime, and pushes updated track info
+    /// (title, artist, position, art) to the UI. Called on a fixed
+    /// interval from `spawn_player_bridge`'s main loop.
     fn on_tick(
         &mut self,
         local_backend: &mut LocalBackend,
@@ -143,6 +152,7 @@ impl TickState {
             let current_song_path = track.path.clone();
             if self.last_song_path != Some(current_song_path) {
                 self.last_song_path = Some(track.path.clone());
+                self.halfway_fired = false;
 
                 let art_url = track
                     .art
@@ -159,7 +169,13 @@ impl TickState {
                 });
 
                 let current_song = CurrentSong::from_song(track);
-                let _ = self.song_tx.send(current_song);
+                let _ = self.script_tx.send(ScriptEvent::SongChanged(current_song));
+            }
+
+            if !self.halfway_fired && total_duration > 0 && current_position >= (total_duration / 2)
+            {
+                self.halfway_fired = true;
+                let _ = self.script_tx.send(ScriptEvent::SongHalfway);
             }
 
             let track_art = track.art.clone();
@@ -195,12 +211,16 @@ impl TickState {
 /// Sets up the local backend, MPRIS, and the app's runtime loop, returning
 /// a command channel for the UI to drive playback plus the initial
 /// library/playlist data to populate the UI with at startup.
-pub fn spawn_player_bridge(
+///
+/// `song_tx` is where song changes get reported to, for `config.lua`'s
+/// `on_song_change`/`current_song()` support: see `main.rs`'s dedicated
+/// script runtime thread, which owns the other end of this channel.
+pub(crate) fn spawn_player_bridge(
     ui: &AppWindow,
     music_dir: &str,
     playlist_defs: Vec<PlaylistDef>,
     default_volume: f32,
-    song_tx: std::sync::mpsc::Sender<CurrentSong>,
+    script_tx: std::sync::mpsc::Sender<ScriptEvent>,
 ) -> (
     mpsc::Sender<PlayerCommand>,
     Vec<SlintAlbum>,
@@ -217,7 +237,7 @@ pub fn spawn_player_bridge(
 
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_millis(100));
-        let mut tick_state = TickState::new(song_tx);
+        let mut tick_state = TickState::new(script_tx);
 
         loop {
             tokio::select! {
