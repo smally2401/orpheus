@@ -91,173 +91,26 @@ enum ConfigFile {
     Custom(String),
 }
 
-/// Default config written to disk on first run.
-const DEFAULT_CONFIG_FILE: &str = r##"music_dir = "~/Music"
-default_volume = 1.0
-window_maximized = true
-
-keymaps = {
-    toggle_play = "Space",
-    next_track = "N",
-    prev_track = "P",
-    volume_up = "UpArrow",
-    volume_down = "DownArrow",
-}
-
-theme = {
-    bg = {
-        sidebar = "#0e101d",
-        now_playing_bar = "#0a0a0f",
-        library_view = "#1f1d2f",
-        album_view = "#1f1d2f",
-        playlists_view = "#1f1d2f",
-        open_playlist_view = "#1f1d2f",
-    },
-
-    text_color = {
-        sidebar = "#cdd6f4",
-        now_playing_song = "#cdd6f4",
-        now_playing_artist = "#cdd6f4",
-        detail_view_header_title = "#cdd6f4",
-        detail_view_header_subtitle = "#cdd6f4",
-        library_list_title = "#cdd6f4",
-        library_list_subtitle = "#cdd6f4",
-        album_list_title = "#cdd6f4",
-        album_list_subtitle = "#cdd6f4",
-    },
-
-    text_size = {
-        sidebar = 18,
-        now_playing_song = 15,
-        now_playing_artist = 12,
-        detail_view_header_title = 28,
-        detail_view_header_subtitle = 18,
-        library_list_title = 15,
-        library_list_subtitle = 12,
-        album_list_title = 15,
-        album_list_subtitle = 12,
-    },
-}
-"##;
+/// Default config written to disk on first run. Sourced directly from
+/// `config_examples/01_default.lua`, so the shipped default and the
+/// documented example can never drift apart.
+const DEFAULT_CONFIG_FILE: &str = include_str!("../../config_examples/01_default.lua");
 
 /// Type annotations for `lua-language-server`, giving editors autocomplete
-/// and type-checking on `config.lua`. Written to
+/// and type-checking on `config.lua`. Sourced directly from
+/// `config_examples/meta/orpheus.lua`. Written to
 /// `~/.config/orpheus/meta/orpheus.lua` on every run, so it always matches
 /// the schema this version of Orpheus actually reads. Not meant to be
 /// hand-edited, see the config README for what it documents.
-const ORPHEUS_LUA_META: &str = r#"---@meta
-
----@alias HexColor string
-
----@class OrpheusKeymaps
----@field toggle_play string?
----@field next_track string?
----@field prev_track string?
----@field volume_up string?
----@field volume_down string?
----@field seek_forward string?
----@field seek_backward string?
----@field open_library string?
----@field open_playlists string?
-
----@class OrpheusBg
----@field sidebar HexColor?
----@field now_playing_bar HexColor?
----@field library_view HexColor?
----@field album_view HexColor?
----@field playlists_view HexColor?
----@field open_playlist_view HexColor?
-
----@class OrpheusTextColor
----@field sidebar HexColor?
----@field now_playing_song HexColor?
----@field now_playing_artist HexColor?
----@field detail_view_header_title HexColor?
----@field detail_view_header_subtitle HexColor?
----@field library_list_title HexColor?
----@field library_list_subtitle HexColor?
----@field album_list_title HexColor?
----@field album_list_subtitle HexColor?
-
----@class OrpheusTextSize
----@field sidebar integer?
----@field now_playing_song integer?
----@field now_playing_artist integer?
----@field detail_view_header_title integer?
----@field detail_view_header_subtitle integer?
----@field library_list_title integer?
----@field library_list_subtitle integer?
----@field album_list_title integer?
----@field album_list_subtitle integer?
-
----@class OrpheusTheme
----@field bg OrpheusBg?
----@field text_color OrpheusTextColor?
----@field text_size OrpheusTextSize?
-
----@class OrpheusPlaylist
----@field name string
----@field songs string[]
----@field sort boolean?
----@field art string?
-
---- Path to your music library. `~` is expanded to your home directory.
----@type string
-music_dir = "~/Music"
-
---- Volume when opening the app, 0.0-1.0
----@type number?
-default_volume = 1.0
-
----@type boolean?
-window_maximized = true
-
----@type number?
-window_width = 800
-
----@type number?
-window_height = 600
-
---- Maps an action name (e.g. "toggle_play") to a key combo string
---- (e.g. "ctrl+shift+p"). See the README for valid actions and key names.
----@type OrpheusKeymaps?
-keymaps = {}
-
----@type OrpheusTheme?
-theme = {}
-
----@type OrpheusPlaylist[]?
-playlists = {}
-
---- Recursively lists every song file under `music_dir/relative_dir`,
---- returned as paths relative to `music_dir`.
----@param relative_dir string
----@return string[]
-function list_music_files(relative_dir) end
-"#;
+const ORPHEUS_LUA_META: &str = include_str!("../../config_examples/meta/orpheus.lua");
 
 /// `lua_language_server` workspace config, pointing it at `ORPHEUS_LUA_META`
 /// and declaring every config global so it isn't flagged as undefined.
-/// Written to `~/.config/orpheus/.luarc.json` only if it doesn't already
-/// exist, since (unlike `orpheus.lua`) users may reasonably extend this
-/// with their own settings.
-const DEFAULT_LUARC_JSON: &str = r#"{
-    "workspace.library": [
-        "./meta"
-    ],
-    "diagnostics.globals": [
-        "music_dir",
-        "default_volume",
-        "window_maximized",
-        "window_width",
-        "window_height",
-        "keymaps",
-        "theme",
-        "playlists",
-        "list_music_files"
-    ]
-}
-"#;
+/// Sourced directly from `config_examples/.luarc.json` Written to 
+/// `~/.config/orpheus/.luarc.json` only if it doesn't already exist, since 
+/// (unlike `orpheus.lua`) users may reasonably extend this with their own 
+/// settings.
+const DEFAULT_LUARC_JSON: &str = include_str!("../../config_examples/.luarc.json");
 
 /// Entry point: locates `config.lua`, then runs it to produce a `Config`.
 ///

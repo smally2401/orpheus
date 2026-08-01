@@ -4,16 +4,16 @@
 //! `local_backend.rs`) and restored once at startup, right after
 //! `LocalBackend::new` (see `spawn_player_bridge` in `player_bridge.rs`).
 
-use crate::local_backend::RepeatMode;
 use crate::local_backend::LocalBackend;
+use crate::local_backend::RepeatMode;
 use crate::local_backend::Song;
 use rand::seq::SliceRandom;
 use serde::Deserialize;
 use serde::Serialize;
 use std::error::Error;
 use std::fs;
-use std::path::PathBuf;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 /// The subset of `LocalBackend`'s state that gets serialized to disk.
@@ -45,10 +45,7 @@ fn get_state_path() -> Option<PathBuf> {
 
 /// Serializes `state` to `path` as pretty-printed JSON, creating the
 /// parent directory first if it doesn't exist.
-fn save_state_to_disk(
-    path: &Path,
-    state: &PlaybackState,
-) -> Result<(), Box<dyn Error>> {
+fn save_state_to_disk(path: &Path, state: &PlaybackState) -> Result<(), Box<dyn Error>> {
     let json = serde_json::to_string_pretty(state)?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
