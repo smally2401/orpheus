@@ -19,6 +19,7 @@ mod local_backend;
 mod macros;
 mod mpris;
 mod player_bridge;
+mod state;
 mod utils;
 
 use crate::config::WindowState;

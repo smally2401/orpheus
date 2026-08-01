@@ -21,6 +21,7 @@ use crate::mpris::repeat_mode_to_loop_status;
 use crate::mpris::spawn_mpris;
 use crate::mpris::track_id_for_path;
 use crate::mpris::write_art_cache;
+use crate::state::restore_state;
 use crate::utils::album_rust_to_slint;
 use crate::utils::art_rust_to_slint;
 use crate::utils::expand_tilde;
@@ -87,6 +88,10 @@ struct TickState {
     /// new queue. Reset to `false` whenever a command changes the queue
     /// (see `handle_command`).
     queue_exhausted: bool,
+    /// True once `ScriptEvent::SongHalfway` has been sent for the
+    /// currently playing track, so it only fires once per track. Reset
+    /// to `false` whenever the track changes (see the `last_song_path`
+    /// check below).
     halfway_fired: bool,
     /// Reports song changes to the dedicated script runtime thread (see
     /// `main.rs`), so `config.lua`'s `on_song_change` can be called and
@@ -229,6 +234,8 @@ pub(crate) fn spawn_player_bridge(
     let mut local_backend = LocalBackend::new(&path, playlist_defs, default_volume);
     let library = build_slint_library(&local_backend);
     let playlists = build_slint_playlists(&local_backend);
+
+    restore_state(&mut local_backend);
 
     let (tx, mut rx) = mpsc::channel::<PlayerCommand>(100);
     let ui = ui.as_weak();

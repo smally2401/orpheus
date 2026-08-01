@@ -7,6 +7,7 @@
 //! methods rather than touching playback state directly.
 
 use crate::config::playlist::PlaylistDef;
+use crate::state::save_playback_state;
 use lofty::file::AudioFile;
 use lofty::file::TaggedFile;
 use lofty::file::TaggedFileExt;
@@ -15,6 +16,8 @@ use lofty::tag::ItemKey;
 use rand::seq::SliceRandom;
 use rodio::MixerDeviceSink;
 use rodio::Player;
+use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::error::Error;
 use std::ffi::OsStr;
@@ -79,7 +82,7 @@ pub(crate) struct Playlist {
 /// i.e. after a track finishes on its own (see `TickState::on_tick` in
 /// `player_bridge.rs`). Has no effect on a manual "next" click, which
 /// always advances regardless of this setting (see `next`).
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub(crate) enum RepeatMode {
     /// Stop advancing once the queue's last track finishes.
     Off,
@@ -107,7 +110,7 @@ pub(crate) struct LocalBackend {
     /// The currently active play queue, in canonical (unshuffled) order.
     /// Populated by `select_album`, `select_playlist`, etc. Always
     /// resolved via `order`, never indexed into directly.
-    queue: Vec<Arc<Song>>,
+    pub(crate) queue: Vec<Arc<Song>>,
     /// A permutation of `queue`'s indices: playback walks `order`, and
     /// `order[i]` gives the real position in `queue` for slot `i`. When
     /// `shuffle` is off this is just `0..queue.len()` (identity); when on,
@@ -115,11 +118,11 @@ pub(crate) struct LocalBackend {
     /// swapped into `order[0]`, so toggling shuffle mid-song doesn't change
     /// what's playinh (see `toggle_shuffle`). Rebuilt any time `queue` is
     /// replaced, so it's always the same length as `queue`.
-    order: Vec<usize>,
+    pub(crate) order: Vec<usize>,
     /// Position *within `order`* (not directly within `queue`) of the
     /// currently playing (or paused) track. Resolve the actual song via
     /// `queue[order[index]]`.
-    index: usize,
+    pub(crate) index: usize,
 
     shuffle: bool,
     repeat: RepeatMode,
@@ -214,7 +217,7 @@ impl LocalBackend {
     /// `select_playlist_track` already guard for the empty case, see the
     /// todo there about `select_playlist_track` not yet validating
     /// `track_index`.
-    fn load_track(&mut self) -> Result<(), Box<dyn Error>> {
+    pub(crate) fn load_track(&mut self) -> Result<(), Box<dyn Error>> {
         if self.queue.is_empty() || self.index >= self.order.len() {
             return Err("Empty queue or invalid index".into());
         }
@@ -449,7 +452,7 @@ impl LocalBackend {
     }
 
     /// O(1) lookup of a known song by its path, backed by `song_paths`.
-    fn find_song_by_path(&self, path: &Path) -> Option<&Arc<Song>> {
+    pub(crate) fn find_song_by_path(&self, path: &Path) -> Option<&Arc<Song>> {
         self.song_paths.get(path)
     }
 
@@ -556,6 +559,15 @@ impl LocalBackend {
 
     pub(crate) fn get_volume(&self) -> f32 {
         self.player.volume()
+    }
+}
+
+/// Persists playback state to disk when `LocalBackend` is dropeed, i.e.
+/// on app shutdown, so the next launch can resume where this session left
+/// off. See `state::save_playback_state`.
+impl Drop for LocalBackend {
+    fn drop(&mut self) {
+        save_playback_state(self);
     }
 }
 

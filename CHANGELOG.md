@@ -2,6 +2,14 @@
 
 All notable changes to Orpheus will be documented in this file.
 
+## [0.3.0] - Unreleased
+
+- Playback state gets saved after app is closed
+
+### Known limitations
+
+- When a track ends naturally, next track fires on_song_halfway instantly
+
 ## [0.2.0] - 2026-08-01
 
 ### Added

@@ -134,7 +134,10 @@ pub(crate) fn decode_song_with_art(song: &Song) -> DecodedSong {
 
 /// Builds a `SlintPlaylist` without decoding any track art. Used for the
 /// sidebar list at startup: art is loaded lazily when the playlist is opened.
-pub(crate) fn playlist_rust_to_slint(playlist_index: usize, backend: &LocalBackend) -> SlintPlaylist {
+pub(crate) fn playlist_rust_to_slint(
+    playlist_index: usize,
+    backend: &LocalBackend,
+) -> SlintPlaylist {
     let resolved_playlist = backend.resolve_playlist(playlist_index);
 
     SlintPlaylist {
