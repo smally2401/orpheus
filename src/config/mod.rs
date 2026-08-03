@@ -170,7 +170,7 @@ fn load_config_file() -> ConfigFile {
 /// diagnostics on `config.lua`. `orpheus.lua` is rewritten every run to
 /// stay in sync with this version's schema. `.luarc.json` is only written
 /// if missing, since users may customize it. Failures are logged and
-/// otherwise ignored: thos is tooling support, not required for Orpheus
+/// otherwise ignored: this is tooling support, not required for Orpheus
 /// to function.
 fn write_lsp_support_files(config_dir: &Path) {
     let meta_dir = config_dir.join("meta");

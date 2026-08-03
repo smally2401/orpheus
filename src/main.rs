@@ -32,9 +32,9 @@ use crate::config::load_config;
 use crate::config::scripting::ScriptEvent;
 use crate::config::scripting::build_runtime;
 use crate::config::theme::Theme;
+use crate::config::theme::set_property;
 use crate::player_bridge::PlayerCommand;
 use crate::player_bridge::spawn_player_bridge;
-use paste::paste;
 use slint::LogicalSize;
 use slint::ModelRc;
 use slint::VecModel;
@@ -63,6 +63,7 @@ async fn main() -> Result<(), slint::PlatformError> {
 
     apply_window_config(&ui, &config.window_state);
     apply_theme(&ui, &config.theme);
+    ui.set_current_volume(config.default_volume);
 
     wire_callbacks(&ui, &tx);
     handle_keymaps(&config.keymaps, &ui, &tx);
@@ -114,6 +115,8 @@ fn handle_keymaps(
     ui: &AppWindow,
     tx: &Sender<PlayerCommand>,
 ) {
+    use KeyAction::*;
+
     let keymaps = keymaps.clone();
     let tx_clone = tx.clone();
     let ui_weak = ui.as_weak();
@@ -134,71 +137,34 @@ fn handle_keymaps(
             return;
         };
 
+        if let Some(command) = key_action.to_command() {
+            let _ = tx_clone.try_send(command);
+            return;
+        }
+
         match key_action {
-            KeyAction::TogglePlay => {
-                let _ = tx_clone.try_send(PlayerCommand::TogglePlay);
-            }
-            KeyAction::NextTrack => {
-                let _ = tx_clone.try_send(PlayerCommand::NextTrack);
-            }
-            KeyAction::PrevTrack => {
-                let _ = tx_clone.try_send(PlayerCommand::PrevTrack);
-            }
-            KeyAction::VolumeUp => {
-                let _ = tx_clone.try_send(PlayerCommand::VolumeUp);
-            }
-            KeyAction::VolumeDown => {
-                let _ = tx_clone.try_send(PlayerCommand::VolumeDown);
-            }
-            KeyAction::SeekForward => {
-                let _ = tx_clone.try_send(PlayerCommand::SeekForward);
-            }
-            KeyAction::SeekBackward => {
-                let _ = tx_clone.try_send(PlayerCommand::SeekBackward);
-            }
-            KeyAction::OpenLibrary => {
+            OpenLibrary => {
                 if let Some(ui) = ui_weak.upgrade() {
                     ui.set_current_view(View::Library);
                 }
             }
-            KeyAction::OpenPlaylists => {
+
+            OpenPlaylists => {
                 if let Some(ui) = ui_weak.upgrade() {
                     ui.set_current_view(View::Playlists);
                 }
             }
+
+            _ => {}
         }
     });
 }
 
 /// Applies the user's color theme to the UI.
 fn apply_theme(ui: &AppWindow, theme: &Theme) {
-
-    ui.set_sidebar_bg(theme.bg.sidebar);
-    ui.set_now_playing_bar_bg(theme.bg.now_playing_bar);
-    ui.set_library_view_bg(theme.bg.library_view);
-    ui.set_album_view_bg(theme.bg.album_view);
-    ui.set_playlists_view_bg(theme.bg.playlists_view);
-    ui.set_open_playlist_view_bg(theme.bg.open_playlist_view);
-
-    ui.set_sidebar_text_color(theme.text_color.sidebar);
-    ui.set_now_playing_song_text_color(theme.text_color.now_playing_song);
-    ui.set_now_playing_artist_text_color(theme.text_color.now_playing_artist);
-    ui.set_detail_view_header_title_text_color(theme.text_color.detail_view_header_title);
-    ui.set_detail_view_header_subtitle_text_color(theme.text_color.detail_view_header_subtitle);
-    ui.set_library_list_title_text_color(theme.text_color.library_list_title);
-    ui.set_library_list_subtitle_text_color(theme.text_color.library_list_subtitle);
-    ui.set_album_list_title_text_color(theme.text_color.album_list_title);
-    ui.set_album_list_subtitle_text_color(theme.text_color.album_list_subtitle);
-
-    ui.set_sidebar_text_size(theme.text_size.sidebar);
-    ui.set_now_playing_song_text_size(theme.text_size.now_playing_song);
-    ui.set_now_playing_artist_text_size(theme.text_size.now_playing_artist);
-    ui.set_detail_view_header_title_text_size(theme.text_size.detail_view_header_title);
-    ui.set_detail_view_header_subtitle_text_size(theme.text_size.detail_view_header_subtitle);
-    ui.set_library_list_title_text_size(theme.text_size.library_list_title);
-    ui.set_library_list_subtitle_text_size(theme.text_size.library_list_subtitle);
-    ui.set_album_list_title_text_size(theme.text_size.album_list_title);
-    ui.set_album_list_subtitle_text_size(theme.text_size.album_list_subtitle);
+    for (element, property) in theme.properties() {
+        set_property(ui, element, &property);
+    }
 }
 
 /// Attaches every Slint UI callback to a `PlayerCommand` sent over `tx`.
@@ -208,86 +174,97 @@ fn apply_theme(ui: &AppWindow, theme: &Theme) {
 /// need to read UI state (e.g. which album is currently being viewed) take
 /// a `Weak<AppWindows>` and `upgrade()` it inside the closure.
 fn wire_callbacks(ui: &AppWindow, tx: &Sender<PlayerCommand>) {
-    let tx_clone = tx.clone();
-    ui.on_play_paused_clicked(move || {
-        let _ = tx_clone.try_send(PlayerCommand::TogglePlay);
-    });
+    use crate::player_bridge::PlayerCommand::*;
 
-    let tx_clone = tx.clone();
-    ui.on_next_track_clicked(move || {
-        let _ = tx_clone.try_send(PlayerCommand::NextTrack);
-    });
+    ui.on_play_paused_clicked(wire_cmd(tx, TogglePlay));
+    ui.on_next_track_clicked(wire_cmd(tx, NextTrack));
+    ui.on_prev_track_clicked(wire_cmd(tx, PrevTrack));
 
-    let tx_clone = tx.clone();
-    ui.on_prev_track_clicked(move || {
-        let _ = tx_clone.try_send(PlayerCommand::PrevTrack);
-    });
+    ui.on_play_album_clicked(wire_cmd_ui(ui, tx, |ui, tx| {
+        let album_index = ui.get_viewing_album_index() as usize;
+        let _ = tx.try_send(SelectAlbum(album_index));
+    }));
 
-    let tx_clone = tx.clone();
+    ui.on_play_track_clicked(wire_cmd_ui_1arg(ui, tx, |ui, tx, song_index| {
+        let album_index = ui.get_viewing_album_index() as usize;
+        let _ = tx.try_send(SelectTrack(album_index, song_index as usize));
+    }));
+
+    ui.on_seek_requested(wire_cmd_1arg(tx, |value| SetPosition(value as usize)));
+
+    ui.on_volume_changed(wire_cmd_ui_1arg(ui, tx, |ui, tx, volume| {
+        let _ = tx.try_send(SetVolume(volume));
+        ui.set_current_volume(volume);
+    }));
+
+    ui.on_play_playlist_clicked(wire_cmd_ui(ui, tx, |ui, tx| {
+        let playlist_index = ui.get_viewing_playlist_index() as usize;
+        let _ = tx.try_send(SelectPlaylist(playlist_index));
+    }));
+
+    ui.on_play_playlist_track_clicked(wire_cmd_ui_1arg(ui, tx, |ui, tx, song_index| {
+        let playlist_index = ui.get_viewing_playlist_index() as usize;
+        let _ = tx.try_send(SelectPlaylistTrack(playlist_index, song_index as usize));
+    }));
+
+    ui.on_shuffle_clicked(wire_cmd(tx, ToggleShuffle));
+    ui.on_repeat_clicked(wire_cmd(tx, ToggleRepeat));
+
+    ui.on_playlist_opened(wire_cmd_1arg(tx, |playlist_index| {
+        OpenPlaylist(playlist_index as usize)
+    }));
+}
+
+/// Returns a closure that sends `cmd` over `tx`. For callbacks that only
+/// need to fire a command and don't touch the UI.
+fn wire_cmd(tx: &Sender<PlayerCommand>, cmd: PlayerCommand) -> impl Fn() + use<> {
+    let tx = tx.clone();
+    move || {
+        let _ = tx.try_send(cmd.clone());
+    }
+}
+
+/// Same as `wire_cmd` but accepts one argument from Slint and maps it to a
+/// command.
+fn wire_cmd_1arg<T, F>(tx: &Sender<PlayerCommand>, make_cmd: F) -> impl Fn(T) + use<T, F>
+where
+    F: Fn(T) -> PlayerCommand + 'static,
+{
+    let tx = tx.clone();
+    move |arg| {
+        let _ = tx.try_send(make_cmd(arg));
+    }
+}
+
+/// Returns a closure that upgrades `ui` and calls `f` with the live handle
+/// and a cloned sender. For callbacks that need to read or write UI state.
+fn wire_cmd_ui<F>(ui: &AppWindow, tx: &Sender<PlayerCommand>, f: F) -> impl Fn() + use<F>
+where
+    F: Fn(&AppWindow, &Sender<PlayerCommand>) + 'static,
+{
+    let tx = tx.clone();
     let ui_weak = ui.as_weak();
-    ui.on_play_album_clicked(move || {
+    move || {
         if let Some(ui) = ui_weak.upgrade() {
-            let album_index = ui.get_viewing_album_index() as usize;
-            let _ = tx_clone.try_send(PlayerCommand::SelectAlbum(album_index));
+            f(&ui, &tx);
         }
-    });
+    }
+}
 
-    let tx_clone = tx.clone();
+/// Same as `wire_cmd_ui` but accepts one argument from Slint.
+fn wire_cmd_ui_1arg<T, F>(
+    ui: &AppWindow,
+    tx: &Sender<PlayerCommand>,
+    f: F,
+) -> impl Fn(T) + use<T, F>
+where
+    F: Fn(&AppWindow, &Sender<PlayerCommand>, T) + 'static,
+{
+    let tx = tx.clone();
     let ui_weak = ui.as_weak();
-    ui.on_play_track_clicked(move |song_index| {
+    move |arg| {
         if let Some(ui) = ui_weak.upgrade() {
-            let album_index = ui.get_viewing_album_index() as usize;
-            let _ = tx_clone.try_send(PlayerCommand::SelectTrack(album_index, song_index as usize));
+            f(&ui, &tx, arg);
         }
-    });
-
-    let tx_clone = tx.clone();
-    ui.on_seek_requested(move |value| {
-        let _ = tx_clone.try_send(PlayerCommand::SetPosition(value as usize));
-    });
-
-    let tx_clone = tx.clone();
-    let ui_weak = ui.as_weak();
-    ui.on_volume_changed(move |volume| {
-        let _ = tx_clone.try_send(PlayerCommand::SetVolume(volume));
-        if let Some(ui) = ui_weak.upgrade() {
-            ui.set_current_volume(volume);
-        }
-    });
-
-    let tx_clone = tx.clone();
-    let ui_weak = ui.as_weak();
-    ui.on_play_playlist_clicked(move || {
-        if let Some(ui) = ui_weak.upgrade() {
-            let playlist_index = ui.get_viewing_playlist_index() as usize;
-            let _ = tx_clone.try_send(PlayerCommand::SelectPlaylist(playlist_index));
-        }
-    });
-
-    let tx_clone = tx.clone();
-    let ui_weak = ui.as_weak();
-    ui.on_play_playlist_track_clicked(move |song_index| {
-        if let Some(ui) = ui_weak.upgrade() {
-            let playlist_index = ui.get_viewing_playlist_index() as usize;
-            let _ = tx_clone.try_send(PlayerCommand::SelectPlaylistTrack(
-                playlist_index,
-                song_index as usize,
-            ));
-        }
-    });
-
-    let tx_clone = tx.clone();
-    ui.on_shuffle_clicked(move || {
-        let _ = tx_clone.try_send(PlayerCommand::ToggleShuffle);
-    });
-
-    let tx_clone = tx.clone();
-    ui.on_repeat_clicked(move || {
-        let _ = tx_clone.try_send(PlayerCommand::ToggleRepeat);
-    });
-
-    let tx_clone = tx.clone();
-    ui.on_playlist_opened(move |playlist_index| {
-        let _ = tx_clone.try_send(PlayerCommand::OpenPlaylist(playlist_index as usize));
-    });
+    }
 }

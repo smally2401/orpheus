@@ -41,6 +41,7 @@ use tokio::sync::mpsc;
 /// Something the UI (or MPRIS) wants the player to do. Sent over the
 /// channel returned by `spawn_player_bridge` and handled by
 /// `handle_command`.
+#[derive(Clone)]
 pub(crate) enum PlayerCommand {
     TogglePlay,
     Play,
@@ -244,13 +245,6 @@ pub(crate) fn spawn_player_bridge(
     let ui = ui.as_weak();
     let mpris_tx = spawn_mpris(tx.clone());
 
-    let ui_weak = ui.clone();
-    let _ = slint::invoke_from_event_loop(move || {
-        if let Some(ui) = ui_weak.upgrade() {
-            ui.set_current_volume(default_volume);
-        }
-    });
-
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_millis(100));
         let mut tick_state = TickState::new(script_tx);
@@ -288,7 +282,6 @@ pub(crate) fn spawn_player_bridge(
 /// `ToggleShuffle`/`ToggleRepeat` also push the new state to MPRIS after
 /// updating the backend, so an in-app click stays in sync with any
 /// lock-screen/media-key widget showing shuffle/repeat state.
-#[allow(clippy::too_many_lines)]
 fn handle_command(
     command: &PlayerCommand,
     local_backend: &mut LocalBackend,
@@ -296,108 +289,85 @@ fn handle_command(
     tick_state: &mut TickState,
     ui: &slint::Weak<AppWindow>,
 ) {
+    use PlayerCommand::*;
+
     match command {
         // todo: remove let _ and handle stuff
-        PlayerCommand::TogglePlay => {
+        TogglePlay => {
             local_backend.toggle_play();
         }
-        PlayerCommand::Play => {
+        Play => {
             local_backend.play();
         }
-        PlayerCommand::Pause => {
+        Pause => {
             local_backend.pause();
         }
-        PlayerCommand::NextTrack => {
+        NextTrack => {
             let _ = local_backend.next(true);
         }
-        PlayerCommand::PrevTrack => {
+        PrevTrack => {
             let _ = local_backend.prev();
             tick_state.queue_exhausted = false;
         }
-        PlayerCommand::SelectAlbum(i) => {
+        SelectAlbum(i) => {
             let _ = local_backend.select_album(*i);
             tick_state.queue_exhausted = false;
         }
-        PlayerCommand::SelectTrack(album_i, track_i) => {
+        SelectTrack(album_i, track_i) => {
             let _ = local_backend.select_album_track(*album_i, *track_i);
             tick_state.queue_exhausted = false;
         }
-        PlayerCommand::SetPosition(dur) => {
+        SetPosition(dur) => {
             let _ = local_backend.set_position(*dur);
             let _ = mpris_tx.try_send(MprisCommand::Seeked(*dur as u64));
         }
-        PlayerCommand::SeekForward => {
-            let current_pos = local_backend.get_current_position().as_secs();
-            let new_pos = current_pos + 10;
-            let _ = local_backend.set_position(new_pos as usize);
-            let _ = mpris_tx.try_send(MprisCommand::Seeked(new_pos));
+        SeekForward => {
+            seek_by(local_backend, mpris_tx, 10, false);
         }
-        PlayerCommand::SeekBackward => {
-            let current_pos = local_backend.get_current_position().as_secs();
-            let new_pos = current_pos.saturating_sub(10);
-            let _ = local_backend.set_position(new_pos as usize);
-            let _ = mpris_tx.try_send(MprisCommand::Seeked(new_pos));
+        SeekBackward => {
+            seek_by(local_backend, mpris_tx, 10, true);
         }
-        PlayerCommand::SetVolume(vol) => {
-            local_backend.set_volume(*vol);
-            let vol = *vol;
-            let ui_weak = ui.clone();
-            let _ = slint::invoke_from_event_loop(move || {
-                if let Some(ui) = ui_weak.upgrade() {
-                    ui.set_current_volume(vol);
-                }
-            });
+        SetVolume(vol) => {
+            set_volume_and_update_ui(local_backend, ui, *vol);
         }
-        PlayerCommand::VolumeUp => {
+        VolumeUp => {
             let vol = (local_backend.get_volume() + 0.05).clamp(0.0, 1.0);
-            let ui_weak = ui.clone();
-            local_backend.set_volume(vol);
-            let _ = slint::invoke_from_event_loop(move || {
-                if let Some(ui) = ui_weak.upgrade() {
-                    ui.set_current_volume(vol);
-                }
-            });
+            set_volume_and_update_ui(local_backend, ui, vol);
         }
-        PlayerCommand::VolumeDown => {
+        VolumeDown => {
             let vol = (local_backend.get_volume() - 0.05).clamp(0.0, 1.0);
-            let ui_weak = ui.clone();
-            local_backend.set_volume(vol);
-            let _ = slint::invoke_from_event_loop(move || {
-                if let Some(ui) = ui_weak.upgrade() {
-                    ui.set_current_volume(vol);
-                }
-            });
+            set_volume_and_update_ui(local_backend, ui, vol);
         }
-        PlayerCommand::SelectPlaylist(i) => {
+        SelectPlaylist(i) => {
             let _ = local_backend.select_playlist(*i);
             tick_state.queue_exhausted = false;
         }
-        PlayerCommand::SelectPlaylistTrack(playlist_i, track_i) => {
+        SelectPlaylistTrack(playlist_i, track_i) => {
             let _ = local_backend.select_playlist_track(*playlist_i, *track_i);
             tick_state.queue_exhausted = false;
         }
-        PlayerCommand::ToggleRepeat => {
+        ToggleRepeat => {
             local_backend.toggle_repeat();
             let loop_status = repeat_mode_to_loop_status(local_backend.get_repeat());
             let _ = mpris_tx.try_send(MprisCommand::UpdateLoopStatus(loop_status));
         }
-        PlayerCommand::ToggleShuffle => {
+        ToggleShuffle => {
             local_backend.toggle_shuffle();
             let _ = mpris_tx.try_send(MprisCommand::UpdateShuffle(local_backend.is_shuffle()));
         }
-        PlayerCommand::SetRepeat(mode) => {
+        SetRepeat(mode) => {
             local_backend.set_repeat(*mode);
             let loop_status = repeat_mode_to_loop_status(local_backend.get_repeat());
             let _ = mpris_tx.try_send(MprisCommand::UpdateLoopStatus(loop_status));
         }
-        PlayerCommand::SetShuffle(shuffle) => {
+        SetShuffle(shuffle) => {
             local_backend.set_shuffle(*shuffle);
             let _ = mpris_tx.try_send(MprisCommand::UpdateShuffle(local_backend.is_shuffle()));
         }
-        PlayerCommand::OpenPlaylist(i) => {
+        OpenPlaylist(i) => {
             open_playlist(*i, local_backend, ui);
         }
-        PlayerCommand::SetProperty(element, property) => {
+        SetProperty(element, property) => {
             let element = element.clone();
             let property = property.clone();
             let ui_weak = ui.clone();
@@ -412,6 +382,32 @@ fn handle_command(
             });
         }
     }
+}
+
+fn seek_by(
+    backend: &mut LocalBackend,
+    mpris_tx: &mpsc::Sender<MprisCommand>,
+    offset_secs: u64,
+    backwards: bool,
+) {
+    let current_pos = backend.get_current_position().as_secs();
+    let new_pos = if backwards {
+        current_pos.saturating_sub(offset_secs)
+    } else {
+        current_pos + offset_secs
+    };
+    let _ = backend.set_position(new_pos as usize);
+    let _ = mpris_tx.try_send(MprisCommand::Seeked(new_pos));
+}
+
+fn set_volume_and_update_ui(backend: &mut LocalBackend, ui: &slint::Weak<AppWindow>, volume: f32) {
+    backend.set_volume(volume);
+    let ui_weak = ui.clone();
+    let _ = slint::invoke_from_event_loop(move || {
+        if let Some(ui) = ui_weak.upgrade() {
+            ui.set_current_volume(volume);
+        }
+    });
 }
 
 /// Loads a playlist's tracklist with per-song art, decoding cover images

@@ -5,6 +5,7 @@
 //! single source of truth for which Slint `Key` variants are supported.
 
 use crate::define_keys;
+use crate::player_bridge::PlayerCommand;
 use slint::SharedString;
 use slint::platform::Key;
 use std::collections::HashMap;
@@ -22,6 +23,23 @@ pub(crate) enum KeyAction {
     SeekBackward,
     OpenLibrary,
     OpenPlaylists,
+}
+
+impl KeyAction {
+    pub(crate) fn to_command(self) -> Option<PlayerCommand> {
+        use crate::PlayerCommand::*;
+
+        match self {
+            Self::TogglePlay => Some(TogglePlay),
+            Self::NextTrack => Some(NextTrack),
+            Self::PrevTrack => Some(PrevTrack),
+            Self::VolumeUp => Some(VolumeUp),
+            Self::VolumeDown => Some(VolumeDown),
+            Self::SeekForward => Some(SeekForward),
+            Self::SeekBackward => Some(SeekBackward),
+            Self::OpenLibrary | Self::OpenPlaylists => None,
+        }
+    }
 }
 
 /// A single key combination, e.g. `ctrl+shift+P`. Used as the key type in
@@ -121,8 +139,8 @@ pub(super) fn load_keymaps(globals: &mlua::Table) -> HashMap<KeyCombo, KeyAction
 
 /// Maps a `config.lua` action name (e.g. `"toggle_play"`) to its
 /// `KeyAction`. Returns `None` for unrecognized names.
-fn parse_action(str: &str) -> Option<KeyAction> {
-    match str {
+fn parse_action(s: &str) -> Option<KeyAction> {
+    match s {
         "toggle_play" => Some(KeyAction::TogglePlay),
         "next_track" => Some(KeyAction::NextTrack),
         "prev_track" => Some(KeyAction::PrevTrack),

@@ -4,12 +4,18 @@
 //! value, so a `config.lua` that only sets `theme.bg.sidebar` still gets
 //! sensible defaults for everything else.
 
+use crate::AppWindow;
 use slint::Color;
 use strum::Display;
 use strum::EnumString;
 
-use crate::AppWindow;
-
+/// One region/element of the UI that can have its background, text
+/// color, or text size set, both from `config.lua`'s `theme` table at
+/// startup, and live via `set_property` (see `set_property` in
+/// `scripting.rs`) from `on_song_change`/`on_song_halfway`. Not every
+/// variant supports every property (e.g. `PlaylistsView` has no
+/// `text_color`), see `set_property` below for which combinations are
+/// valid.
 #[derive(EnumString, Display, Debug)]
 #[strum(serialize_all = "snake_case")]
 pub(crate) enum UiElement {
@@ -29,6 +35,12 @@ pub(crate) enum UiElement {
     AlbumListSubtitle,
 }
 
+/// A themeable value for some `UiElement`, already parsed and validated
+/// bu the time it's constructed (see `register_set_property` in
+/// `scripting.rs`, the only place that builds one from raw Lua input).
+/// Carried inside `PlayerCommand::SetProperty` from the script runtime
+/// thread to `handle_command`, which resolves it against a specific
+/// `UiElement` via `set_property`.
 #[derive(Debug, Clone)]
 pub(crate) enum UiProperty {
     Bg(Color),
@@ -36,43 +48,48 @@ pub(crate) enum UiProperty {
     TextSize(i32),
 }
 
+/// Applies `property` to `element` on `ui`, if `element` actually has
+/// that property. Elements that don't (e.g. `PlaylistsView` has no
+/// `TextColor`) are logged and ignored rather than treated as an error.
+/// Called from `handle_command`'s `PlayerCommand::SetProperty` arm.
 pub(crate) fn set_property(ui: &AppWindow, element: UiElement, property: &UiProperty) {
+    use crate::config::theme::UiElement::*;
+    use crate::config::theme::UiProperty::*;
+
     match property {
-        UiProperty::Bg(color) => match element {
-            UiElement::Sidebar => ui.set_sidebar_bg(*color),
-            UiElement::NowPlayingBar => ui.set_now_playing_bar_bg(*color),
-            UiElement::LibraryView => ui.set_library_view_bg(*color),
-            UiElement::AlbumView => ui.set_album_view_bg(*color),
-            UiElement::PlaylistsView => ui.set_playlists_view_bg(*color),
-            UiElement::OpenPlaylistView => ui.set_open_playlist_view_bg(*color),
+        Bg(color) => match element {
+            Sidebar => ui.set_sidebar_bg(*color),
+            NowPlayingBar => ui.set_now_playing_bar_bg(*color),
+            LibraryView => ui.set_library_view_bg(*color),
+            AlbumView => ui.set_album_view_bg(*color),
+            PlaylistsView => ui.set_playlists_view_bg(*color),
+            OpenPlaylistView => ui.set_open_playlist_view_bg(*color),
             other => eprintln!("{other} doesn't have a bg property"),
         },
-        UiProperty::TextColor(color) => match element {
-            UiElement::Sidebar => ui.set_sidebar_text_color(*color),
-            UiElement::NowPlayingSong => ui.set_now_playing_song_text_color(*color),
-            UiElement::NowPlayingArtist => ui.set_now_playing_artist_text_color(*color),
-            UiElement::DetailViewHeaderTitle => ui.set_detail_view_header_title_text_color(*color),
-            UiElement::DetailViewHeaderSubtitle => {
-                ui.set_detail_view_header_subtitle_text_color(*color)
-            }
-            UiElement::LibraryListTitle => ui.set_library_list_title_text_color(*color),
-            UiElement::LibraryListSubtitle => ui.set_library_list_subtitle_text_color(*color),
-            UiElement::AlbumListTitle => ui.set_album_list_title_text_color(*color),
-            UiElement::AlbumListSubtitle => ui.set_album_list_subtitle_text_color(*color),
+
+        TextColor(color) => match element {
+            Sidebar => ui.set_sidebar_text_color(*color),
+            NowPlayingSong => ui.set_now_playing_song_text_color(*color),
+            NowPlayingArtist => ui.set_now_playing_artist_text_color(*color),
+            DetailViewHeaderTitle => ui.set_detail_view_header_title_text_color(*color),
+            DetailViewHeaderSubtitle => ui.set_detail_view_header_subtitle_text_color(*color),
+            LibraryListTitle => ui.set_library_list_title_text_color(*color),
+            LibraryListSubtitle => ui.set_library_list_subtitle_text_color(*color),
+            AlbumListTitle => ui.set_album_list_title_text_color(*color),
+            AlbumListSubtitle => ui.set_album_list_subtitle_text_color(*color),
             other => eprintln!("{other} doesn't have a text_color property"),
         },
-        UiProperty::TextSize(size) => match element {
-            UiElement::Sidebar => ui.set_sidebar_text_size(*size),
-            UiElement::NowPlayingSong => ui.set_now_playing_song_text_size(*size),
-            UiElement::NowPlayingArtist => ui.set_now_playing_artist_text_size(*size),
-            UiElement::DetailViewHeaderTitle => ui.set_detail_view_header_title_text_size(*size),
-            UiElement::DetailViewHeaderSubtitle => {
-                ui.set_detail_view_header_subtitle_text_size(*size)
-            }
-            UiElement::LibraryListTitle => ui.set_library_list_title_text_size(*size),
-            UiElement::LibraryListSubtitle => ui.set_library_list_subtitle_text_size(*size),
-            UiElement::AlbumListTitle => ui.set_album_list_title_text_size(*size),
-            UiElement::AlbumListSubtitle => ui.set_album_list_subtitle_text_size(*size),
+
+        TextSize(size) => match element {
+            Sidebar => ui.set_sidebar_text_size(*size),
+            NowPlayingSong => ui.set_now_playing_song_text_size(*size),
+            NowPlayingArtist => ui.set_now_playing_artist_text_size(*size),
+            DetailViewHeaderTitle => ui.set_detail_view_header_title_text_size(*size),
+            DetailViewHeaderSubtitle => ui.set_detail_view_header_subtitle_text_size(*size),
+            LibraryListTitle => ui.set_library_list_title_text_size(*size),
+            LibraryListSubtitle => ui.set_library_list_subtitle_text_size(*size),
+            AlbumListTitle => ui.set_album_list_title_text_size(*size),
+            AlbumListSubtitle => ui.set_album_list_subtitle_text_size(*size),
             other => eprintln!("{other} doesn't have a text_size property"),
         },
     }
@@ -167,6 +184,79 @@ pub(crate) struct Theme {
     pub(crate) bg: Background,
     pub(crate) text_color: TextColor,
     pub(crate) text_size: TextSize,
+}
+
+impl Theme {
+    pub(crate) fn properties(&self) -> [(UiElement, UiProperty); 24] {
+        use crate::config::theme::UiElement::*;
+        use crate::config::theme::UiProperty::*;
+
+        [
+            // BACKGROUNDS
+            (Sidebar, Bg(self.bg.sidebar)),
+            (NowPlayingBar, Bg(self.bg.now_playing_bar)),
+            (LibraryView, Bg(self.bg.library_view)),
+            (AlbumView, Bg(self.bg.album_view)),
+            (PlaylistsView, Bg(self.bg.playlists_view)),
+            (OpenPlaylistView, Bg(self.bg.open_playlist_view)),
+            // TEXT COLORS
+            (Sidebar, TextColor(self.text_color.sidebar)),
+            (NowPlayingSong, TextColor(self.text_color.now_playing_song)),
+            (
+                NowPlayingArtist,
+                TextColor(self.text_color.now_playing_artist),
+            ),
+            (
+                DetailViewHeaderTitle,
+                TextColor(self.text_color.detail_view_header_title),
+            ),
+            (
+                DetailViewHeaderSubtitle,
+                TextColor(self.text_color.detail_view_header_subtitle),
+            ),
+            (
+                LibraryListTitle,
+                TextColor(self.text_color.library_list_title),
+            ),
+            (
+                LibraryListSubtitle,
+                TextColor(self.text_color.library_list_subtitle),
+            ),
+            (AlbumListTitle, TextColor(self.text_color.album_list_title)),
+            (
+                AlbumListSubtitle,
+                TextColor(self.text_color.library_list_subtitle),
+            ),
+            // TEXT SIZES
+            (Sidebar, TextSize(self.text_size.sidebar)),
+            (NowPlayingSong, TextSize(self.text_size.now_playing_song)),
+            (
+                NowPlayingArtist,
+                TextSize(self.text_size.now_playing_artist),
+            ),
+            (
+                DetailViewHeaderTitle,
+                TextSize(self.text_size.detail_view_header_title),
+            ),
+            (
+                DetailViewHeaderSubtitle,
+                TextSize(self.text_size.detail_view_header_subtitle),
+            ),
+            (
+                LibraryListTitle,
+                TextSize(self.text_size.library_list_title),
+            ),
+            (
+                LibraryListSubtitle,
+                TextSize(self.text_size.library_list_subtitle),
+            ),
+            (AlbumListTitle, TextSize(self.text_size.album_list_title)),
+            (
+                AlbumListSubtitle,
+                TextSize(self.text_size.library_list_subtitle),
+            ),
+        ]
+    }
 }
 
 /// Extract all background colors from Lua globals.
@@ -341,8 +431,8 @@ fn get_color_or_default(table: Option<&mlua::Table>, key: &str, default: Color) 
 }
 
 /// True if `str` is a 6-digit hex color, with or without a leading `#`.
-pub(crate) fn is_valid_hex_color(str: &str) -> bool {
-    let stripped = str.strip_prefix("#").unwrap_or(str);
+pub(crate) fn is_valid_hex_color(s: &str) -> bool {
+    let stripped = s.strip_prefix("#").unwrap_or(s);
     stripped.len() == 6 && stripped.chars().all(|c| c.is_ascii_hexdigit())
 }
 

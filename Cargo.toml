@@ -9,6 +9,7 @@ pedantic = { level = "warn", priority = -1 }
 cast_sign_loss = "allow"
 cast_possible_truncation = "allow"
 cast_possible_wrap = "allow"
+enum_glob_use = "allow"
 
 [dependencies]
 anyhow = "1.0.103"

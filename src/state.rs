@@ -1,6 +1,6 @@
 //! Persists playback state (queue, position, shuffle/repeat, volume)
 //! across app restarts, so closing and repoening Orpheus resumes roughly
-//! where you left off. State is saved on `LocalBackend`'s `Drop (see
+//! where you left off. State is saved on `LocalBackend`'s `Drop` (see
 //! `local_backend.rs`) and restored once at startup, right after
 //! `LocalBackend::new` (see `spawn_player_bridge` in `player_bridge.rs`).
 

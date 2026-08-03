@@ -372,7 +372,7 @@ impl LocalBackend {
 
     /// Same as `select_playlist`, but starts from a specific track index
     /// within the resolved playlist. Same shuffle-pinning behaviour as
-    /// `select_album_track`: with shuffle on, `tracl index`'s real
+    /// `select_album_track`: with shuffle on, `track index`'s real
     /// position get swapped into `order[0]` so playback still starts on
     /// the chosen track.
     pub(crate) fn select_playlist_track(
@@ -532,7 +532,7 @@ impl LocalBackend {
         }
     }
 
-    /// Cycles `self.reoeat`: `Off` -> `Queue` -> `Track` -> `Off`. Only
+    /// Cycles `self.repeat`: `Off` -> `Queue` -> `Track` -> `Off`. Only
     /// changes what happens the *next* time a track finishes naturally,
     /// doesn't touch anything currently playing (see `next`).
     pub(crate) fn toggle_repeat(&mut self) {
@@ -632,7 +632,7 @@ fn song_from_tagged_file(path: &Path, tagged_file: &TaggedFile) -> Song {
 /// Converts config parsed `PlaylistDef`s into real `Playlist`s, resolving
 /// each song's path (relative to `music_dir`) into an absolute path.
 ///
-/// This is intentionally the only place that needs to known playlist song
+/// This is intentionally the only place that needs to know playlist song
 /// paths are relative: `Playlist.songs` downstream is always absolute
 fn build_playlists(path: &Path, playlist_defs: Vec<PlaylistDef>) -> Vec<Playlist> {
     playlist_defs
