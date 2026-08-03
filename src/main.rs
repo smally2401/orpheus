@@ -14,6 +14,8 @@
 //! via `build_runtime` and then just waits on a channel for song changes,
 //! reported by `player_bridge`'s tick loop.
 
+#![windows_subsystem = "windows"]
+
 mod config;
 mod local_backend;
 mod macros;
@@ -48,7 +50,6 @@ async fn main() -> Result<(), slint::PlatformError> {
     let (script_tx, script_rx) = std::sync::mpsc::channel::<ScriptEvent>();
 
     let (config, contents) = load_config();
-    build_script_runtime_thread(contents, script_rx);
 
     let (tx, library, playlists) = spawn_player_bridge(
         &ui,
@@ -57,6 +58,8 @@ async fn main() -> Result<(), slint::PlatformError> {
         config.default_volume,
         script_tx,
     );
+
+    build_script_runtime_thread(contents, script_rx, tx.clone());
 
     apply_window_config(&ui, &config.window_state);
     apply_theme(&ui, &config.theme);
@@ -81,9 +84,10 @@ async fn main() -> Result<(), slint::PlatformError> {
 fn build_script_runtime_thread(
     contents: String,
     script_rx: std::sync::mpsc::Receiver<ScriptEvent>,
+    tx: tokio::sync::mpsc::Sender<PlayerCommand>,
 ) {
     std::thread::spawn(move || {
-        let script_runtime = build_runtime(&contents);
+        let script_runtime = build_runtime(&contents, tx);
         while let Ok(event) = script_rx.recv() {
             match event {
                 ScriptEvent::SongChanged(song) => {
@@ -168,34 +172,33 @@ fn handle_keymaps(
 
 /// Applies the user's color theme to the UI.
 fn apply_theme(ui: &AppWindow, theme: &Theme) {
-    theme_apply! {ui, theme,
-        sidebar, bg;
-        now_playing_bar, bg;
-        library_view, bg;
-        album_view, bg;
-        playlists_view, bg;
-        open_playlist_view, bg;
 
-        sidebar, text_color;
-        now_playing_song, text_color;
-        now_playing_artist, text_color;
-        detail_view_header_title, text_color;
-        detail_view_header_subtitle, text_color;
-        library_list_title, text_color;
-        library_list_subtitle, text_color;
-        album_list_title, text_color;
-        album_list_subtitle, text_color;
+    ui.set_sidebar_bg(theme.bg.sidebar);
+    ui.set_now_playing_bar_bg(theme.bg.now_playing_bar);
+    ui.set_library_view_bg(theme.bg.library_view);
+    ui.set_album_view_bg(theme.bg.album_view);
+    ui.set_playlists_view_bg(theme.bg.playlists_view);
+    ui.set_open_playlist_view_bg(theme.bg.open_playlist_view);
 
-        sidebar, text_size;
-        now_playing_song, text_size;
-        now_playing_artist, text_size;
-        detail_view_header_title, text_size;
-        detail_view_header_subtitle, text_size;
-        library_list_title, text_size;
-        library_list_subtitle, text_size;
-        album_list_title, text_size;
-        album_list_subtitle, text_size;
-    }
+    ui.set_sidebar_text_color(theme.text_color.sidebar);
+    ui.set_now_playing_song_text_color(theme.text_color.now_playing_song);
+    ui.set_now_playing_artist_text_color(theme.text_color.now_playing_artist);
+    ui.set_detail_view_header_title_text_color(theme.text_color.detail_view_header_title);
+    ui.set_detail_view_header_subtitle_text_color(theme.text_color.detail_view_header_subtitle);
+    ui.set_library_list_title_text_color(theme.text_color.library_list_title);
+    ui.set_library_list_subtitle_text_color(theme.text_color.library_list_subtitle);
+    ui.set_album_list_title_text_color(theme.text_color.album_list_title);
+    ui.set_album_list_subtitle_text_color(theme.text_color.album_list_subtitle);
+
+    ui.set_sidebar_text_size(theme.text_size.sidebar);
+    ui.set_now_playing_song_text_size(theme.text_size.now_playing_song);
+    ui.set_now_playing_artist_text_size(theme.text_size.now_playing_artist);
+    ui.set_detail_view_header_title_text_size(theme.text_size.detail_view_header_title);
+    ui.set_detail_view_header_subtitle_text_size(theme.text_size.detail_view_header_subtitle);
+    ui.set_library_list_title_text_size(theme.text_size.library_list_title);
+    ui.set_library_list_subtitle_text_size(theme.text_size.library_list_subtitle);
+    ui.set_album_list_title_text_size(theme.text_size.album_list_title);
+    ui.set_album_list_subtitle_text_size(theme.text_size.album_list_subtitle);
 }
 
 /// Attaches every Slint UI callback to a `PlayerCommand` sent over `tx`.

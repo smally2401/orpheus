@@ -3,7 +3,11 @@
 //! that only exists after playback starts (`on_song_change`,
 //! `on_song_halfway`).
 
+use crate::config::theme::UiProperty;
+use crate::config::theme::hex_to_color;
+use crate::config::theme::is_valid_hex_color;
 use crate::local_backend::Song;
+use crate::player_bridge::PlayerCommand;
 use mlua::Lua;
 
 /// A playback event reported from `player_bridge`'s tick loop to the
@@ -103,17 +107,19 @@ pub(crate) struct CurrentSong {
     pub album: String,
 }
 
-impl CurrentSong {
+impl From<&Song> for CurrentSong {
     /// Builds a `CurrentSong` from a real `Song`, called by
     /// `LocalBackend::load_track` on every track change.
-    pub(crate) fn from_song(song: &Song) -> Self {
+    fn from(song: &Song) -> Self {
         Self {
             title: song.title.clone(),
             artist: song.artist.clone(),
             album: song.album_title.clone(),
         }
     }
+}
 
+impl CurrentSong {
     /// Converts to the Lua table shape passed to `on_song_change`:
     /// `{ title, artist, album }`.
     fn into_lua_table(self, lua: &Lua) -> mlua::Result<mlua::Table> {
@@ -133,12 +139,80 @@ impl CurrentSong {
 /// afterward. See `main.rs`'s dedicated script runtime thread, which calls
 /// this immediately after spawning, rather than receiving an already built
 /// `ScriptRuntime` from elsewhere.
-pub(crate) fn build_runtime(contents: &str) -> ScriptRuntime {
+pub(crate) fn build_runtime(
+    contents: &str,
+    tx: tokio::sync::mpsc::Sender<PlayerCommand>,
+) -> ScriptRuntime {
     let lua = unsafe { Lua::unsafe_new() };
+
+    if let Err(e) = register_set_property(&lua, tx) {
+        eprintln!("Could not register set_property: {e}");
+    }
 
     if let Err(e) = lua.load(contents).exec() {
         eprintln!("Error building the script runtime: {e}");
     }
 
     ScriptRuntime::new(lua)
+}
+
+/// Registers `set_property(element, property, value) -> nil` as a Lua
+/// global, letting scripts change UI colors/text sizes at runtime (e.g.
+/// from `on_song_change`). `property` must be `"bg"`, `"text_color"`, or
+/// `"text_size"`, `value` must be a hex color string for the first two,
+/// or a number for the third. Malformed calls (unknown element, unknown
+/// property, wrong value type, invalid hex string) are logged and
+/// ignored rather than erroring, so a mistake here can't crash a script.
+fn register_set_property(
+    lua: &Lua,
+    tx: tokio::sync::mpsc::Sender<PlayerCommand>,
+) -> mlua::Result<()> {
+    let func = lua.create_function(
+        move |_, (element, property, value): (String, String, mlua::Value)| {
+            let property = match property.as_str() {
+                "bg" | "text_color" => {
+                    let mlua::Value::String(s) = value else {
+                        eprintln!("{property} expects a string, got {value:?}");
+                        return Ok(());
+                    };
+                    let Ok(s) = s.to_str() else {
+                        eprintln!("{property} value was not valid UTF-8");
+                        return Ok(());
+                    };
+                    if !is_valid_hex_color(&s) {
+                        eprintln!("{s} is not a valid hex color");
+                        return Ok(());
+                    }
+                    let color = hex_to_color(&s);
+                    if property == "bg" {
+                        UiProperty::Bg(color)
+                    } else {
+                        UiProperty::TextColor(color)
+                    }
+                }
+
+                "text_size" => {
+                    let size = match value {
+                        mlua::Value::Integer(i) => i as i32,
+                        mlua::Value::Number(n) => n as i32,
+                        _ => {
+                            eprintln!("text_size expects a number, got {value:?}");
+                            return Ok(());
+                        }
+                    };
+                    UiProperty::TextSize(size)
+                }
+
+                other => {
+                    eprintln!("{other} is not a valid property");
+                    return Ok(());
+                }
+            };
+
+            let _ = tx.try_send(PlayerCommand::SetProperty(element, property));
+            Ok(())
+        },
+    )?;
+
+    lua.globals().set("set_property", func)
 }

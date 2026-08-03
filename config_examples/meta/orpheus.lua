@@ -102,6 +102,16 @@ playlists = {}
 ---@return string[]
 function list_music_files(relative_dir) end
 
+--- Changes a UI element's property at runtime, `property` must be one of
+--- `"bg"`, `"text_color"`, or `"text_size"`. `value` must be a hex color
+--- string (with or without `#`) for the first two, or a number for
+--- `"text_size"`. Unrecognized element names, unknown properties, or
+--- malformed values are logged and ignored.
+---@param element string
+---@param property "bg"|"text_color"|"text_size"
+---@param value string|number
+function set_property(element, property, value) end
+
 --- Called by Orpheus whenever the current track changes. Define this
 --- yourself in config.lua if you want to react to song changes (e.g.
 --- scrobbling, writing a "now playing" file, notifications). Not called

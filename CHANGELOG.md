@@ -4,11 +4,29 @@ All notable changes to Orpheus will be documented in this file.
 
 ## [0.3.0] - Unreleased
 
-- Playback state gets saved after app is closed
+### Added
 
-### Known limitations
+- Playback state gets saved after app is closed
+- Lua functions:
+  - set_property
+
+### Fixed
+
+- Volume percentage now shows correct info
+- Windows executable no longer opens a command window
+
+### Issues
 
 - When a track ends naturally, next track fires on_song_halfway instantly
+- Control buttons don't render correctly if user doesn't have a font
+  that supports them installed
+
+### Limitations
+
+- macOS is not yet supported (Linux and Windows only)
+- Windows installer support hasn't been tested on a real Windows machine
+  yet
+- Playlists can't be created or edited from within the app
 
 ## [0.2.0] - 2026-08-01
 
@@ -28,15 +46,6 @@ All notable changes to Orpheus will be documented in this file.
   - Text size
   - Default volume
   - Window size
-
-### Known limitations
-
-- macOS is not yet supported (Linux and Windows only)
-- Windows installer support hasn't been tested on a real Windows machine
-  yet
-- Playlists can't be created or edited from within the app
-- Control buttons don't render correctly if user doesn't have a font
-  that supports them installed
 
 ---
 
@@ -67,11 +76,3 @@ First testing release.
     launcher entry
   - Windows: experimental, untested: installs a `.lnk` shortcut to the
     Start Menu
-
-### Known limitations
-
-- macOS is not yet supported (Linux and experimental Windows only)
-- Windows installer support hasn't been tested on a real Windows machine
-  yet
-- No shuffle or repeat modes yet
-- Playlists can't be created or edited from within the app

@@ -322,6 +322,39 @@ require waiting until partway through a track before submitting a scrobble
 (rather than scrobbling immediately on `on_song_change`). Leaving it
 undefined is fine, it's simply never called.
 
+### `set_property`
+
+Scripts can change UI properties at runtime from inside `on_song_change` or
+`on_song_halfway`. This lets you do things like changing colors depending
+on the currenly playing song's artist.
+
+```lua
+function on_song_change(song)
+    if song.artist == "Joy Division" then
+        set_property("sidebar", "bg", "#1a1a2e")
+    else
+        set_property("sidebar", "bg", "#0e101d")
+    end
+end
+```
+
+Signature:
+
+```lua
+set_property(element, property, value) -> nil
+```
+
+- `element`: the UI element name, e.g. `"sidebar"`, `"now_playing_bar"`,
+  `"library_view"`, etc. Same names as `theme.bg` / `theme.text_color` /
+  `theme.text_size` keys.
+- `proerty`: one of `"bg"`, `"text_color"` or `"text_size"`.
+- `value`: a hex colro string (with or without `#`) for `"bg"` and
+  `"text_color"`, or a number for `"text_size"`.
+
+Malformed calls (wrong value type, invalid hex, unknown property) are
+logged and ignored, so a mistake here can't crash a script or interrupt
+playback.
+
 ### A note on trust
 
 Unlike the rest of `config.lua`, code inside `on_song_change` and

@@ -5,6 +5,78 @@
 //! sensible defaults for everything else.
 
 use slint::Color;
+use strum::Display;
+use strum::EnumString;
+
+use crate::AppWindow;
+
+#[derive(EnumString, Display, Debug)]
+#[strum(serialize_all = "snake_case")]
+pub(crate) enum UiElement {
+    Sidebar,
+    NowPlayingBar,
+    NowPlayingSong,
+    NowPlayingArtist,
+    LibraryView,
+    AlbumView,
+    PlaylistsView,
+    OpenPlaylistView,
+    DetailViewHeaderTitle,
+    DetailViewHeaderSubtitle,
+    LibraryListTitle,
+    LibraryListSubtitle,
+    AlbumListTitle,
+    AlbumListSubtitle,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum UiProperty {
+    Bg(Color),
+    TextColor(Color),
+    TextSize(i32),
+}
+
+pub(crate) fn set_property(ui: &AppWindow, element: UiElement, property: &UiProperty) {
+    match property {
+        UiProperty::Bg(color) => match element {
+            UiElement::Sidebar => ui.set_sidebar_bg(*color),
+            UiElement::NowPlayingBar => ui.set_now_playing_bar_bg(*color),
+            UiElement::LibraryView => ui.set_library_view_bg(*color),
+            UiElement::AlbumView => ui.set_album_view_bg(*color),
+            UiElement::PlaylistsView => ui.set_playlists_view_bg(*color),
+            UiElement::OpenPlaylistView => ui.set_open_playlist_view_bg(*color),
+            other => eprintln!("{other} doesn't have a bg property"),
+        },
+        UiProperty::TextColor(color) => match element {
+            UiElement::Sidebar => ui.set_sidebar_text_color(*color),
+            UiElement::NowPlayingSong => ui.set_now_playing_song_text_color(*color),
+            UiElement::NowPlayingArtist => ui.set_now_playing_artist_text_color(*color),
+            UiElement::DetailViewHeaderTitle => ui.set_detail_view_header_title_text_color(*color),
+            UiElement::DetailViewHeaderSubtitle => {
+                ui.set_detail_view_header_subtitle_text_color(*color)
+            }
+            UiElement::LibraryListTitle => ui.set_library_list_title_text_color(*color),
+            UiElement::LibraryListSubtitle => ui.set_library_list_subtitle_text_color(*color),
+            UiElement::AlbumListTitle => ui.set_album_list_title_text_color(*color),
+            UiElement::AlbumListSubtitle => ui.set_album_list_subtitle_text_color(*color),
+            other => eprintln!("{other} doesn't have a text_color property"),
+        },
+        UiProperty::TextSize(size) => match element {
+            UiElement::Sidebar => ui.set_sidebar_text_size(*size),
+            UiElement::NowPlayingSong => ui.set_now_playing_song_text_size(*size),
+            UiElement::NowPlayingArtist => ui.set_now_playing_artist_text_size(*size),
+            UiElement::DetailViewHeaderTitle => ui.set_detail_view_header_title_text_size(*size),
+            UiElement::DetailViewHeaderSubtitle => {
+                ui.set_detail_view_header_subtitle_text_size(*size)
+            }
+            UiElement::LibraryListTitle => ui.set_library_list_title_text_size(*size),
+            UiElement::LibraryListSubtitle => ui.set_library_list_subtitle_text_size(*size),
+            UiElement::AlbumListTitle => ui.set_album_list_title_text_size(*size),
+            UiElement::AlbumListSubtitle => ui.set_album_list_subtitle_text_size(*size),
+            other => eprintln!("{other} doesn't have a text_size property"),
+        },
+    }
+}
 
 /// Background colors for every major UI region. These are applied in
 /// `main.rs` via `apply_theme`.
@@ -269,7 +341,7 @@ fn get_color_or_default(table: Option<&mlua::Table>, key: &str, default: Color) 
 }
 
 /// True if `str` is a 6-digit hex color, with or without a leading `#`.
-fn is_valid_hex_color(str: &str) -> bool {
+pub(crate) fn is_valid_hex_color(str: &str) -> bool {
     let stripped = str.strip_prefix("#").unwrap_or(str);
     stripped.len() == 6 && stripped.chars().all(|c| c.is_ascii_hexdigit())
 }
@@ -278,7 +350,7 @@ fn is_valid_hex_color(str: &str) -> bool {
 /// Malformed hex digits fall back to `0` for that channel rather than
 /// errorring, since `is_valid_hex_color` should already have filtered out
 /// anything that would fail here.
-fn hex_to_color(hex: &str) -> slint::Color {
+pub(crate) fn hex_to_color(hex: &str) -> slint::Color {
     let stripped = hex.strip_prefix("#").unwrap_or(hex);
     let r = u8::from_str_radix(&stripped[0..2], 16).unwrap_or(0);
     let g = u8::from_str_radix(&stripped[2..4], 16).unwrap_or(0);

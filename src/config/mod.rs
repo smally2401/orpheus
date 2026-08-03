@@ -106,9 +106,9 @@ const ORPHEUS_LUA_META: &str = include_str!("../../config_examples/meta/orpheus.
 
 /// `lua_language_server` workspace config, pointing it at `ORPHEUS_LUA_META`
 /// and declaring every config global so it isn't flagged as undefined.
-/// Sourced directly from `config_examples/.luarc.json` Written to 
-/// `~/.config/orpheus/.luarc.json` only if it doesn't already exist, since 
-/// (unlike `orpheus.lua`) users may reasonably extend this with their own 
+/// Sourced directly from `config_examples/.luarc.json` Written to
+/// `~/.config/orpheus/.luarc.json` only if it doesn't already exist, since
+/// (unlike `orpheus.lua`) users may reasonably extend this with their own
 /// settings.
 const DEFAULT_LUARC_JSON: &str = include_str!("../../config_examples/.luarc.json");
 

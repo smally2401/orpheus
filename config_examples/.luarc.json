@@ -11,6 +11,7 @@
         "keymaps",
         "theme",
         "playlists",
-        "list_music_files"
+        "list_music_files",
+        "set_property"
     ]
 }

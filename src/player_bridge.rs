@@ -14,6 +14,9 @@ use crate::SlintSongWithArt;
 use crate::config::playlist::PlaylistDef;
 use crate::config::scripting::CurrentSong;
 use crate::config::scripting::ScriptEvent;
+use crate::config::theme::UiElement;
+use crate::config::theme::UiProperty;
+use crate::config::theme::set_property;
 use crate::local_backend::LocalBackend;
 use crate::local_backend::RepeatMode;
 use crate::mpris::MprisCommand;
@@ -22,7 +25,6 @@ use crate::mpris::spawn_mpris;
 use crate::mpris::track_id_for_path;
 use crate::mpris::write_art_cache;
 use crate::state::restore_state;
-use crate::utils::album_rust_to_slint;
 use crate::utils::art_rust_to_slint;
 use crate::utils::expand_tilde;
 use crate::utils::get_art_from_path;
@@ -60,6 +62,7 @@ pub(crate) enum PlayerCommand {
     SetRepeat(RepeatMode),
     SetShuffle(bool),
     OpenPlaylist(usize),
+    SetProperty(String, UiProperty),
 }
 
 /// State that needs to persist *between* ticks of the polling loop, so
@@ -172,7 +175,7 @@ impl TickState {
                     art_url,
                 });
 
-                let current_song = CurrentSong::from_song(track);
+                let current_song = CurrentSong::from(track.as_ref());
                 let _ = self.script_tx.send(ScriptEvent::SongChanged(current_song));
             }
 
@@ -241,6 +244,13 @@ pub(crate) fn spawn_player_bridge(
     let ui = ui.as_weak();
     let mpris_tx = spawn_mpris(tx.clone());
 
+    let ui_weak = ui.clone();
+    let _ = slint::invoke_from_event_loop(move || {
+        if let Some(ui) = ui_weak.upgrade() {
+            ui.set_current_volume(default_volume);
+        }
+    });
+
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_millis(100));
         let mut tick_state = TickState::new(script_tx);
@@ -278,6 +288,7 @@ pub(crate) fn spawn_player_bridge(
 /// `ToggleShuffle`/`ToggleRepeat` also push the new state to MPRIS after
 /// updating the backend, so an in-app click stays in sync with any
 /// lock-screen/media-key widget showing shuffle/repeat state.
+#[allow(clippy::too_many_lines)]
 fn handle_command(
     command: &PlayerCommand,
     local_backend: &mut LocalBackend,
@@ -329,20 +340,33 @@ fn handle_command(
         }
         PlayerCommand::SetVolume(vol) => {
             local_backend.set_volume(*vol);
+            let vol = *vol;
+            let ui_weak = ui.clone();
+            let _ = slint::invoke_from_event_loop(move || {
+                if let Some(ui) = ui_weak.upgrade() {
+                    ui.set_current_volume(vol);
+                }
+            });
         }
         PlayerCommand::VolumeUp => {
             let vol = (local_backend.get_volume() + 0.05).clamp(0.0, 1.0);
+            let ui_weak = ui.clone();
             local_backend.set_volume(vol);
-            if let Some(ui) = ui.upgrade() {
-                ui.set_current_volume(vol);
-            }
+            let _ = slint::invoke_from_event_loop(move || {
+                if let Some(ui) = ui_weak.upgrade() {
+                    ui.set_current_volume(vol);
+                }
+            });
         }
         PlayerCommand::VolumeDown => {
             let vol = (local_backend.get_volume() - 0.05).clamp(0.0, 1.0);
+            let ui_weak = ui.clone();
             local_backend.set_volume(vol);
-            if let Some(ui) = ui.upgrade() {
-                ui.set_current_volume(vol);
-            }
+            let _ = slint::invoke_from_event_loop(move || {
+                if let Some(ui) = ui_weak.upgrade() {
+                    ui.set_current_volume(vol);
+                }
+            });
         }
         PlayerCommand::SelectPlaylist(i) => {
             let _ = local_backend.select_playlist(*i);
@@ -372,6 +396,20 @@ fn handle_command(
         }
         PlayerCommand::OpenPlaylist(i) => {
             open_playlist(*i, local_backend, ui);
+        }
+        PlayerCommand::SetProperty(element, property) => {
+            let element = element.clone();
+            let property = property.clone();
+            let ui_weak = ui.clone();
+            let _ = slint::invoke_from_event_loop(move || {
+                let Ok(element) = element.parse::<UiElement>() else {
+                    eprintln!("{element} is not a valid UI element");
+                    return;
+                };
+                if let Some(ui) = ui_weak.upgrade() {
+                    set_property(&ui, element, &property);
+                }
+            });
         }
     }
 }
@@ -405,17 +443,16 @@ fn open_playlist(i: usize, local_backend: &LocalBackend, ui: &slint::Weak<AppWin
     let ui_weak = ui.clone();
     tokio::spawn(async move {
         use crate::utils::DecodedSong;
-        use crate::utils::decode_song_with_art;
-        use crate::utils::raw_art_to_slint_image;
 
         let handles: Vec<_> = resolved
             .into_iter()
             .enumerate()
             .map(|(idx, song)| {
                 tokio::task::spawn(async move {
-                    let decoded = tokio::task::spawn_blocking(move || decode_song_with_art(&song))
-                        .await
-                        .ok()?;
+                    let decoded =
+                        tokio::task::spawn_blocking(move || DecodedSong::from(song.as_ref()))
+                            .await
+                            .ok()?;
                     Some((idx, decoded))
                 })
             })
@@ -440,7 +477,7 @@ fn open_playlist(i: usize, local_backend: &LocalBackend, ui: &slint::Weak<AppWin
                     let slint_song = SlintSongWithArt {
                         title: decoded.title.into(),
                         artist: decoded.artist.into(),
-                        art: raw_art_to_slint_image(&decoded.art),
+                        art: slint::Image::from(&decoded.art),
                     };
 
                     let tracks = ui_instance.get_viewing_playlist().tracks;
@@ -471,7 +508,7 @@ fn setup_music_dir(music_dir: &str) -> PathBuf {
 fn build_slint_library(local_backend: &LocalBackend) -> Vec<SlintAlbum> {
     let mut library: Vec<SlintAlbum> = Vec::new();
     for album in &local_backend.library {
-        let slint_album = album_rust_to_slint(album);
+        let slint_album = SlintAlbum::from(album);
         library.push(slint_album);
     }
     library

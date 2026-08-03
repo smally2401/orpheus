@@ -1,0 +1,40 @@
+import { SlintPlaylist } from "types.slint";
+import { ListView } from "std-widgets.slint";
+
+export component Queue {
+    in property <SlintPlaylist> queue;
+
+    in property <color> bg-color: #0e101d;
+    in property <color> text-color;
+    in property <int> song-text-size;
+    in property <int> artist-text-size;
+
+    callback queue-track-clicked(int);
+
+    width: 200px;
+
+    Rectangle {
+        background: root.bg-color;
+
+        VerticalLayout {
+            padding: 15px;
+            spacing: 8px;
+        }
+
+        Text {
+            text: "Current queue";
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        ListView {
+            for entry[i] in root.queue.tracks: TouchArea {
+
+
+                clicked => {
+                    root.queue-track-clicked(i)
+                }
+            }
+        }
+    }
+}
