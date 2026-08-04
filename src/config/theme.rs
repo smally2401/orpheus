@@ -225,7 +225,7 @@ impl Theme {
             (AlbumListTitle, TextColor(self.text_color.album_list_title)),
             (
                 AlbumListSubtitle,
-                TextColor(self.text_color.library_list_subtitle),
+                TextColor(self.text_color.album_list_subtitle),
             ),
             // TEXT SIZES
             (Sidebar, TextSize(self.text_size.sidebar)),
@@ -253,7 +253,7 @@ impl Theme {
             (AlbumListTitle, TextSize(self.text_size.album_list_title)),
             (
                 AlbumListSubtitle,
-                TextSize(self.text_size.library_list_subtitle),
+                TextSize(self.text_size.album_list_subtitle),
             ),
         ]
     }

@@ -291,6 +291,9 @@ fn handle_command(
 ) {
     use PlayerCommand::*;
 
+    const VOLUME_STEP: f32 = 0.05;
+    const SEEK_STEP: u64 = 10;
+
     match command {
         // todo: remove let _ and handle stuff
         TogglePlay => {
@@ -322,20 +325,20 @@ fn handle_command(
             let _ = mpris_tx.try_send(MprisCommand::Seeked(*dur as u64));
         }
         SeekForward => {
-            seek_by(local_backend, mpris_tx, 10, false);
+            seek_by(local_backend, mpris_tx, SEEK_STEP, false);
         }
         SeekBackward => {
-            seek_by(local_backend, mpris_tx, 10, true);
+            seek_by(local_backend, mpris_tx, SEEK_STEP, true);
         }
         SetVolume(vol) => {
             set_volume_and_update_ui(local_backend, ui, *vol);
         }
         VolumeUp => {
-            let vol = (local_backend.get_volume() + 0.05).clamp(0.0, 1.0);
+            let vol = (local_backend.get_volume() + VOLUME_STEP).clamp(0.0, 1.0);
             set_volume_and_update_ui(local_backend, ui, vol);
         }
         VolumeDown => {
-            let vol = (local_backend.get_volume() - 0.05).clamp(0.0, 1.0);
+            let vol = (local_backend.get_volume() - VOLUME_STEP).clamp(0.0, 1.0);
             set_volume_and_update_ui(local_backend, ui, vol);
         }
         SelectPlaylist(i) => {

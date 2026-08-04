@@ -16,6 +16,7 @@
 
 #![windows_subsystem = "windows"]
 
+mod audio_player;
 mod config;
 mod local_backend;
 mod macros;

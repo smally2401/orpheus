@@ -6,6 +6,8 @@
 //! everything else in the app (UI, MPRIS) talks to it through its public
 //! methods rather than touching playback state directly.
 
+use crate::audio_player::AudioPlayer;
+use crate::audio_player::RodioPlayer;
 use crate::config::playlist::PlaylistDef;
 use crate::state::save_playback_state;
 use lofty::file::AudioFile;
@@ -14,8 +16,6 @@ use lofty::file::TaggedFileExt;
 use lofty::picture::PictureType;
 use lofty::tag::ItemKey;
 use rand::seq::SliceRandom;
-use rodio::MixerDeviceSink;
-use rodio::Player;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -98,8 +98,7 @@ pub(crate) enum RepeatMode {
 /// tears down playback, which is why `_stream` is kept alive here even
 /// though it's never read directly).
 pub(crate) struct LocalBackend {
-    _stream: MixerDeviceSink,
-    player: Player,
+    player: Box<dyn AudioPlayer>,
 
     pub(crate) library: Vec<Album>,
     pub(crate) playlists: Vec<Playlist>,
@@ -183,15 +182,12 @@ impl LocalBackend {
             album.tracklist.sort_by_key(|s| s.track_number);
         }
 
-        let stream = rodio::DeviceSinkBuilder::open_default_sink().unwrap();
-        let mixer = stream.mixer();
-        let player = rodio::Player::connect_new(mixer);
+        let mut player = Box::new(RodioPlayer::new());
 
         let playlists = build_playlists(path, playlist_defs);
         player.set_volume(default_volume);
 
         Self {
-            _stream: stream,
             player,
             library,
             song_paths,
@@ -437,7 +433,7 @@ impl LocalBackend {
     }
 
     pub(crate) fn get_current_position(&self) -> Duration {
-        self.player.get_pos()
+        self.player.position()
     }
 
     pub(crate) fn is_paused(&self) -> bool {
