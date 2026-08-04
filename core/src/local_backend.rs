@@ -52,6 +52,7 @@ pub(crate) struct Song {
 /// A group of songs sharing the same `(album_title, album_artist)`,
 /// discovered by scanning the music directory, not something the user
 /// defines directly (unlike `Playlist` below).
+#[derive(Clone)]
 pub(crate) struct Album {
     pub(crate) title: String,
     pub(crate) artist: String,
@@ -66,6 +67,7 @@ pub(crate) struct Album {
 /// Stores only song *paths*, not resolved `Song`s: a playlist may
 /// reference songs that no longer exist on disk, so resolution happens
 /// lazily and safely via `resolve_playlist`.
+#[derive(Clone)]
 pub(crate) struct Playlist {
     pub(crate) name: String,
     pub(crate) songs: Vec<PathBuf>,

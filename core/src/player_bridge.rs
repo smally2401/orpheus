@@ -7,16 +7,10 @@
 //! forever, alternating between handling incoming commands and polling
 //! playback state on a fixed interval (see `TickState::on_tick`).
 
-use crate::AppWindow;
-use crate::SlintAlbum;
-use crate::SlintPlaylist;
-use crate::SlintSongWithArt;
 use crate::config::playlist::PlaylistDef;
 use crate::config::scripting::CurrentSong;
 use crate::config::scripting::ScriptEvent;
-use crate::config::theme::UiElement;
 use crate::config::theme::UiProperty;
-use crate::config::theme::set_property;
 use crate::local_backend::LocalBackend;
 use crate::local_backend::RepeatMode;
 use crate::mpris::MprisCommand;
@@ -25,18 +19,44 @@ use crate::mpris::spawn_mpris;
 use crate::mpris::track_id_for_path;
 use crate::mpris::write_art_cache;
 use crate::state::restore_state;
-use crate::utils::art_rust_to_slint;
 use crate::utils::expand_tilde;
-use crate::utils::get_art_from_path;
-use crate::utils::playlist_rust_to_slint;
+use crate::utils::DecodedSong;
 use mpris_server::PlaybackStatus;
-use slint::ComponentHandle;
-use slint::Model;
-use slint::ModelRc;
-use slint::VecModel;
+use crate::local_backend::Album;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::sync::mpsc;
+use std::sync::Arc;
+
+pub(crate) struct PlaylistPreview {
+    pub(crate) name: String,
+    pub(crate) track_count: usize,
+    pub(crate) art_path: Option<PathBuf>,
+}
+
+pub(crate) enum PlayerEvent {
+    UpdateVolume(f32),
+    SetProperty(String, UiProperty),
+    SetCurrentTrackInfo {
+        title: String,
+        artist: String,
+        current_position: u64,
+        total_duration: u64,
+        album_changed: bool,
+        track_art: Option<Arc<Vec<u8>>>,
+    },
+    PlaylistOpened {
+        index: usize,
+        name: String,
+        track_count: i32,
+        art_path: Option<PathBuf>,
+    },
+    PlaylistTrackDecoded {
+        playlist_index: usize,
+        track_index: usize,
+        decoded: DecodedSong,
+    },
+}
 
 /// Something the UI (or MPRIS) wants the player to do. Sent over the
 /// channel returned by `spawn_player_bridge` and handled by
@@ -126,7 +146,7 @@ impl TickState {
         &mut self,
         local_backend: &mut LocalBackend,
         mpris_tx: &mpsc::Sender<MprisCommand>,
-        ui: &slint::Weak<AppWindow>,
+        player_tx: &mpsc::Sender<PlayerEvent>,
     ) {
         if local_backend.track_finished() && !self.queue_exhausted {
             self.queue_exhausted = !local_backend.next(false).unwrap_or(false);
@@ -146,7 +166,6 @@ impl TickState {
         let current_position = local_backend.get_current_position().as_secs();
         let _ = mpris_tx.try_send(MprisCommand::UpdatePosition(current_position));
 
-        let ui_weak_clone = ui.clone();
         if let Some(track) = local_backend.get_current_song() {
             let title = track.title.clone();
             let artist = track.artist.clone();
@@ -187,31 +206,11 @@ impl TickState {
             }
 
             let track_art = track.art.clone();
-            let _ = slint::invoke_from_event_loop(move || {
-                if let Some(ui_instance) = ui_weak_clone.upgrade() {
-                    ui_instance.set_current_track_title(title.into());
-                    ui_instance.set_current_artist(artist.into());
-                    ui_instance.set_current_position(current_position as i32);
-                    ui_instance.set_total_duration(total_duration as i32);
-                    if album_changed {
-                        ui_instance.set_current_art(art_rust_to_slint(
-                            track_art.as_deref().map(Vec::as_slice),
-                        ));
-                    }
-                }
-            });
+            let _ = player_tx.try_send(PlayerEvent::SetCurrentTrackInfo { title, artist, current_position, total_duration, album_changed, track_art });
         } else {
             self.last_song_info = None;
             self.last_song_path = None;
-            let _ = slint::invoke_from_event_loop(move || {
-                if let Some(ui_instance) = ui_weak_clone.upgrade() {
-                    ui_instance.set_current_track_title("No song playing".into());
-                    ui_instance.set_current_artist("---".into());
-                    ui_instance.set_current_position(0);
-                    ui_instance.set_total_duration(0);
-                    ui_instance.set_current_art(art_rust_to_slint(None));
-                }
-            });
+            let _ = player_tx.try_send(PlayerEvent::SetCurrentTrackInfo { title: String::from("No song playing"), artist: String::from("---"), current_position: 0, total_duration: 0, album_changed: true, track_art: None });
         }
     }
 }
@@ -224,25 +223,26 @@ impl TickState {
 /// `on_song_change`/`current_song()` support: see `main.rs`'s dedicated
 /// script runtime thread, which owns the other end of this channel.
 pub(crate) fn spawn_player_bridge(
-    ui: &AppWindow,
     music_dir: &str,
     playlist_defs: Vec<PlaylistDef>,
     default_volume: f32,
     script_tx: std::sync::mpsc::Sender<ScriptEvent>,
 ) -> (
     mpsc::Sender<PlayerCommand>,
-    Vec<SlintAlbum>,
-    Vec<SlintPlaylist>,
+    mpsc::Receiver<PlayerEvent>,
+    Vec<Album>,
+    Vec<PlaylistPreview>,
 ) {
     let path = setup_music_dir(music_dir);
     let mut local_backend = LocalBackend::new(&path, playlist_defs, default_volume);
-    let library = build_slint_library(&local_backend);
-    let playlists = build_slint_playlists(&local_backend);
+
+    let library = local_backend.library.clone();
+    let playlists = build_playlist_previews(&local_backend);
 
     restore_state(&mut local_backend);
 
     let (tx, mut rx) = mpsc::channel::<PlayerCommand>(100);
-    let ui = ui.as_weak();
+    let (player_tx, player_rx) = mpsc::channel::<PlayerEvent>(100);
     let mpris_tx = spawn_mpris(tx.clone());
 
     tokio::spawn(async move {
@@ -254,20 +254,20 @@ pub(crate) fn spawn_player_bridge(
 
                 maybe_command = rx.recv() => {
                     if let Some(command) = maybe_command {
-                        handle_command(&command, &mut local_backend, &mpris_tx, &mut tick_state, &ui);
+                        handle_command(&command, &mut local_backend, &mpris_tx, &mut tick_state, &player_tx);
                     } else {
                         break;
                     }
                 }
 
                 _ = interval.tick() => {
-                    tick_state.on_tick(&mut local_backend, &mpris_tx, &ui);
+                    tick_state.on_tick(&mut local_backend, &mpris_tx, &player_tx);
                 }
             }
         }
     });
 
-    (tx, library, playlists)
+    (tx, player_rx, library, playlists)
 }
 
 /// Applies a single `Playercommand` to the backend.
@@ -287,7 +287,7 @@ fn handle_command(
     local_backend: &mut LocalBackend,
     mpris_tx: &mpsc::Sender<MprisCommand>,
     tick_state: &mut TickState,
-    ui: &slint::Weak<AppWindow>,
+    event_tx: &mpsc::Sender<PlayerEvent>,
 ) {
     use PlayerCommand::*;
 
@@ -331,15 +331,15 @@ fn handle_command(
             seek_by(local_backend, mpris_tx, SEEK_STEP, true);
         }
         SetVolume(vol) => {
-            set_volume_and_update_ui(local_backend, ui, *vol);
+            set_volume_and_update_ui(local_backend, *vol, event_tx);
         }
         VolumeUp => {
             let vol = (local_backend.get_volume() + VOLUME_STEP).clamp(0.0, 1.0);
-            set_volume_and_update_ui(local_backend, ui, vol);
+            set_volume_and_update_ui(local_backend, vol, event_tx);
         }
         VolumeDown => {
             let vol = (local_backend.get_volume() - VOLUME_STEP).clamp(0.0, 1.0);
-            set_volume_and_update_ui(local_backend, ui, vol);
+            set_volume_and_update_ui(local_backend,vol, event_tx);
         }
         SelectPlaylist(i) => {
             let _ = local_backend.select_playlist(*i);
@@ -368,21 +368,12 @@ fn handle_command(
             let _ = mpris_tx.try_send(MprisCommand::UpdateShuffle(local_backend.is_shuffle()));
         }
         OpenPlaylist(i) => {
-            open_playlist(*i, local_backend, ui);
+            open_playlist(*i, local_backend, event_tx);
         }
         SetProperty(element, property) => {
             let element = element.clone();
             let property = property.clone();
-            let ui_weak = ui.clone();
-            let _ = slint::invoke_from_event_loop(move || {
-                let Ok(element) = element.parse::<UiElement>() else {
-                    eprintln!("{element} is not a valid UI element");
-                    return;
-                };
-                if let Some(ui) = ui_weak.upgrade() {
-                    set_property(&ui, element, &property);
-                }
-            });
+            let _ = event_tx.try_send(PlayerEvent::SetProperty(element, property));
         }
     }
 }
@@ -403,14 +394,9 @@ fn seek_by(
     let _ = mpris_tx.try_send(MprisCommand::Seeked(new_pos));
 }
 
-fn set_volume_and_update_ui(backend: &mut LocalBackend, ui: &slint::Weak<AppWindow>, volume: f32) {
+fn set_volume_and_update_ui(backend: &mut LocalBackend, volume: f32, event_tx: &mpsc::Sender<PlayerEvent>) {
     backend.set_volume(volume);
-    let ui_weak = ui.clone();
-    let _ = slint::invoke_from_event_loop(move || {
-        if let Some(ui) = ui_weak.upgrade() {
-            ui.set_current_volume(volume);
-        }
-    });
+    let _ = event_tx.try_send(PlayerEvent::UpdateVolume(volume));   
 }
 
 /// Loads a playlist's tracklist with per-song art, decoding cover images
@@ -420,26 +406,20 @@ fn set_volume_and_update_ui(backend: &mut LocalBackend, ui: &slint::Weak<AppWind
 /// streamed in as their art finishes decoding. Track order is preserved
 /// by collecting all results, sorting by original index, then pushing
 /// sequentially.
-fn open_playlist(i: usize, local_backend: &LocalBackend, ui: &slint::Weak<AppWindow>) {
+fn open_playlist(i: usize, local_backend: &LocalBackend, event_tx: &mpsc::Sender<PlayerEvent>) {
     let resolved = local_backend.resolve_playlist(i);
     let name = local_backend.playlists[i].name.clone();
     let track_count = resolved.len() as i32;
     let art_path = local_backend.playlists[i].art.clone();
 
-    let ui_weak = ui.clone();
-    let _ = slint::invoke_from_event_loop(move || {
-        if let Some(ui_instance) = ui_weak.upgrade() {
-            ui_instance.set_viewing_playlist_index(i as i32);
-            ui_instance.set_viewing_playlist(SlintPlaylist {
-                name: name.into(),
-                track_count,
-                tracks: ModelRc::new(VecModel::<SlintSongWithArt>::from(Vec::new())),
-                art: get_art_from_path(art_path),
-            });
-        }
+    let _ = event_tx.try_send(PlayerEvent::PlaylistOpened {
+        index: i,
+        name,
+        track_count,
+        art_path,
     });
 
-    let ui_weak = ui.clone();
+    let event_tx = event_tx.clone();
     tokio::spawn(async move {
         use crate::utils::DecodedSong;
 
@@ -465,27 +445,11 @@ fn open_playlist(i: usize, local_backend: &LocalBackend, ui: &slint::Weak<AppWin
         }
         results.sort_by_key(|(idx, _)| *idx);
 
-        for (_, decoded) in results {
-            let ui_weak = ui_weak.clone();
-            let _ = slint::invoke_from_event_loop(move || {
-                if let Some(ui_instance) = ui_weak.upgrade() {
-                    if ui_instance.get_viewing_playlist_index() != i as i32 {
-                        return;
-                    }
-
-                    let slint_song = SlintSongWithArt {
-                        title: decoded.title.into(),
-                        artist: decoded.artist.into(),
-                        art: slint::Image::from(&decoded.art),
-                    };
-
-                    let tracks = ui_instance.get_viewing_playlist().tracks;
-                    if let Some(vec_model) =
-                        tracks.as_any().downcast_ref::<VecModel<SlintSongWithArt>>()
-                    {
-                        vec_model.push(slint_song);
-                    }
-                }
+        for (idx, decoded) in results {
+            let _ = event_tx.try_send(PlayerEvent::PlaylistTrackDecoded {
+                playlist_index: i,
+                track_index: idx,
+                decoded,
             });
         }
     });
@@ -502,23 +466,12 @@ fn setup_music_dir(music_dir: &str) -> PathBuf {
     path
 }
 
-/// Converts the backend's scanned library into the Slint-facing album
-/// list, for populating the UI at startup.
-fn build_slint_library(local_backend: &LocalBackend) -> Vec<SlintAlbum> {
-    let mut library: Vec<SlintAlbum> = Vec::new();
-    for album in &local_backend.library {
-        let slint_album = SlintAlbum::from(album);
-        library.push(slint_album);
-    }
-    library
-}
-
-/// Converts the backend's configured playlists into the Slint-facing
-/// playlist list, for populating the UI at startup.
-fn build_slint_playlists(local_backend: &LocalBackend) -> Vec<SlintPlaylist> {
-    let mut playlists: Vec<SlintPlaylist> = Vec::new();
-    for (i, _) in local_backend.playlists.iter().enumerate() {
-        playlists.push(playlist_rust_to_slint(i, local_backend));
-    }
-    playlists
+fn build_playlist_previews(local_backend: &LocalBackend) -> Vec<PlaylistPreview> {
+    local_backend.playlists.iter().enumerate().map(|(i, def)| {
+        PlaylistPreview {
+            name: def.name.clone(),
+            track_count: local_backend.resolve_playlist(i).len(),
+            art_path: def.art.clone(),
+        }
+    }).collect()
 }

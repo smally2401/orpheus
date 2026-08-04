@@ -16,27 +16,30 @@
 
 #![windows_subsystem = "windows"]
 
-mod mpris;
-mod player_bridge;
 mod utils;
 mod config;
 
-use crate::config::WindowState;
-use crate::config::keys::KeyAction;
-use crate::config::keys::KeyCombo;
-use crate::config::keys::key_string_to_key_name;
-use crate::config::load_config;
-use crate::config::scripting::ScriptEvent;
-use crate::config::scripting::build_runtime;
-use crate::config::theme::Theme;
-use crate::config::theme::set_property;
-use crate::player_bridge::PlayerCommand;
-use crate::player_bridge::spawn_player_bridge;
+use orpheus_core::config::WindowState;
+use orpheus_core::config::keys::KeyAction;
+use orpheus_core::config::keys::KeyCombo;
+use orpheus_core::config::keys::key_string_to_key_name;
+use orpheus_core::config::load_config;
+use orpheus_core::config::scripting::ScriptEvent;
+use orpheus_core::config::scripting::build_runtime;
+use orpheus_core::config::theme::Theme;
+use orpheus_core::config::theme::set_property;
+use orpheus_core::player_bridge::PlayerCommand;
+use orpheus_core::player_bridge::PlayerEvent;
+use orpheus_core::player_bridge::spawn_player_bridge;
+use orpheus_core::utils::art_rust_to_slint;
+use orpheus_core::config::theme::UiElement;
 use slint::LogicalSize;
+use slint::Model;
 use slint::ModelRc;
 use slint::VecModel;
 use std::collections::HashMap;
 use tokio::sync::mpsc::Sender;
+use orpheus_core::utils::get_art_from_path;
 
 slint::include_modules!();
 
@@ -47,15 +50,15 @@ async fn main() -> Result<(), slint::PlatformError> {
     let (script_tx, script_rx) = std::sync::mpsc::channel::<ScriptEvent>();
 
     let (config, contents) = load_config();
-
-    let (tx, library, playlists) = spawn_player_bridge(
-        &ui,
+    
+    let (tx, player_event_rx, library, playlists) = spawn_player_bridge(
         &config.music_dir,
         config.playlists,
         config.default_volume,
         script_tx,
     );
 
+    build_player_event_thread(&ui, player_event_rx);
     build_script_runtime_thread(contents, script_rx, tx.clone());
 
     apply_window_config(&ui, &config.window_state);
@@ -65,13 +68,85 @@ async fn main() -> Result<(), slint::PlatformError> {
     wire_callbacks(&ui, &tx);
     handle_keymaps(&config.keymaps, &ui, &tx);
 
-    let library_model = ModelRc::new(VecModel::from(library));
+    let slint_library: Vec<SlintAlbum> = library.iter().map(SlintAlbum::from).collect();
+    let library_model = ModelRc::new(VecModel::from(slint_library));
     ui.set_albums(library_model);
 
-    let playlists_model = ModelRc::new(VecModel::from(playlists));
+    let slint_playlists: Vec<SlintPlaylist> = playlists.iter().map(playlist_rust_to_slint).collect();
+    let playlists_model = ModelRc::new(VecModel::from(slint_playlists));
     ui.set_playlists(playlists_model);
 
     ui.run()
+}
+
+fn build_player_event_thread(ui: &AppWindow, player_event_rx: tokio::sync::mpsc::Receiver<PlayerEvent>) {
+    use orpheus_core::player_bridge::PlayerEvent::*;
+    let ui_weak = ui.as_weak();
+
+    std::thread::spawn(move || {
+        while let Some(event) = player_event_rx.blocking_recv() {
+            let ui_weak = ui_weak.clone();
+            let _ = slint::invoke_from_event_loop(move || {
+                if let Some(ui) = ui_weak.upgrade() {
+
+                    match event {
+                        UpdateVolume(vol) => {
+                            ui.set_current_volume(vol);
+                        }
+
+                        SetProperty(element, property) => {
+                            let Ok(element) = element.parse::<UiElement>() else {
+                                eprintln!("{element} is not a valid UI element");
+                                return;
+                            };
+                            if let Some(ui) = ui_weak.upgrade() {
+                                set_property(&ui, element, &property);
+                            }
+                        }
+
+                        SetCurrentTrackInfo { title, artist, current_position, total_duration, album_changed, track_art } => {
+                            ui.set_current_track_title(title.into());
+                            ui.set_current_artist(artist.into());
+                            ui.set_current_position(current_position as i32);
+                            ui.set_total_duration(total_duration as i32);
+                            if album_changed {
+                                ui.set_current_art(art_rust_to_slint(
+                                    track_art.as_deref().map(Vec::as_slice),
+                                ));
+                            }
+                        }
+
+                        PlaylistOpened { index, name, track_count, art_path } => {
+                            ui.set_viewing_playlist_index(index as i32);
+                            ui.set_viewing_playlist(SlintPlaylist {
+                                name: name.into(),
+                                track_count,
+                                tracks: ModelRc::new(VecModel::<SlintSongWithArt>::from(Vec::new())),
+                                art: get_art_from_path(art_path),
+                            });                        
+                        }
+
+                        PlaylistTrackDecoded { playlist_index, track_index: _, decoded } => {
+                            if ui.get_viewing_playlist_index() != playlist_index as i32 {
+                                return;
+                            }
+
+                            let slint_song = SlintSongWithArt {
+                                title: decoded.title.into(),
+                                artist: decoded.artist.into(),
+                                art: slint::Image::from(&decoded.art),
+                            };
+
+                            let tracks = ui.get_viewing_playlist().tracks;
+                            if let Some(vec_model) = tracks.as_any().downcast_ref::<VecModel<SlintSongWithArt>>() {
+                                vec_model.push(slint_song);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
 }
 
 /// Dedicated thread for `ScriptRuntime`: built here, on this thread,

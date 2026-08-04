@@ -3761,7 +3761,9 @@ name = "orpheus-core"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "async-executor",
  "dirs",
+ "futures-lite",
  "image",
  "lofty",
  "mlua",
