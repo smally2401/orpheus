@@ -3757,13 +3757,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "orpheus"
+name = "orpheus-core"
 version = "0.3.0"
 dependencies = [
  "anyhow",
- "async-executor",
  "dirs",
- "futures-lite",
  "image",
  "lofty",
  "mlua",
@@ -3774,11 +3772,22 @@ dependencies = [
  "rodio",
  "serde",
  "serde_json",
- "slint",
- "slint-build",
  "strum",
  "tokio",
  "walkdir",
+]
+
+[[package]]
+name = "orpheus-desktop"
+version = "0.3.0"
+dependencies = [
+ "async-executor",
+ "futures-lite",
+ "mpris-server",
+ "orpheus-core",
+ "slint",
+ "slint-build",
+ "tokio",
 ]
 
 [[package]]

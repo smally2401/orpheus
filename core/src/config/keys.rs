@@ -27,7 +27,7 @@ pub(crate) enum KeyAction {
 
 impl KeyAction {
     pub(crate) fn to_command(self) -> Option<PlayerCommand> {
-        use crate::PlayerCommand::*;
+        use crate::player_bridge::PlayerCommand::*;
 
         match self {
             Self::TogglePlay => Some(TogglePlay),

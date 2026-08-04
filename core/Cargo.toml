@@ -1,0 +1,30 @@
+[package]
+name = "orpheus-core"
+version.workspace = true
+edition.workspace = true
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+cast_sign_loss = "allow"
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+enum_glob_use = "allow"
+
+[dependencies]
+anyhow = "1.0.103"
+dirs = "6.0.0"
+image = "0.25.10"
+lofty = "0.24.0"
+mlua = { version = "0.11", features = ["lua54", "vendored" ] }
+mpris-server = "0.10.0"
+paste = "1.0.15"
+rand = "0.10.2"
+rodio = { version = "0.22.2", features = ["playback", "mp3", "flac"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+strum = "0.28.0"
+tokio = { version = "1.52.3", features = ["full"] }
+walkdir = "2.5.0"
+
+[target.'cfg(windows)'.dependencies]
+mslnk = "0.1.8"

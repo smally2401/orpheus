@@ -16,14 +16,10 @@
 
 #![windows_subsystem = "windows"]
 
-mod audio_player;
-mod config;
-mod local_backend;
-mod macros;
 mod mpris;
 mod player_bridge;
-mod state;
 mod utils;
+mod config;
 
 use crate::config::WindowState;
 use crate::config::keys::KeyAction;

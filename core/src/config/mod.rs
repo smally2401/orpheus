@@ -94,7 +94,7 @@ enum ConfigFile {
 /// Default config written to disk on first run. Sourced directly from
 /// `config_examples/01_default.lua`, so the shipped default and the
 /// documented example can never drift apart.
-const DEFAULT_CONFIG_FILE: &str = include_str!("../../config_examples/01_default.lua");
+const DEFAULT_CONFIG_FILE: &str = include_str!("../../../config_examples/01_default.lua");
 
 /// Type annotations for `lua-language-server`, giving editors autocomplete
 /// and type-checking on `config.lua`. Sourced directly from
@@ -102,7 +102,7 @@ const DEFAULT_CONFIG_FILE: &str = include_str!("../../config_examples/01_default
 /// `~/.config/orpheus/meta/orpheus.lua` on every run, so it always matches
 /// the schema this version of Orpheus actually reads. Not meant to be
 /// hand-edited, see the config README for what it documents.
-const ORPHEUS_LUA_META: &str = include_str!("../../config_examples/meta/orpheus.lua");
+const ORPHEUS_LUA_META: &str = include_str!("../../../config_examples/meta/orpheus.lua");
 
 /// `lua_language_server` workspace config, pointing it at `ORPHEUS_LUA_META`
 /// and declaring every config global so it isn't flagged as undefined.
@@ -110,7 +110,7 @@ const ORPHEUS_LUA_META: &str = include_str!("../../config_examples/meta/orpheus.
 /// `~/.config/orpheus/.luarc.json` only if it doesn't already exist, since
 /// (unlike `orpheus.lua`) users may reasonably extend this with their own
 /// settings.
-const DEFAULT_LUARC_JSON: &str = include_str!("../../config_examples/.luarc.json");
+const DEFAULT_LUARC_JSON: &str = include_str!("../../../config_examples/.luarc.json");
 
 /// Entry point: locates `config.lua`, then runs it to produce a `Config`.
 ///

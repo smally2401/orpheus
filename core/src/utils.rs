@@ -41,7 +41,7 @@ pub(crate) struct DecodedArt {
 }
 
 /// Placeholder cover art, embedded at compile time.
-const PLACEHOLDER_ART: &[u8] = include_bytes!("../assets/images/cover_placeholder.png");
+const PLACEHOLDER_ART: &[u8] = include_bytes!("../../assets/images/cover_placeholder.png");
 
 impl From<&Song> for SlintSong {
     /// Converts a single `Song` into its Slint-facing representation.
