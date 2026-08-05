@@ -4,19 +4,19 @@
 /// A single playlist as declared in `config.lua`, before its song paths
 /// have been resolved against `music_dir` or matched against the library.
 /// See `local_backend::build_playlists` for that resolution step.
-pub(crate) struct PlaylistDef {
-    pub(crate) name: String,
-    pub(crate) songs: Vec<String>,
+pub struct PlaylistDef {
+    pub name: String,
+    pub songs: Vec<String>,
     /// If true, songs are re-sorted by artist/album/track number when
     /// resolved, rather than kept in the order listed. Intended for
     /// playlists generated with `list_music_files`, where listed order
     /// is just filesystem walk order.
-    pub(crate) sort: bool,
+    pub sort: bool,
     /// Optional path to a custom cover image for this playlist, relative
     /// to `music_dir`. If set, the image is loaded and displayed as the
     /// playlist's cover art. Falls back to the bundled placeholder if the
     /// path is missing or the image fails to load.
-    pub(crate) art: Option<String>,
+    pub art: Option<String>,
 }
 
 /// Reads the `playlists` global, a Lua array of `{ name, songs, sort, art }`

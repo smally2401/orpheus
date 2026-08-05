@@ -10,7 +10,7 @@ use std::collections::HashMap;
 /// An action the user can trigger via a keybinding, dispatched on by
 /// `main.rs`'s input handling.
 #[derive(Clone, Copy)]
-pub(crate) enum KeyAction {
+pub enum KeyAction {
     TogglePlay,
     NextTrack,
     PrevTrack,
@@ -23,7 +23,7 @@ pub(crate) enum KeyAction {
 }
 
 impl KeyAction {
-    pub(crate) fn to_command(self) -> Option<PlayerCommand> {
+    pub fn to_command(self) -> Option<PlayerCommand> {
         use crate::player_bridge::PlayerCommand::*;
 
         match self {
@@ -43,11 +43,11 @@ impl KeyAction {
 /// the `keymaps` `HashMap`, so two combos are equal only if every modifier
 /// matches exactly.
 #[derive(Eq, Hash, PartialEq, Clone)]
-pub(crate) struct KeyCombo {
-    pub(crate) key: String,
-    pub(crate) ctrl: bool,
-    pub(crate) shift: bool,
-    pub(crate) alt: bool,
+pub struct KeyCombo {
+    pub key: String,
+    pub ctrl: bool,
+    pub shift: bool,
+    pub alt: bool,
 }
 
 impl KeyCombo {

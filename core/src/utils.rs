@@ -12,7 +12,7 @@ use std::path::PathBuf;
 /// `raw_art_to_slint_image` once back on the UI thread: see
 /// `player_bridge.rs`'s streaming playlist-loading, which is what this
 /// exists for.
-pub(crate) struct DecodedSong {
+pub struct DecodedSong {
     pub title: String,
     pub artist: String,
     pub art: DecodedArt,
@@ -25,7 +25,7 @@ pub(crate) struct DecodedSong {
 /// the expensive decode/resize work can still happen on a
 /// `tokio::task::spawn_blocking` thread. See `decode_art` (safe anywhere)
 /// and `raw_art_to_slint_image` (UI thread only).
-pub(crate) struct DecodedArt {
+pub struct DecodedArt {
     pub width: u32,
     pub height: u32,
     pub rgb: Vec<u8>,
@@ -57,7 +57,7 @@ pub(crate) fn art_or_placeholder(art: Option<&[u8]>) -> &[u8] {
 /// 100x100 thumbnail, same as `art_rust_to_slint`, but stops short of
 /// building a `slint::Image`. Safe to call from any thread, including
 /// `spawn_blocking`.
-pub(crate) fn decode_art(art: Option<&[u8]>) -> DecodedArt {
+pub fn decode_art(art: Option<&[u8]>) -> DecodedArt {
     let bytes = art_or_placeholder(art);
     let image = image::load_from_memory(bytes).expect("placeholder art is a valid image");
     let image = image.resize(100, 100, FilterType::Lanczos3).into_rgb8();

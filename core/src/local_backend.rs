@@ -33,11 +33,11 @@ use walkdir::WalkDir;
 /// Always wrapped in `Arc` once constructed, since the same song is shared
 /// between the library's albums, the `song_paths` lookup table, and
 /// whichever queue currently has it selected.
-pub(crate) struct Song {
+pub struct Song {
     pub(crate) path: PathBuf,
 
-    pub(crate) title: String,
-    pub(crate) artist: String,
+    pub title: String,
+    pub artist: String,
 
     pub(crate) album_title: String,
     pub(crate) album_artist: String,
@@ -53,11 +53,11 @@ pub(crate) struct Song {
 /// discovered by scanning the music directory, not something the user
 /// defines directly (unlike `Playlist` below).
 #[derive(Clone)]
-pub(crate) struct Album {
-    pub(crate) title: String,
-    pub(crate) artist: String,
-    pub(crate) tracklist: Vec<Arc<Song>>,
-    pub(crate) art: Option<Arc<Vec<u8>>>,
+pub struct Album {
+    pub title: String,
+    pub artist: String,
+    pub tracklist: Vec<Arc<Song>>,
+    pub art: Option<Arc<Vec<u8>>>,
     // todo: year and genres
 }
 
@@ -85,7 +85,7 @@ pub(crate) struct Playlist {
 /// `player_bridge.rs`). Has no effect on a manual "next" click, which
 /// always advances regardless of this setting (see `next`).
 #[derive(Clone, Copy, Serialize, Deserialize)]
-pub(crate) enum RepeatMode {
+pub enum RepeatMode {
     /// Stop advancing once the queue's last track finishes.
     Off,
     /// Once the last track finishes, wrap back around to the first.

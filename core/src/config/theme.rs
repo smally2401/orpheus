@@ -4,10 +4,21 @@
 //! value, so a `config.lua` that only sets `theme.bg.sidebar` still gets
 //! sensible defaults for everything else.
 
-use crate::AppWindow;
-use slint::Color;
 use strum::Display;
 use strum::EnumString;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Rgb {
+    pub r: u8,
+    pub g: u8,
+    pub  b: u8,
+}
+
+impl Rgb {
+    pub(crate) const fn new(r: u8, g: u8, b: u8) -> Self {
+        Self { r, g, b }
+    }
+}
 
 /// One region/element of the UI that can have its background, text
 /// color, or text size set, both from `config.lua`'s `theme` table at
@@ -18,7 +29,7 @@ use strum::EnumString;
 /// valid.
 #[derive(EnumString, Display, Debug)]
 #[strum(serialize_all = "snake_case")]
-pub(crate) enum UiElement {
+pub enum UiElement {
     Sidebar,
     NowPlayingBar,
     NowPlayingSong,
@@ -42,108 +53,61 @@ pub(crate) enum UiElement {
 /// thread to `handle_command`, which resolves it against a specific
 /// `UiElement` via `set_property`.
 #[derive(Debug, Clone)]
-pub(crate) enum UiProperty {
-    Bg(Color),
-    TextColor(Color),
+pub enum UiProperty {
+    Bg(Rgb),
+    TextColor(Rgb),
     TextSize(i32),
-}
-
-/// Applies `property` to `element` on `ui`, if `element` actually has
-/// that property. Elements that don't (e.g. `PlaylistsView` has no
-/// `TextColor`) are logged and ignored rather than treated as an error.
-/// Called from `handle_command`'s `PlayerCommand::SetProperty` arm.
-pub(crate) fn set_property(ui: &AppWindow, element: UiElement, property: &UiProperty) {
-    use crate::config::theme::UiElement::*;
-    use crate::config::theme::UiProperty::*;
-
-    match property {
-        Bg(color) => match element {
-            Sidebar => ui.set_sidebar_bg(*color),
-            NowPlayingBar => ui.set_now_playing_bar_bg(*color),
-            LibraryView => ui.set_library_view_bg(*color),
-            AlbumView => ui.set_album_view_bg(*color),
-            PlaylistsView => ui.set_playlists_view_bg(*color),
-            OpenPlaylistView => ui.set_open_playlist_view_bg(*color),
-            other => eprintln!("{other} doesn't have a bg property"),
-        },
-
-        TextColor(color) => match element {
-            Sidebar => ui.set_sidebar_text_color(*color),
-            NowPlayingSong => ui.set_now_playing_song_text_color(*color),
-            NowPlayingArtist => ui.set_now_playing_artist_text_color(*color),
-            DetailViewHeaderTitle => ui.set_detail_view_header_title_text_color(*color),
-            DetailViewHeaderSubtitle => ui.set_detail_view_header_subtitle_text_color(*color),
-            LibraryListTitle => ui.set_library_list_title_text_color(*color),
-            LibraryListSubtitle => ui.set_library_list_subtitle_text_color(*color),
-            AlbumListTitle => ui.set_album_list_title_text_color(*color),
-            AlbumListSubtitle => ui.set_album_list_subtitle_text_color(*color),
-            other => eprintln!("{other} doesn't have a text_color property"),
-        },
-
-        TextSize(size) => match element {
-            Sidebar => ui.set_sidebar_text_size(*size),
-            NowPlayingSong => ui.set_now_playing_song_text_size(*size),
-            NowPlayingArtist => ui.set_now_playing_artist_text_size(*size),
-            DetailViewHeaderTitle => ui.set_detail_view_header_title_text_size(*size),
-            DetailViewHeaderSubtitle => ui.set_detail_view_header_subtitle_text_size(*size),
-            LibraryListTitle => ui.set_library_list_title_text_size(*size),
-            LibraryListSubtitle => ui.set_library_list_subtitle_text_size(*size),
-            AlbumListTitle => ui.set_album_list_title_text_size(*size),
-            AlbumListSubtitle => ui.set_album_list_subtitle_text_size(*size),
-            other => eprintln!("{other} doesn't have a text_size property"),
-        },
-    }
 }
 
 /// Background colors for every major UI region. These are applied in
 /// `main.rs` via `apply_theme`.
 pub(crate) struct Background {
-    pub(crate) sidebar: Color,
-    pub(crate) now_playing_bar: Color,
-    pub(crate) library_view: Color,
-    pub(crate) album_view: Color,
-    pub(crate) playlists_view: Color,
-    pub(crate) open_playlist_view: Color,
+    pub(crate) sidebar: Rgb,
+    pub(crate) now_playing_bar: Rgb,
+    pub(crate) library_view: Rgb,
+    pub(crate) album_view: Rgb,
+    pub(crate) playlists_view: Rgb,
+    pub(crate) open_playlist_view: Rgb,
 }
 
 impl Default for Background {
     fn default() -> Self {
         Self {
-            sidebar: Color::from_rgb_u8(0x0e, 0x10, 0x1d),
-            now_playing_bar: Color::from_rgb_u8(0x0a, 0x0a, 0x0f),
-            library_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
-            album_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
-            playlists_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
-            open_playlist_view: Color::from_rgb_u8(0x1f, 0x1d, 0x2f),
+            sidebar: Rgb::new(0x0e, 0x10, 0x1d),
+            now_playing_bar: Rgb::new(0x0a, 0x0a, 0x0f),
+            library_view: Rgb::new(0x1f, 0x1d, 0x2f),
+            album_view: Rgb::new(0x1f, 0x1d, 0x2f),
+            playlists_view: Rgb::new(0x1f, 0x1d, 0x2f),
+            open_playlist_view: Rgb::new(0x1f, 0x1d, 0x2f),
         }
     }
 }
 
 /// Text colors for every label/title/subtitle in the UI.
 pub(crate) struct TextColor {
-    pub(crate) sidebar: Color,
-    pub(crate) now_playing_song: Color,
-    pub(crate) now_playing_artist: Color,
-    pub(crate) detail_view_header_title: Color,
-    pub(crate) detail_view_header_subtitle: Color,
-    pub(crate) library_list_title: Color,
-    pub(crate) library_list_subtitle: Color,
-    pub(crate) album_list_title: Color,
-    pub(crate) album_list_subtitle: Color,
+    pub(crate) sidebar: Rgb,
+    pub(crate) now_playing_song: Rgb,
+    pub(crate) now_playing_artist: Rgb,
+    pub(crate) detail_view_header_title: Rgb,
+    pub(crate) detail_view_header_subtitle: Rgb,
+    pub(crate) library_list_title: Rgb,
+    pub(crate) library_list_subtitle: Rgb,
+    pub(crate) album_list_title: Rgb,
+    pub(crate) album_list_subtitle: Rgb,
 }
 
 impl Default for TextColor {
     fn default() -> Self {
         Self {
-            sidebar: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            now_playing_song: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            now_playing_artist: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            detail_view_header_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            detail_view_header_subtitle: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            library_list_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            library_list_subtitle: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            album_list_title: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
-            album_list_subtitle: Color::from_rgb_u8(0xcd, 0xd6, 0xf4),
+            sidebar: Rgb::new(0xcd, 0xd6, 0xf4),
+            now_playing_song: Rgb::new(0xcd, 0xd6, 0xf4),
+            now_playing_artist: Rgb::new(0xcd, 0xd6, 0xf4),
+            detail_view_header_title: Rgb::new(0xcd, 0xd6, 0xf4),
+            detail_view_header_subtitle: Rgb::new(0xcd, 0xd6, 0xf4),
+            library_list_title: Rgb::new(0xcd, 0xd6, 0xf4),
+            library_list_subtitle: Rgb::new(0xcd, 0xd6, 0xf4),
+            album_list_title: Rgb::new(0xcd, 0xd6, 0xf4),
+            album_list_subtitle: Rgb::new(0xcd, 0xd6, 0xf4),
         }
     }
 }
@@ -180,14 +144,14 @@ impl Default for TextSize {
 
 /// The UI color palette.
 #[derive(Default)]
-pub(crate) struct Theme {
+pub struct Theme {
     pub(crate) bg: Background,
     pub(crate) text_color: TextColor,
     pub(crate) text_size: TextSize,
 }
 
 impl Theme {
-    pub(crate) fn properties(&self) -> [(UiElement, UiProperty); 24] {
+    pub fn properties(&self) -> [(UiElement, UiProperty); 24] {
         use crate::config::theme::UiElement::*;
         use crate::config::theme::UiProperty::*;
 
@@ -419,7 +383,7 @@ fn get_size_or_default(table: Option<&mlua::Table>, key: &str, default: i32) -> 
 
 /// Reads a hex color string from globals, falling back to `default` if the
 /// key is missing or fails hex validation (`is_valid_hex_color`).
-fn get_color_or_default(table: Option<&mlua::Table>, key: &str, default: Color) -> Color {
+fn get_color_or_default(table: Option<&mlua::Table>, key: &str, default: Rgb) -> Rgb {
     let Some(table) = table else {
         return default;
     };
@@ -440,12 +404,12 @@ pub(crate) fn is_valid_hex_color(s: &str) -> bool {
 /// Malformed hex digits fall back to `0` for that channel rather than
 /// errorring, since `is_valid_hex_color` should already have filtered out
 /// anything that would fail here.
-pub(crate) fn hex_to_color(hex: &str) -> slint::Color {
+pub(crate) fn hex_to_color(hex: &str) -> Rgb {
     let stripped = hex.strip_prefix("#").unwrap_or(hex);
     let r = u8::from_str_radix(&stripped[0..2], 16).unwrap_or(0);
     let g = u8::from_str_radix(&stripped[2..4], 16).unwrap_or(0);
     let b = u8::from_str_radix(&stripped[4..6], 16).unwrap_or(0);
-    slint::Color::from_rgb_u8(r, g, b)
+    Rgb::new(r, g, b)
 }
 
 /// Looks up a nested table by key, returning `None` (rather than an

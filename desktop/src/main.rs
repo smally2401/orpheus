@@ -16,30 +16,32 @@
 
 #![windows_subsystem = "windows"]
 
-mod utils;
 mod config;
+mod utils;
 
+use crate::config::keys::key_string_to_key_name;
+use crate::utils::image_from_decoded_art;
+use crate::utils::playlist_rust_to_slint;
 use orpheus_core::config::WindowState;
 use orpheus_core::config::keys::KeyAction;
 use orpheus_core::config::keys::KeyCombo;
-use orpheus_core::config::keys::key_string_to_key_name;
 use orpheus_core::config::load_config;
 use orpheus_core::config::scripting::ScriptEvent;
 use orpheus_core::config::scripting::build_runtime;
 use orpheus_core::config::theme::Theme;
-use orpheus_core::config::theme::set_property;
+use orpheus_core::config::theme::UiElement;
+use crate::config::theme::set_property;
 use orpheus_core::player_bridge::PlayerCommand;
 use orpheus_core::player_bridge::PlayerEvent;
 use orpheus_core::player_bridge::spawn_player_bridge;
-use orpheus_core::utils::art_rust_to_slint;
-use orpheus_core::config::theme::UiElement;
+use crate::utils::art_rust_to_slint;
+use crate::utils::get_art_from_path;
 use slint::LogicalSize;
 use slint::Model;
 use slint::ModelRc;
 use slint::VecModel;
 use std::collections::HashMap;
 use tokio::sync::mpsc::Sender;
-use orpheus_core::utils::get_art_from_path;
 
 slint::include_modules!();
 
@@ -50,7 +52,7 @@ async fn main() -> Result<(), slint::PlatformError> {
     let (script_tx, script_rx) = std::sync::mpsc::channel::<ScriptEvent>();
 
     let (config, contents) = load_config();
-    
+
     let (tx, player_event_rx, library, playlists) = spawn_player_bridge(
         &config.music_dir,
         config.playlists,
@@ -72,14 +74,18 @@ async fn main() -> Result<(), slint::PlatformError> {
     let library_model = ModelRc::new(VecModel::from(slint_library));
     ui.set_albums(library_model);
 
-    let slint_playlists: Vec<SlintPlaylist> = playlists.iter().map(playlist_rust_to_slint).collect();
+    let slint_playlists: Vec<SlintPlaylist> =
+        playlists.iter().map(playlist_rust_to_slint).collect();
     let playlists_model = ModelRc::new(VecModel::from(slint_playlists));
     ui.set_playlists(playlists_model);
 
     ui.run()
 }
 
-fn build_player_event_thread(ui: &AppWindow, player_event_rx: tokio::sync::mpsc::Receiver<PlayerEvent>) {
+fn build_player_event_thread(
+    ui: &AppWindow,
+    mut player_event_rx: tokio::sync::mpsc::Receiver<PlayerEvent>,
+) {
     use orpheus_core::player_bridge::PlayerEvent::*;
     let ui_weak = ui.as_weak();
 
@@ -88,7 +94,6 @@ fn build_player_event_thread(ui: &AppWindow, player_event_rx: tokio::sync::mpsc:
             let ui_weak = ui_weak.clone();
             let _ = slint::invoke_from_event_loop(move || {
                 if let Some(ui) = ui_weak.upgrade() {
-
                     match event {
                         UpdateVolume(vol) => {
                             ui.set_current_volume(vol);
@@ -104,7 +109,14 @@ fn build_player_event_thread(ui: &AppWindow, player_event_rx: tokio::sync::mpsc:
                             }
                         }
 
-                        SetCurrentTrackInfo { title, artist, current_position, total_duration, album_changed, track_art } => {
+                        SetCurrentTrackInfo {
+                            title,
+                            artist,
+                            current_position,
+                            total_duration,
+                            album_changed,
+                            track_art,
+                        } => {
                             ui.set_current_track_title(title.into());
                             ui.set_current_artist(artist.into());
                             ui.set_current_position(current_position as i32);
@@ -116,17 +128,28 @@ fn build_player_event_thread(ui: &AppWindow, player_event_rx: tokio::sync::mpsc:
                             }
                         }
 
-                        PlaylistOpened { index, name, track_count, art_path } => {
+                        PlaylistOpened {
+                            index,
+                            name,
+                            track_count,
+                            art_path,
+                        } => {
                             ui.set_viewing_playlist_index(index as i32);
                             ui.set_viewing_playlist(SlintPlaylist {
                                 name: name.into(),
                                 track_count,
-                                tracks: ModelRc::new(VecModel::<SlintSongWithArt>::from(Vec::new())),
+                                tracks: ModelRc::new(
+                                    VecModel::<SlintSongWithArt>::from(Vec::new()),
+                                ),
                                 art: get_art_from_path(art_path),
-                            });                        
+                            });
                         }
 
-                        PlaylistTrackDecoded { playlist_index, track_index: _, decoded } => {
+                        PlaylistTrackDecoded {
+                            playlist_index,
+                            track_index: _,
+                            decoded,
+                        } => {
                             if ui.get_viewing_playlist_index() != playlist_index as i32 {
                                 return;
                             }
@@ -134,11 +157,13 @@ fn build_player_event_thread(ui: &AppWindow, player_event_rx: tokio::sync::mpsc:
                             let slint_song = SlintSongWithArt {
                                 title: decoded.title.into(),
                                 artist: decoded.artist.into(),
-                                art: slint::Image::from(&decoded.art),
+                                art: image_from_decoded_art(&decoded.art),
                             };
 
                             let tracks = ui.get_viewing_playlist().tracks;
-                            if let Some(vec_model) = tracks.as_any().downcast_ref::<VecModel<SlintSongWithArt>>() {
+                            if let Some(vec_model) =
+                                tracks.as_any().downcast_ref::<VecModel<SlintSongWithArt>>()
+                            {
                                 vec_model.push(slint_song);
                             }
                         }
@@ -246,7 +271,7 @@ fn apply_theme(ui: &AppWindow, theme: &Theme) {
 /// need to read UI state (e.g. which album is currently being viewed) take
 /// a `Weak<AppWindows>` and `upgrade()` it inside the closure.
 fn wire_callbacks(ui: &AppWindow, tx: &Sender<PlayerCommand>) {
-    use crate::player_bridge::PlayerCommand::*;
+    use orpheus_core::player_bridge::PlayerCommand::*;
 
     ui.on_play_paused_clicked(wire_cmd(tx, TogglePlay));
     ui.on_next_track_clicked(wire_cmd(tx, NextTrack));

@@ -4,15 +4,15 @@
 
 use std::error::Error;
 use std::fs::File;
-use std::time::Duration;
 use std::io::BufReader;
+use std::time::Duration;
 
 /// Anything that can load, play, pause, and seek audio tracks.
 ///
 /// `LocalBackend` holds a `Box<dyn AudioPlayer>` so the same playback
 /// logic works on desktop (rodio) and Android (oboe/aaudio) without
 /// platform specific code leaking into the backend.
-pub(crate) trait  AudioPlayer: Send {
+pub(crate) trait AudioPlayer: Send {
     fn play(&mut self);
     fn pause(&mut self);
     fn stop(&mut self);
@@ -26,7 +26,7 @@ pub(crate) trait  AudioPlayer: Send {
     fn volume(&self) -> f32;
 }
 
-/// Desktop  implementation backed by `rodio::Player` + 
+/// Desktop  implementation backed by `rodio::Player` +
 /// `rodio::MixerDeviceSink`.
 pub(crate) struct RodioPlayer {
     _stream: rodio::MixerDeviceSink,

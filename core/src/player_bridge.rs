@@ -11,6 +11,7 @@ use crate::config::playlist::PlaylistDef;
 use crate::config::scripting::CurrentSong;
 use crate::config::scripting::ScriptEvent;
 use crate::config::theme::UiProperty;
+use crate::local_backend::Album;
 use crate::local_backend::LocalBackend;
 use crate::local_backend::RepeatMode;
 use crate::mpris::MprisCommand;
@@ -19,22 +20,21 @@ use crate::mpris::spawn_mpris;
 use crate::mpris::track_id_for_path;
 use crate::mpris::write_art_cache;
 use crate::state::restore_state;
-use crate::utils::expand_tilde;
 use crate::utils::DecodedSong;
+use crate::utils::expand_tilde;
 use mpris_server::PlaybackStatus;
-use crate::local_backend::Album;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
-use std::sync::Arc;
 
-pub(crate) struct PlaylistPreview {
-    pub(crate) name: String,
-    pub(crate) track_count: usize,
-    pub(crate) art_path: Option<PathBuf>,
+pub struct PlaylistPreview {
+    pub name: String,
+    pub track_count: usize,
+    pub art_path: Option<PathBuf>,
 }
 
-pub(crate) enum PlayerEvent {
+pub enum PlayerEvent {
     UpdateVolume(f32),
     SetProperty(String, UiProperty),
     SetCurrentTrackInfo {
@@ -62,7 +62,7 @@ pub(crate) enum PlayerEvent {
 /// channel returned by `spawn_player_bridge` and handled by
 /// `handle_command`.
 #[derive(Clone)]
-pub(crate) enum PlayerCommand {
+pub enum PlayerCommand {
     TogglePlay,
     Play,
     Pause,
@@ -206,11 +206,25 @@ impl TickState {
             }
 
             let track_art = track.art.clone();
-            let _ = player_tx.try_send(PlayerEvent::SetCurrentTrackInfo { title, artist, current_position, total_duration, album_changed, track_art });
+            let _ = player_tx.try_send(PlayerEvent::SetCurrentTrackInfo {
+                title,
+                artist,
+                current_position,
+                total_duration,
+                album_changed,
+                track_art,
+            });
         } else {
             self.last_song_info = None;
             self.last_song_path = None;
-            let _ = player_tx.try_send(PlayerEvent::SetCurrentTrackInfo { title: String::from("No song playing"), artist: String::from("---"), current_position: 0, total_duration: 0, album_changed: true, track_art: None });
+            let _ = player_tx.try_send(PlayerEvent::SetCurrentTrackInfo {
+                title: String::from("No song playing"),
+                artist: String::from("---"),
+                current_position: 0,
+                total_duration: 0,
+                album_changed: true,
+                track_art: None,
+            });
         }
     }
 }
@@ -222,7 +236,7 @@ impl TickState {
 /// `song_tx` is where song changes get reported to, for `config.lua`'s
 /// `on_song_change`/`current_song()` support: see `main.rs`'s dedicated
 /// script runtime thread, which owns the other end of this channel.
-pub(crate) fn spawn_player_bridge(
+pub fn spawn_player_bridge(
     music_dir: &str,
     playlist_defs: Vec<PlaylistDef>,
     default_volume: f32,
@@ -339,7 +353,7 @@ fn handle_command(
         }
         VolumeDown => {
             let vol = (local_backend.get_volume() - VOLUME_STEP).clamp(0.0, 1.0);
-            set_volume_and_update_ui(local_backend,vol, event_tx);
+            set_volume_and_update_ui(local_backend, vol, event_tx);
         }
         SelectPlaylist(i) => {
             let _ = local_backend.select_playlist(*i);
@@ -394,9 +408,13 @@ fn seek_by(
     let _ = mpris_tx.try_send(MprisCommand::Seeked(new_pos));
 }
 
-fn set_volume_and_update_ui(backend: &mut LocalBackend, volume: f32, event_tx: &mpsc::Sender<PlayerEvent>) {
+fn set_volume_and_update_ui(
+    backend: &mut LocalBackend,
+    volume: f32,
+    event_tx: &mpsc::Sender<PlayerEvent>,
+) {
     backend.set_volume(volume);
-    let _ = event_tx.try_send(PlayerEvent::UpdateVolume(volume));   
+    let _ = event_tx.try_send(PlayerEvent::UpdateVolume(volume));
 }
 
 /// Loads a playlist's tracklist with per-song art, decoding cover images
@@ -467,11 +485,14 @@ fn setup_music_dir(music_dir: &str) -> PathBuf {
 }
 
 fn build_playlist_previews(local_backend: &LocalBackend) -> Vec<PlaylistPreview> {
-    local_backend.playlists.iter().enumerate().map(|(i, def)| {
-        PlaylistPreview {
+    local_backend
+        .playlists
+        .iter()
+        .enumerate()
+        .map(|(i, def)| PlaylistPreview {
             name: def.name.clone(),
             track_count: local_backend.resolve_playlist(i).len(),
             art_path: def.art.clone(),
-        }
-    }).collect()
+        })
+        .collect()
 }

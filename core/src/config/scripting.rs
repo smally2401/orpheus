@@ -13,7 +13,7 @@ use mlua::Lua;
 /// A playback event reported from `player_bridge`'s tick loop to the
 /// dedicated script runtime thread (see `main.rs`), which turns each
 /// variant into the matching `ScriptRuntime` call.
-pub(crate) enum ScriptEvent {
+pub enum ScriptEvent {
     SongChanged(CurrentSong),
     SongHalfway,
 }
@@ -22,7 +22,7 @@ pub(crate) enum ScriptEvent {
 /// scripted hooks the user's `config.lua` registered. Constructed once
 /// during `load_config`, then held by whatever part of the app tracks
 /// playback state, so it can call `fire_song_change` when a track changes.
-pub(crate) struct ScriptRuntime {
+pub struct ScriptRuntime {
     lua: Lua,
     on_song_change: Option<mlua::RegistryKey>,
     on_song_halfway: Option<mlua::RegistryKey>,
@@ -56,7 +56,7 @@ impl ScriptRuntime {
     /// Calls the user's `on_song_change(song)`, if one was registered.
     /// Errors from the script are logged and otherwise ignored, so a bug
     /// in someone's `config.lua` can't interrupt playback.
-    pub(crate) fn fire_song_change(&self, song: CurrentSong) {
+    pub fn fire_song_change(&self, song: CurrentSong) {
         let Some(key) = &self.on_song_change else {
             return;
         };
@@ -81,7 +81,7 @@ impl ScriptRuntime {
     /// `on_song_change` call it received earlier for the same track.
     /// Errors from the script are logged and otherwise ignored, so a bug
     /// in someone's `config.lua` can't interrupt playback.
-    pub(crate) fn fire_song_halfway(&self) {
+    pub fn fire_song_halfway(&self) {
         let Some(key) = &self.on_song_halfway else {
             return;
         };
@@ -101,7 +101,7 @@ impl ScriptRuntime {
 /// relationship as `PlaylistDef` to `Playlist`): only the fields a
 /// script actually needs, decoupled frm playback/tag-reading internals.
 #[derive(Clone)]
-pub(crate) struct CurrentSong {
+pub struct CurrentSong {
     pub title: String,
     pub artist: String,
     pub album: String,
@@ -139,7 +139,7 @@ impl CurrentSong {
 /// afterward. See `main.rs`'s dedicated script runtime thread, which calls
 /// this immediately after spawning, rather than receiving an already built
 /// `ScriptRuntime` from elsewhere.
-pub(crate) fn build_runtime(
+pub fn build_runtime(
     contents: &str,
     tx: tokio::sync::mpsc::Sender<PlayerCommand>,
 ) -> ScriptRuntime {

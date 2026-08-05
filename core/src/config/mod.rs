@@ -9,17 +9,17 @@
 
 /// Keybinding parsing: `KeyCombo`, `KeyAction`, and the Lua-loading logic
 /// that turns a `keymaps` table into a `HashMap<KeyCombo, KeyAction>`.
-pub(crate) mod keys;
+pub mod keys;
 /// Playlist parsing: `PlaylistDef` and the Lua-loading logic that turns a
 /// `playlists` table into a `Vec<PlaylistDef>`.
 pub(crate) mod playlist;
 /// The live runtime half of Lua integration: `on_song_change`,
 /// `on_song_halfway`, and anything else that needs a `Lua` instance kept
 /// alive past config parse time. See `scripting::ScriptRuntime`.
-pub(crate) mod scripting;
+pub mod scripting;
 /// Theme parsing: `Background`, `TextColor`, `TextSize`, `Theme`, and the
 /// Lua-loading logic that turns a nested `theme` table into a `Theme`.
-pub(crate) mod theme;
+pub mod theme;
 
 use crate::config::keys::KeyAction;
 use crate::config::keys::KeyCombo;
@@ -40,7 +40,7 @@ use std::path::PathBuf;
 /// Window geometry and state. `width` and `height` are `None` when the user
 /// wants the window to use Slint's default (800x600) or when `maximized` is
 /// true.
-pub(crate) struct WindowState {
+pub struct WindowState {
     pub width: Option<f32>,
     pub height: Option<f32>,
     pub maximized: bool,
@@ -60,13 +60,13 @@ impl Default for WindowState {
 ///
 /// Every field has a sensible default (see `impl Default`), so a missing or
 /// partially invalid `config.lua` never prevents the app from starting.
-pub(crate) struct Config {
-    pub(crate) music_dir: String,
-    pub(crate) default_volume: f32,
-    pub(crate) window_state: WindowState,
-    pub(crate) keymaps: HashMap<KeyCombo, KeyAction>,
-    pub(crate) playlists: Vec<PlaylistDef>,
-    pub(crate) theme: Theme,
+pub struct Config {
+    pub music_dir: String,
+    pub default_volume: f32,
+    pub window_state: WindowState,
+    pub keymaps: HashMap<KeyCombo, KeyAction>,
+    pub playlists: Vec<PlaylistDef>,
+    pub theme: Theme,
 }
 
 impl Default for Config {
@@ -121,7 +121,7 @@ const DEFAULT_LUARC_JSON: &str = include_str!("../../../config_examples/.luarc.j
 /// `music_dir` before it can be registered, but `music_dir` itself only
 /// becomes known by running the user's script. See `load_lua` for the
 /// second half of this.
-pub(crate) fn load_config() -> (Config, String) {
+pub fn load_config() -> (Config, String) {
     let ConfigFile::Custom(file_contents) = load_config_file() else {
         return (Config::default(), String::new());
     };

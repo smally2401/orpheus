@@ -1,8 +1,22 @@
+use std::path::PathBuf;
+use orpheus_core::utils::decode_art;
+use orpheus_core::local_backend::Song;
+use orpheus_core::local_backend::Album;
+use orpheus_core::utils::DecodedArt;
+use crate::SlintSong;
+use crate::SlintAlbum;
+use crate::SlintPlaylist;
+use slint::ModelRc;
+use std::sync::Arc;
+use slint::VecModel;
+use crate::SlintSongWithArt;
+use orpheus_core::player_bridge::PlaylistPreview;
+
 /// Decodes raw embedded cover art bytes into a Slint `Image`, resizing to a
 /// fixed 100x100 thumbnail. Falls back to a bundled placeholder image if
 /// no art is present.
 pub(crate) fn art_rust_to_slint(art: Option<&[u8]>) -> slint::Image {
-    slint::Image::from(&decode_art(art))
+    image_from_decoded_art(&decode_art(art))
 }
 
 /// Reads an image file from disk and decodes it into a Slint `Image`.
@@ -41,17 +55,15 @@ impl From<&Album> for SlintAlbum {
     }
 }
 
-impl From<&DecodedArt> for slint::Image {
-    /// The other half: wraps already-`decode_art`-ed bytes into a real
-    /// `slint::Image`. Must run on the thread that will use the resulting
-    /// image (in practice, the UI thread, e.g. inside
-    /// `slint::invoke_from_event_loop`).
-    fn from(art: &DecodedArt) -> Self {
-        let buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(
-            &art.rgb, art.width, art.height,
-        );
-        slint::Image::from_rgb8(buffer)
-    }
+/// The other half: wraps already-`decode_art`-ed bytes into a real
+/// `slint::Image`. Must run on the thread that will use the resulting
+/// image (in practice, the UI thread, e.g. inside
+/// `slint::invoke_from_event_loop`).
+pub(crate) fn image_from_decoded_art(art: &DecodedArt) -> slint::Image {
+    let buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(
+        &art.rgb, art.width, art.height,
+    );
+    slint::Image::from_rgb8(buffer)
 }
 
 /// Builds a `SlintPlaylist` without decoding any track art. Used for the
