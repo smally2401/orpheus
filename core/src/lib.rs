@@ -10,5 +10,5 @@ uniffi::setup_scaffolding!();
 
 #[uniffi::export]
 pub fn android_text() -> String {
-    String::from("Hello, World!")
+    String::from("Goodbye, World!")
 }
