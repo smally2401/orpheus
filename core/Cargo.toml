@@ -27,6 +27,7 @@ tokio = { version = "1.52.3", features = ["full"] }
 walkdir = "2.5.0"
 async-executor = "1.14.0"
 futures-lite = "2.6.1"
+uniffi = { version = "0.32.0", features = ["cli"] }
 
-[target.'cfg(windows)'.dependencies]
-mslnk = "0.1.8"
+[lib]
+crate-type = ["lib", "cdylib"]
