@@ -1,6 +1,8 @@
-//! Platform agnostic audio playback interface. Desktop uses `rodio` via
-//! `RodioPlayer`, Android will use a different implementation of the same
-//! trait.
+//! Platform agnostic audio playback interface.
+//! 
+//! Desktop uses `rodio` via `RodioPlayer`, while mobile/Android targets can
+//! implement `AudioPlayer` using platform native audio engines (oboe/aaudio)
+//! without leaking implementation details.
 
 use std::error::Error;
 use std::fs::File;
@@ -21,8 +23,9 @@ pub(crate) trait AudioPlayer: Send {
     fn position(&self) -> Duration;
     fn is_paused(&self) -> bool;
     fn empty(&self) -> bool;
-    /// Appends a decoded audio source to the player's internal queue.
-    fn append(&mut self, source: rodio::Decoder<BufReader<File>>);
+    /// Takes ownership of an open audio file, decodes it, and appends it to
+    /// the player's internal queue.
+    fn append(&mut self, file: File) -> Result<(), Box<dyn Error>>;
     fn volume(&self) -> f32;
 }
 
@@ -34,8 +37,10 @@ pub(crate) struct RodioPlayer {
 }
 
 impl RodioPlayer {
-    /// Opens the default audio devide and returns a ready player. Panics
-    /// if no audio device is available.
+    /// Opens the default audio device and returns a ready player.
+    /// 
+    /// # Panics
+    /// Panics if no default audio output device is available.
     pub(crate) fn new() -> Self {
         let stream = rodio::DeviceSinkBuilder::open_default_sink().unwrap();
         let mixer = stream.mixer();
@@ -81,9 +86,13 @@ impl AudioPlayer for RodioPlayer {
         self.player.empty()
     }
 
-    fn append(&mut self, source: rodio::Decoder<BufReader<File>>) {
-        self.player.append(source);
+    fn append(&mut self, file: File) -> Result<(), Box<dyn Error>> {
+        let reader = BufReader::new(file);
+        let decoder = rodio::Decoder::new(reader)?;
+        self.player.append(decoder);
+        Ok(())
     }
+    
 
     fn volume(&self) -> f32 {
         self.player.volume()

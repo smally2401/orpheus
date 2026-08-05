@@ -99,7 +99,7 @@ impl ScriptRuntime {
 /// A snapshot of the currently playing song, passed to `on_song_change`.
 /// Deliberately a separate type from `local_backend::Song` (same
 /// relationship as `PlaylistDef` to `Playlist`): only the fields a
-/// script actually needs, decoupled frm playback/tag-reading internals.
+/// script actually needs, decoupled from playback/tag-reading internals.
 #[derive(Clone)]
 pub struct CurrentSong {
     pub title: String,

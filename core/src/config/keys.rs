@@ -51,7 +51,7 @@ pub struct KeyCombo {
 }
 
 impl KeyCombo {
-    /// Parses a `+`-separated combo string like`"ctrl+shift+P"` into a
+    /// Parses a `+`-separated combo string like `"ctrl+shift+P"` into a
     /// `KeyCombo`. Modifier names are case-insensitive and the remaining,
     /// non-modifier token is the key itself and must appear in
     /// `VALID_KEYS`, or this returns `None`.

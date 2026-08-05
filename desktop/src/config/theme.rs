@@ -30,8 +30,12 @@ pub(crate) fn set_property(ui: &AppWindow, element: UiElement, property: &UiProp
             Sidebar => ui.set_sidebar_text_color(color_from_rgb(*color)),
             NowPlayingSong => ui.set_now_playing_song_text_color(color_from_rgb(*color)),
             NowPlayingArtist => ui.set_now_playing_artist_text_color(color_from_rgb(*color)),
-            DetailViewHeaderTitle => ui.set_detail_view_header_title_text_color(color_from_rgb(*color)),
-            DetailViewHeaderSubtitle => ui.set_detail_view_header_subtitle_text_color(color_from_rgb(*color)),
+            DetailViewHeaderTitle => {
+                ui.set_detail_view_header_title_text_color(color_from_rgb(*color))
+            }
+            DetailViewHeaderSubtitle => {
+                ui.set_detail_view_header_subtitle_text_color(color_from_rgb(*color))
+            }
             LibraryListTitle => ui.set_library_list_title_text_color(color_from_rgb(*color)),
             LibraryListSubtitle => ui.set_library_list_subtitle_text_color(color_from_rgb(*color)),
             AlbumListTitle => ui.set_album_list_title_text_color(color_from_rgb(*color)),

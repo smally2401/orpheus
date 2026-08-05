@@ -94,11 +94,7 @@ pub enum RepeatMode {
     Track,
 }
 
-/// Owns the audio device, the scanned library, and playback state.
-///
-/// `_stream`/`player` hold onto the real audio device (dropping them
-/// tears down playback, which is why `_stream` is kept alive here even
-/// though it's never read directly).
+/// Owns the active `AudioPlayer`, the scanned library, and playback state.
 pub(crate) struct LocalBackend {
     player: Box<dyn AudioPlayer>,
 
@@ -117,7 +113,7 @@ pub(crate) struct LocalBackend {
     /// `shuffle` is off this is just `0..queue.len()` (identity); when on,
     /// it's shuffled, with the currently playing track's real index
     /// swapped into `order[0]`, so toggling shuffle mid-song doesn't change
-    /// what's playinh (see `toggle_shuffle`). Rebuilt any time `queue` is
+    /// what's playing (see `toggle_shuffle`). Rebuilt any time `queue` is
     /// replaced, so it's always the same length as `queue`.
     pub(crate) order: Vec<usize>,
     /// Position *within `order`* (not directly within `queue`) of the
@@ -131,7 +127,7 @@ pub(crate) struct LocalBackend {
 
 impl LocalBackend {
     /// Scans `path` recursively for `.mp3/.flac` files, reads each one's
-    /// tahs, and builds the library (grouped into albums) plus the
+    /// tags, and builds the library (grouped into albums) plus the
     /// playlists described by `playlist_defs`.
     ///
     /// Files that fail to read (corrupt, unsupported, permission denied,
@@ -202,19 +198,10 @@ impl LocalBackend {
         }
     }
 
-    // todo: more precise error returns
     /// Stops whatever's currently playing and starts the track at
     /// `self.queue[self.order[self.index]]`.
     ///
-    /// Panics if `self.queue ` is empty, `self.index` is out of bounds for
-    /// `self.order`, or `self.order` is a different length than
-    /// `self.que` (shouldn't happen: `order` is always rebuilt alongside
-    /// `queue`, see `select_*` and `toggle_shuffle`). Callers (`next`,
-    /// `prev`, `select_*`) are responsible for only calling this when the
-    /// queue is known to be non-empty and `index` valid. `select_playlist`/
-    /// `select_playlist_track` already guard for the empty case, see the
-    /// todo there about `select_playlist_track` not yet validating
-    /// `track_index`.
+    /// Errors if `self.queue` is empty or `self.index` is out of bounds.
     pub(crate) fn load_track(&mut self) -> Result<(), Box<dyn Error>> {
         if self.queue.is_empty() || self.index >= self.order.len() {
             return Err("Empty queue or invalid index".into());
@@ -222,8 +209,7 @@ impl LocalBackend {
         self.player.stop();
 
         let track = std::fs::File::open(&self.queue[self.order[self.index]].path)?;
-        let source = rodio::Decoder::try_from(track)?;
-        self.player.append(source);
+        self.player.append(track)?;
         self.player.play();
 
         Ok(())
@@ -560,7 +546,7 @@ impl LocalBackend {
     }
 }
 
-/// Persists playback state to disk when `LocalBackend` is dropeed, i.e.
+/// Persists playback state to disk when `LocalBackend` is droped, i.e.
 /// on app shutdown, so the next launch can resume where this session left
 /// off. See `state::save_playback_state`.
 impl Drop for LocalBackend {
@@ -569,7 +555,7 @@ impl Drop for LocalBackend {
     }
 }
 
-/// Builds a `Song` from a sucessfully read `TaggedFile`.
+/// Builds a `Song` from a successfully read `TaggedFile`.
 ///
 /// Falls back to the file's own name for a missing title, and to
 /// "Unknown Artist"/"Unknown Album" for missing artist/album tags, rather

@@ -33,16 +33,6 @@ cargo run --release
 On first run, Orpheus creates a default config at
 `~/.config/orpheus/config.lua` (Linux) and points itself at `~/Music`.
 
-## Installing
-
-A standalone installer is included as a separate binary. It builds
-Orpheus in release mode, then installs the binary and a shortcut/launcher
-entry into standard per-platform locations.
-
-```sh
-cargo run --bin install
-```
-
 ## Configuration
 
 Orpheus is configured with Lua rather than a static format like JSON or
@@ -61,9 +51,9 @@ reference, including:
 
 | Platform | Support |
 | --- | --- |
-| Linux | Working: primary development platform
-| Windows | Installer support added, not yet tested on a real Windows machine |
-| macOS | Not yet supported |
+| Linux | Working: primary development platform |
+| Windows | Working |
+| macOS | Not yet tested |
 
 ## Roadmap / known limitations
 

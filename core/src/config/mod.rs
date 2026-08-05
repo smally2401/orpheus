@@ -94,7 +94,7 @@ enum ConfigFile {
 /// Default config written to disk on first run. Sourced directly from
 /// `config_examples/01_default.lua`, so the shipped default and the
 /// documented example can never drift apart.
-const DEFAULT_CONFIG_FILE: &str = include_str!("../../../config_examples/01_default.lua");
+const DEFAULT_CONFIG_FILE: &str = include_str!("../../../config_examples/default.lua");
 
 /// Type annotations for `lua-language-server`, giving editors autocomplete
 /// and type-checking on `config.lua`. Sourced directly from
@@ -197,7 +197,7 @@ fn write_lsp_support_files(config_dir: &Path) {
 /// The script is expected to potentially error partway through this pass
 /// (e.g. it may call `list_music_files`, which doesn't exist yet) so the
 /// exec error is deliberately ignored. As long as `music_dir` was assigned
-/// as a plan statement before that point, it's already sitting in globals
+/// as a plain statement before that point, it's already sitting in globals
 /// by the time the error happens.
 fn get_music_dir(contents: &str) -> String {
     let lua = Lua::new();

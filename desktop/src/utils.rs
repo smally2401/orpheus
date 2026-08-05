@@ -1,16 +1,16 @@
-use std::path::PathBuf;
-use orpheus_core::utils::decode_art;
-use orpheus_core::local_backend::Song;
-use orpheus_core::local_backend::Album;
-use orpheus_core::utils::DecodedArt;
-use crate::SlintSong;
 use crate::SlintAlbum;
 use crate::SlintPlaylist;
-use slint::ModelRc;
-use std::sync::Arc;
-use slint::VecModel;
+use crate::SlintSong;
 use crate::SlintSongWithArt;
+use orpheus_core::local_backend::Album;
+use orpheus_core::local_backend::Song;
 use orpheus_core::player_bridge::PlaylistPreview;
+use orpheus_core::utils::DecodedArt;
+use orpheus_core::utils::decode_art;
+use slint::ModelRc;
+use slint::VecModel;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 /// Decodes raw embedded cover art bytes into a Slint `Image`, resizing to a
 /// fixed 100x100 thumbnail. Falls back to a bundled placeholder image if

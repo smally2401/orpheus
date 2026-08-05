@@ -1,6 +1,9 @@
 use slint::SharedString;
 use slint::platform::Key;
 
+/// Matches a Slint `SharedString` key identifier to its corresponding
+/// `Key` enum variant and returns its string name representation, or
+/// `None` if unrecognized.
 pub(crate) fn key_string_to_key_name(s: SharedString) -> Option<String> {
     macro_rules! match_keys {
         ($ ( $key:ident ),* $(,)?) => {

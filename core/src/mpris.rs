@@ -32,7 +32,7 @@ pub(crate) enum MprisCommand {
         album: String,
         track_id: TrackId,
         length: u64,
-        /// A `file://` URL pointing at cacher cover art, if any.
+        /// A `file://` URL pointing at cached cover art, if any.
         /// See `write_art_cache`.
         art_url: Option<String>,
     },
@@ -238,7 +238,7 @@ pub(crate) fn track_id_for_path(path: &Path) -> TrackId {
 /// returns a `file://` URL pointing at it.
 ///
 /// MPRIS metadata's `art_url` field expects a URL, not raw image bytes, so
-/// embedded art (which only exixts as bytes read from the audio file) has
+/// embedded art (which only exists as bytes read from the audio file) has
 /// to be written out to disk once before it can be reported. Returns
 /// `None` if the cache directory can't be determined or written to,
 /// rather than erroring.

@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 /// The subset of `LocalBackend`'s state that gets serialized to disk.
-/// Stores songs paths rather than resolved `Song`s (same reasoning as
+/// Stores song paths rather than resolved `Song`s (same reasoning as
 /// `Playlist.songs`): the library may have changed since last save, so
 /// restoring re-resolves each path against the current library instead
 /// of trusting stale data.
@@ -68,8 +68,8 @@ fn load_state_from_disk(path: &Path) -> Option<PlaybackState> {
 ///
 /// If the queue is empty (nothing was ever played this session), any
 /// existing saved state is deleted instead of overwritten with an empty
-/// one: en empty queue isn't something worth restoring into, and this
-/// voids resuming into a queue if a queue was cleared before the
+/// one: an empty queue isn't something worth restoring into, and this
+/// avoids resuming into a queue if a queue was cleared before the
 /// last session ended.
 pub(crate) fn save_playback_state(local_backend: &LocalBackend) {
     if local_backend.queue.is_empty() {

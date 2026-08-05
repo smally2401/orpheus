@@ -4,7 +4,7 @@
 //!
 //! This file deliberately contains no logic of its own, it just connects
 //! UI events to `player_bridge`'s command channel. See `player_bridge.rs`
-//! for what actyally happens when a command is sent.
+//! for what actually happens when a command is sent.
 //!
 //! It also spawns one extra, non-Slint/non-tokio thread: a dedicated
 //! script runtime thread that owns a `ScriptRuntime` (see
@@ -20,6 +20,9 @@ mod config;
 mod utils;
 
 use crate::config::keys::key_string_to_key_name;
+use crate::config::theme::set_property;
+use crate::utils::art_rust_to_slint;
+use crate::utils::get_art_from_path;
 use crate::utils::image_from_decoded_art;
 use crate::utils::playlist_rust_to_slint;
 use orpheus_core::config::WindowState;
@@ -30,12 +33,9 @@ use orpheus_core::config::scripting::ScriptEvent;
 use orpheus_core::config::scripting::build_runtime;
 use orpheus_core::config::theme::Theme;
 use orpheus_core::config::theme::UiElement;
-use crate::config::theme::set_property;
 use orpheus_core::player_bridge::PlayerCommand;
 use orpheus_core::player_bridge::PlayerEvent;
 use orpheus_core::player_bridge::spawn_player_bridge;
-use crate::utils::art_rust_to_slint;
-use crate::utils::get_art_from_path;
 use slint::LogicalSize;
 use slint::Model;
 use slint::ModelRc;
@@ -82,6 +82,9 @@ async fn main() -> Result<(), slint::PlatformError> {
     ui.run()
 }
 
+/// Spawns a background thread that receives backend `PlayerEvent`s and
+/// dispatches UI updates safely back onto the Slint UI thread via
+/// `slint::invoke_from_event_loop`.
 fn build_player_event_thread(
     ui: &AppWindow,
     mut player_event_rx: tokio::sync::mpsc::Receiver<PlayerEvent>,
@@ -207,6 +210,9 @@ fn apply_window_config(ui: &AppWindow, window_state: &WindowState) {
     ui.window().set_maximized(window_state.maximized);
 }
 
+/// Registers key event listeners on the `AppWindow` to match user key
+/// combinations against configured keymaps and dispatch corresponding
+/// actions or UI view changes.
 fn handle_keymaps(
     keymaps: &HashMap<KeyCombo, KeyAction>,
     ui: &AppWindow,

@@ -6,6 +6,7 @@ All notable changes to Orpheus will be documented in this file.
 
 ### Added
 
+- Android support
 - Playback state gets saved after app is closed
 - Lua functions:
   - set_property
@@ -24,9 +25,6 @@ All notable changes to Orpheus will be documented in this file.
 
 ### Limitations
 
-- macOS is not yet supported (Linux and Windows only)
-- Windows installer support hasn't been tested on a real Windows machine
-  yet
 - Playlists can't be created or edited from within the app
 
 ## [0.2.0] - 2026-08-01

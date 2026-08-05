@@ -11,7 +11,7 @@ use strum::EnumString;
 pub struct Rgb {
     pub r: u8,
     pub g: u8,
-    pub  b: u8,
+    pub b: u8,
 }
 
 impl Rgb {
@@ -47,7 +47,7 @@ pub enum UiElement {
 }
 
 /// A themeable value for some `UiElement`, already parsed and validated
-/// bu the time it's constructed (see `register_set_property` in
+/// by the time it's constructed (see `register_set_property` in
 /// `scripting.rs`, the only place that builds one from raw Lua input).
 /// Carried inside `PlayerCommand::SetProperty` from the script runtime
 /// thread to `handle_command`, which resolves it against a specific
@@ -402,7 +402,7 @@ pub(crate) fn is_valid_hex_color(s: &str) -> bool {
 
 /// Parses a `#rrbbgg` (or `rrbbgg`) string into a Slint `Color`.
 /// Malformed hex digits fall back to `0` for that channel rather than
-/// errorring, since `is_valid_hex_color` should already have filtered out
+/// erroring, since `is_valid_hex_color` should already have filtered out
 /// anything that would fail here.
 pub(crate) fn hex_to_color(hex: &str) -> Rgb {
     let stripped = hex.strip_prefix("#").unwrap_or(hex);
