@@ -118,6 +118,9 @@ This is early: expect missing features and rough edges. See inline
 `// todo` comments throughout the codebase for specific planned
 improvements. Contributions, testing and bug reports are welcome.
 
+Desktop support is prioritized for now, so Android may fall
+behind in features and fixes.
+
 ## Changelog
 
 See [`CHANGELOG.md`](CHANGELOG.md) for release notes.

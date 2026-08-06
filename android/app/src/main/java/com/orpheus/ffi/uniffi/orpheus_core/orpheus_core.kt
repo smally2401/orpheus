@@ -672,8 +672,6 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
-    external fun uniffi_orpheus_core_checksum_func_android_text(
-    ): Int
     external fun ffi_orpheus_core_uniffi_contract_version(
     ): Int
 
@@ -687,8 +685,6 @@ internal object UniffiLib {
         Native.register(UniffiLib::class.java, findLibraryName(componentName = "orpheus_core"))
         
     }
-    external fun uniffi_orpheus_core_fn_func_android_text(uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
     external fun ffi_orpheus_core_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun ffi_orpheus_core_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -808,9 +804,6 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
-    if (lib.uniffi_orpheus_core_checksum_func_android_text() != 21594) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
 }
 
 /**
@@ -959,15 +952,5 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
         buf.putInt(byteBuf.limit())
         buf.put(byteBuf)
     }
-} fun `androidText`(): kotlin.String {
-            return FfiConverterString.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_orpheus_core_fn_func_android_text(
-    
-        _status)
 }
-    )
-    }
-    
-
 

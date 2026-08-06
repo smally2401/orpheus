@@ -1,45 +1,43 @@
 package com.orpheus
 
+import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.orpheus.ui.theme.OrpheusTheme
-import uniffi.orpheus_core.androidText
 
 class MainActivity : ComponentActivity() {
+    external fun initAudioContext(context: Context): Boolean
+    external fun playTestSound(): Boolean
+
+    companion object {
+        init {
+            System.loadLibrary("orpheus_core")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val greeting = androidText()
+
+        val ok = initAudioContext(applicationContext)
+        Log.d("Orpheus", "initAudioContext returned: $ok")
 
         setContent {
             MaterialTheme {
-                Text(text = greeting)
+                Column {
+                    Text(text = "hello world!")
+                    Button(onClick = {
+                        var ok = playTestSound()
+                        Log.d("Orpheus", "playTestSound returned: $ok")
+                    }) {
+                        Text("Play test sound")
+                    }
+                }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    OrpheusTheme {
-        Greeting("Android")
     }
 }
