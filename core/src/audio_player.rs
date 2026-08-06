@@ -11,9 +11,12 @@ use std::time::Duration;
 
 /// Anything that can load, play, pause, and seek audio tracks.
 ///
-/// `LocalBackend` holds a `Box<dyn AudioPlayer>` so the same playback
-/// logic works on desktop (rodio) and Android (oboe/aaudio) without
-/// platform specific code leaking into the backend.
+/// `LocalBackend` holds a `Box<dyn AudioPlayer>` rather than a concrete
+/// `RodioPlayer` for two reasons: it lets tests substitute a fake player
+/// without touching real audio hardware, and it leaves room for a
+/// lower level platform backend later if `rodio`'s `cpal`/`oboe` path
+/// ever proves insufficient on Android, not because Android needs a
+/// different impl today, it doesn't.
 pub(crate) trait AudioPlayer: Send {
     fn play(&mut self);
     fn pause(&mut self);

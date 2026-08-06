@@ -6,7 +6,6 @@ All notable changes to Orpheus will be documented in this file.
 
 ### Added
 
-- Android support
 - Playback state gets saved after app is closed
 - Lua functions:
   - set_property
@@ -26,6 +25,7 @@ All notable changes to Orpheus will be documented in this file.
 ### Limitations
 
 - Playlists can't be created or edited from within the app
+- Only .mp3 and .flac files are valid
 
 ## [0.2.0] - 2026-08-01
 

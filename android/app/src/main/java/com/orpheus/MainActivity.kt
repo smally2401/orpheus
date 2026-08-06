@@ -31,7 +31,7 @@ class MainActivity : ComponentActivity() {
                 Column {
                     Text(text = "hello world!")
                     Button(onClick = {
-                        var ok = playTestSound()
+                        val ok = playTestSound()
                         Log.d("Orpheus", "playTestSound returned: $ok")
                     }) {
                         Text("Play test sound")

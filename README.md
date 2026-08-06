@@ -29,7 +29,7 @@ script instead of a static file.
 Requires a recent [Rust toolchain](https://rustup.rs).
 
 ```sh
-cargo run --release
+cargo run --bin orpheus-desktop --release
 ```
 
 On first run, Orpheus creates a default config at
@@ -53,6 +53,7 @@ Requires **JDK 17+** and the **Android SDK** (`ANDROID_HOME` exported or
    # Windows
    gradlew.bat assembleDebug
    ```
+   
 3. The generated APL will be at 
 `android/app/build/outputs/apk/debug/app-debug.apk`.
 
@@ -75,14 +76,7 @@ shared libraries and update the Kotlin UniFFI bindings.
    cargo ndk -t aarch64-linux-android -t x86_64-linux-android --platform 26 -o ./android/app/src/main/jniLibs build -p orpheus-core --release
    ```
 
-2. Copy the generated `.so` binaries to the corresponding JNI target
-   directories:
-   - `target/aarch64-linux-android/release/liborpheus_core.so` ->
-     `android/app/src/main/jniLibs/arm64-v8a/`
-   - `target/x86_64-linux-android/release/liborpheus_core.so` ->
-     `android/app/src/main/jniLibs/x86_64/`
-
-3. Generate updated UniFFI Kotlin bindings:
+2. Generate updated UniFFI Kotlin bindings:
    ```sh
    cargo run -p orpheus-core --bin uniffi-bindgen -- generate \
     target/aarch64-linux-android/release/liborpheus_core.so \
@@ -111,15 +105,13 @@ reference, including:
 | Linux | Working: primary development platform |
 | Windows | Working |
 | macOS | Not yet tested |
+| Android | In development |
 
 ## Roadmap / known limitations
 
 This is early: expect missing features and rough edges. See inline
 `// todo` comments throughout the codebase for specific planned
 improvements. Contributions, testing and bug reports are welcome.
-
-Desktop support is prioritized for now, so Android may fall
-behind in features and fixes.
 
 ## Changelog
 

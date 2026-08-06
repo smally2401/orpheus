@@ -3,16 +3,22 @@ use jni::objects::JObject;
 use jni::EnvUnowned;
 use jni::errors::ThrowRuntimeExAndDefault;
 use jni::objects::Global;
+use jni::objects::JString;
 use jni::sys::jboolean;
+use std::sync::Mutex;
 use std::sync::Once;
 use std::sync::OnceLock;
 use std::io::Cursor;
+use crate::local_backend::LocalBackend;
+use std::path::Path;
 
 static INIT: Once = Once::new();
 static CONTEXT_GLOBAL: OnceLock<Global<JObject<'static>>> = OnceLock::new();
 
 const TEST_CLIP: &[u8] = include_bytes!("/home/iris/music/highway-61-revisited/like_a_rolling_stone.mp3");
 static TEST_PLAYER: OnceLock<(rodio::MixerDeviceSink, rodio::Player)> = OnceLock::new();
+
+static TEST_BACKEND: OnceLock<Mutex<LocalBackend>> = OnceLock::new();
 
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_orpheus_MainActivity_initAudioContext<'local>(
@@ -61,6 +67,30 @@ pub extern "system" fn Java_com_orpheus_MainActivity_playTestSound<'local>(
         player.play();
 
         Ok(true)
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_com_orpheus_MainActivity_testLocalBackend<'local>(
+    mut env: EnvUnowned<'local>,
+    _class: JClass<'local>,
+    music_dir: JString<'local>,
+) -> jboolean {
+    env.with_env(|env| -> jni::errors::Result<bool> {
+        let dir = music_dir.try_to_string(env)?;
+
+        let backend = TEST_BACKEND.get_or_init(|| {
+            Mutex::new(LocalBackend::new(Path::new(&dir), Vec::new(), 1.0))
+        });
+
+        let mut backend = backend.lock().expect("backend mutex poisoned");
+
+        if backend.library.is_empty() {
+            return Ok(false);
+        }
+
+        Ok(backend.select_album(0).is_ok())
     })
     .resolve::<ThrowRuntimeExAndDefault>()
 }
