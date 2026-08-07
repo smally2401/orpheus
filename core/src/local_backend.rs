@@ -1,6 +1,6 @@
 //! The local filesystem audio backend: scans a music directory, builds an
 //! in-memory library (albums, tracks, playlists), and drives actual audio
-//! playback via `rodio`.
+//! playback via `miniaudio`.
 //!
 //! `LocalBackend` owns the audio device and the currently-playing queue,
 //! everything else in the app (UI, MPRIS) talks to it through its public
@@ -429,7 +429,7 @@ impl LocalBackend {
 
     /// True once the current track has finished playing (the underlying
     /// player's buffer is empty). Doesn't distinguish "finished" from
-    /// "nothing was ever loaded", both look the same to `rodio`.
+    /// "nothing was ever loaded", both look the same to the player.
     pub(crate) fn track_finished(&self) -> bool {
         self.player.empty()
     }
