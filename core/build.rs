@@ -3,9 +3,9 @@ fn main() {
     println!("cargo:rerun-if-changed=c_src/miniaudio.h");
 
     cc::Build::new()
-    .file("c_src/miniaudio.c")
-    .include("c_src")
-    .compile("miniaudio");
+        .file("c_src/miniaudio.c")
+        .include("c_src")
+        .compile("miniaudio");
 
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
     match target_os.as_str() {

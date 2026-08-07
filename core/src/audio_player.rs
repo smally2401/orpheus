@@ -1,5 +1,5 @@
 //! Platform agnostic audio playback interface.
-//! 
+//!
 //! Desktop playback goes through `MiniAudioPlayer`m a thin FFI wrapper
 //! around the `miniaudio` C library (see `miniaudio.c`). Mobile/Android
 //! targets can implement `AudioPlayer` using platfor native audio
@@ -45,7 +45,7 @@ pub(crate) trait AudioPlayer: Send {
 /// back to the FFI functions that created it.
 #[repr(C)]
 struct OpaqueBackend {
-    _private: [u8; 0]
+    _private: [u8; 0],
 }
 
 // FFI bindings to `miniaudio.c`. Every function takes the
@@ -72,6 +72,9 @@ unsafe extern "C" {
     fn miniaudio_is_paused(player: *mut OpaqueBackend) -> bool;
     fn miniaudio_volume(player: *mut OpaqueBackend) -> f32;
     fn miniaudio_set_volume(player: *mut OpaqueBackend, volume: f32);
+    fn miniaudio_waveform(path: *const i8, bucket_count: u64) -> *const f32;
+    fn miniaudio_waveform_win(path: *const u16, bucket_count: u64) -> *const f32;
+    fn miniaudio_free_waveform(waveform: *const f32);
 }
 
 /// Desktop implementation backed by `miniaudio` (see `miniaudio.c`),
@@ -84,20 +87,16 @@ pub(crate) struct MiniAudioPlayer {
 impl MiniAudioPlayer {
     /// Initializes the underlying `miniaudio` engine on the default audio
     /// device.
-    /// 
+    ///
     /// # Panics
     /// Panics if `miniaudio` fails to initialize (e.g. no default audio
     /// output device is available).
     pub(crate) fn new() -> Self {
-        let ptr = unsafe {
-            miniaudio_create()
-        };
+        let ptr = unsafe { miniaudio_create() };
 
         assert!(!ptr.is_null(), "Failed to initialize miniaudio engine");
 
-        Self {
-            ptr,
-        }
+        Self { ptr }
     }
 }
 
@@ -136,9 +135,7 @@ impl AudioPlayer for MiniAudioPlayer {
     }
 
     fn try_seek(&mut self, position: Duration) -> Result<(), Box<dyn Error>> {
-        let ok = unsafe {
-            miniaudio_seek_seconds(self.ptr, position.as_secs_f64())
-        };
+        let ok = unsafe { miniaudio_seek_seconds(self.ptr, position.as_secs_f64()) };
 
         if ok {
             Ok(())
@@ -148,29 +145,21 @@ impl AudioPlayer for MiniAudioPlayer {
     }
 
     fn position(&self) -> Duration {
-        let secs = unsafe {
-            miniaudio_get_position_seconds(self.ptr)
-        };
+        let secs = unsafe { miniaudio_get_position_seconds(self.ptr) };
 
         Duration::from_secs_f64(secs)
     }
 
     fn empty(&self) -> bool {
-        unsafe {
-            miniaudio_is_empty(self.ptr)
-        }
+        unsafe { miniaudio_is_empty(self.ptr) }
     }
 
     fn is_paused(&self) -> bool {
-        unsafe {
-            miniaudio_is_paused(self.ptr)
-        }
+        unsafe { miniaudio_is_paused(self.ptr) }
     }
 
     fn volume(&self) -> f32 {
-        unsafe {
-            miniaudio_volume(self.ptr)
-        }
+        unsafe { miniaudio_volume(self.ptr) }
     }
 
     fn set_volume(&mut self, volume: f32) {
@@ -194,16 +183,11 @@ impl AudioPlayer for MiniAudioPlayer {
 
             let ptr: *const u16 = wide.as_ptr();
 
-            unsafe {
-                miniaudio_load_file_win(self.ptr, ptr)
-            }
-
+            unsafe { miniaudio_load_file_win(self.ptr, ptr) }
         } else {
             let c_path = CString::new(path.as_os_str().as_encoded_bytes())?;
 
-            unsafe {
-                miniaudio_load_file(self.ptr, c_path.as_ptr())
-            }
+            unsafe { miniaudio_load_file(self.ptr, c_path.as_ptr()) }
         };
 
         if ok {

@@ -147,7 +147,10 @@ impl LocalBackend {
                     .extension()
                     .and_then(OsStr::to_str)
                     .is_some_and(|ext| {
-                        ext.eq_ignore_ascii_case("mp3") || ext.eq_ignore_ascii_case("flac")
+                        ext.eq_ignore_ascii_case("mp3")
+                            || ext.eq_ignore_ascii_case("flac")
+                            || ext.eq_ignore_ascii_case("wav")
+                            || ext.eq_ignore_ascii_case("ogg")
                     })
             })
             .map(walkdir::DirEntry::into_path);
@@ -208,7 +211,8 @@ impl LocalBackend {
         }
         self.player.stop();
 
-        self.player.append(&self.queue[self.order[self.index]].path)?;
+        self.player
+            .append(&self.queue[self.order[self.index]].path)?;
         self.player.play();
 
         Ok(())
