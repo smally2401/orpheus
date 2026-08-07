@@ -7,7 +7,7 @@
 //! methods rather than touching playback state directly.
 
 use crate::audio_player::AudioPlayer;
-use crate::audio_player::RodioPlayer;
+use crate::audio_player::MiniAudioPlayer;
 use crate::config::playlist::PlaylistDef;
 use crate::state::save_playback_state;
 use lofty::file::AudioFile;
@@ -180,7 +180,7 @@ impl LocalBackend {
             album.tracklist.sort_by_key(|s| s.track_number);
         }
 
-        let mut player = Box::new(RodioPlayer::new());
+        let mut player = Box::new(MiniAudioPlayer::new());
 
         let playlists = build_playlists(path, playlist_defs);
         player.set_volume(default_volume);
@@ -208,8 +208,7 @@ impl LocalBackend {
         }
         self.player.stop();
 
-        let track = std::fs::File::open(&self.queue[self.order[self.index]].path)?;
-        self.player.append(track)?;
+        self.player.append(&self.queue[self.order[self.index]].path)?;
         self.player.play();
 
         Ok(())
