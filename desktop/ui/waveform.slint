@@ -1,0 +1,15 @@
+export component Waveform {
+    in-out property <[float]> current-waveform;
+
+    HorizontalLayout {
+        height: 300px;
+        spacing: 2px;
+
+        for value in current-waveform: Rectangle {
+            width: 5px;
+            height: parent.height * value;
+            y: parent.height - self.height;
+            background: #cdd6f4;
+        }
+    }
+}

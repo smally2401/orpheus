@@ -1,0 +1,17 @@
+CompileFlags:
+    Add:
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wsign-conversion
+        -Wshadow
+        -Wformat=2
+        -Wundef
+        -Wstrict-prototypes
+        -Wmissing-prototypes
+        -Wold-style-definition
+        -Wcast-qual
+        -Wvla
+        -Wswitch-enum
+        -Wnull-dereference

@@ -170,6 +170,12 @@ fn build_player_event_thread(
                                 vec_model.push(slint_song);
                             }
                         }
+
+                        // todo: do path check
+                        WaveformReady { path: _path, waveform } => {
+                            let model = ModelRc::new(VecModel::from(waveform));
+                            ui.set_current_waveform(model);
+                        }
                     }
                 }
             });

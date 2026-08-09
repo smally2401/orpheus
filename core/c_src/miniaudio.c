@@ -217,7 +217,7 @@ float miniaudio_volume(MiniAudioPlayerC* player)
 {
 	if (!player)
 	{
-		return 0.0;
+		return 0.0f;
 	}
 
 	return ma_engine_get_volume(&player->engine);
@@ -233,8 +233,14 @@ void miniaudio_set_volume(MiniAudioPlayerC* player, float volume)
 	ma_engine_set_volume(&player->engine, volume);
 }
 
-float* miniaudio_waveform(const char* path, ma_uint64 bucket_count)
+float* miniaudio_waveform(const char* path, ma_uint64 bucket_count, bool use_rms, ma_uint64* out_bucket_count)
 {
+	*out_bucket_count = 0;
+	if (bucket_count == 0)
+	{
+		return NULL;
+	}
+
 	ma_decoder decoder;
 	ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 1, 0);
 	ma_result result = ma_decoder_init_file(path, &config, &decoder);
@@ -249,40 +255,100 @@ float* miniaudio_waveform(const char* path, ma_uint64 bucket_count)
 
 	if (result != MA_SUCCESS)
 	{
+		ma_decoder_uninit(&decoder);
 		return NULL;
 	}
 
 	float* buffer = malloc(total_frames * sizeof(float));
 	ma_uint64 frames_read;
 
+	if (!buffer)
+	{
+		ma_decoder_uninit(&decoder);
+		return NULL;
+	}
+
 	result = ma_decoder_read_pcm_frames(&decoder, buffer, total_frames, &frames_read);
+
+	if (frames_read == 0 || (result != MA_SUCCESS && result != MA_AT_END))
+	{
+		free(buffer);
+		ma_decoder_uninit(&decoder);
+		return NULL;
+	}
+
+	if (bucket_count > frames_read)
+	{
+		bucket_count = frames_read;
+	}
 
 	ma_uint64 frames_per_bucket = frames_read / bucket_count;
 	float* output_buckets = malloc(bucket_count * sizeof(float));
 
-	for (ma_uint64 bucket_index = 0; bucket_index < bucket_count - 1; bucket_index++)
+	if (!output_buckets)
 	{
-		ma_uint64 start_frame = bucket_index * frames_per_bucket;
-		ma_uint64 end_frame = start_frame + frames_per_bucket;
-
-		float sample = 0.0f;
-		for (ma_uint64 sample_index = start_frame; sample_index < end_frame; sample_index++)
-		{
-			sample = fmaxf(sample, fabsf(buffer[sample_index]));
-		}
-
-		output_buckets[bucket_index] = sample;
+		free(buffer);
+		ma_decoder_uninit(&decoder);
+		return NULL;
 	}
 
-	// todo: normalization
+	for (ma_uint64 bucket_index = 0; bucket_index < bucket_count; bucket_index++)
+	{		
+		ma_uint64 start_frame = bucket_index * frames_per_bucket;
+		ma_uint64 end_frame =
+			bucket_index == bucket_count - 1 ? frames_read : start_frame + frames_per_bucket;
 
+		if (!use_rms)
+		{
+			float sample = 0.0f;
+			for (ma_uint64 sample_index = start_frame; sample_index < end_frame; sample_index++)
+			{
+				sample = fmaxf(sample, fabsf(buffer[sample_index]));
+			}
+
+			output_buckets[bucket_index] = sample;
+		}
+		else
+		{
+			float sum_of_squares = 0.0f;
+			for (ma_uint64 sample_index = start_frame; sample_index < end_frame; sample_index++)
+			{
+				sum_of_squares += buffer[sample_index] * buffer[sample_index];
+			}
+
+			ma_uint64 count = end_frame - start_frame;
+			output_buckets[bucket_index] = sqrtf(sum_of_squares / (float)count);
+		}
+	}
+
+	float max = 0.0f;
+	for (ma_uint64 i = 0; i < bucket_count; i++)
+	{
+		max = fmaxf(max, output_buckets[i]);
+	}
+
+	if (max > 0.0f)
+	{
+		for (ma_uint64 i = 0; i < bucket_count; i++)
+		{
+			output_buckets[i] /= max;
+		}
+	}
+
+	free(buffer);
 	ma_decoder_uninit(&decoder);
 
+	*out_bucket_count = bucket_count;
 	return output_buckets;
 }
 
-float* miniaudio_waveform_win(const wchar_t* path, ma_uint64 bucket_count)
+float* miniaudio_waveform_win(const wchar_t* path, ma_uint64 bucket_count, bool use_rms, ma_uint64* out_bucket_count)
 {
+	if (bucket_count == 0)
+	{
+		return NULL;
+	}
+
 	ma_decoder decoder;
 	ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 1, 0);
 	ma_result result = ma_decoder_init_file_w(path, &config, &decoder);
@@ -297,36 +363,94 @@ float* miniaudio_waveform_win(const wchar_t* path, ma_uint64 bucket_count)
 
 	if (result != MA_SUCCESS)
 	{
+		ma_decoder_uninit(&decoder);
 		return NULL;
 	}
 
 	float* buffer = malloc(total_frames * sizeof(float));
 	ma_uint64 frames_read;
 
+	if (!buffer)
+	{
+		ma_decoder_uninit(&decoder);
+		return NULL;
+	}
+
 	result = ma_decoder_read_pcm_frames(&decoder, buffer, total_frames, &frames_read);
+
+	if (frames_read == 0 || (result != MA_SUCCESS && result != MA_AT_END))
+	{
+		free(buffer);
+		ma_decoder_uninit(&decoder);
+		return NULL;
+	}
+
+	if (bucket_count > frames_read)
+	{
+		bucket_count = frames_read;
+	}
 
 	ma_uint64 frames_per_bucket = frames_read / bucket_count;
 	float* output_buckets = malloc(bucket_count * sizeof(float));
 
-	for (ma_uint64 bucket_index = 0; bucket_index < bucket_count - 1; bucket_index++)
+	if (!output_buckets)
 	{
-		ma_uint64 start_frame = bucket_index * frames_per_bucket;
-		ma_uint64 end_frame = start_frame + frames_per_bucket;
-
-		float sample = 0.0f;
-		for (ma_uint64 sample_index = start_frame; sample_index < end_frame; sample_index++)
-		{
-			sample = fmaxf(sample, fabsf(buffer[sample_index]));
-		}
-
-		output_buckets[bucket_index] = sample;
+		free(buffer);
+		ma_decoder_uninit(&decoder);
+		return NULL;
 	}
 
-	// todo: normalization
+	for (ma_uint64 bucket_index = 0; bucket_index < bucket_count; bucket_index++)
+	{		
+		ma_uint64 start_frame = bucket_index * frames_per_bucket;
+		ma_uint64 end_frame =
+			bucket_index == bucket_count - 1 ? frames_read : start_frame + frames_per_bucket;
 
+		if (!use_rms)
+		{
+			float sample = 0.0f;
+			for (ma_uint64 sample_index = start_frame; sample_index < end_frame; sample_index++)
+			{
+				sample = fmaxf(sample, fabsf(buffer[sample_index]));
+			}
+
+			output_buckets[bucket_index] = sample;
+		}
+		else
+		{
+			float sum_of_squares = 0.0f;
+			for (ma_uint64 sample_index = start_frame; sample_index < end_frame; sample_index++)
+			{
+				sum_of_squares += buffer[sample_index] * buffer[sample_index];
+			}
+
+			ma_uint64 count = end_frame - start_frame;
+			output_buckets[bucket_index] = sqrtf(sum_of_squares / (float)count);
+		}
+	}
+
+	float max = 0.0f;
+	for (ma_uint64 i = 0; i < bucket_count; i++)
+	{
+		max = fmaxf(max, output_buckets[i]);
+	}
+
+	if (max > 0.0f)
+	{
+		for (ma_uint64 i = 0; i < bucket_count; i++)
+		{
+			output_buckets[i] /= max;
+		}
+	}
+
+	free(buffer);
 	ma_decoder_uninit(&decoder);
 
+	*out_bucket_count = bucket_count;
 	return output_buckets;
 }
 
-void miniaudio_free_waveform(float* waveform) { free(waveform); }
+void miniaudio_free_waveform(float* waveform)
+{
+	free(waveform);
+}
