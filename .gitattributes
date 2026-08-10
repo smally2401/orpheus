@@ -1,3 +1,3 @@
 *.h linguist-vendored
-/core/c_src/equalizer/kiss_fft.c
-/core/c_src/equalizer/kiss_fftr.c
+/core/c_src/equalizer/kiss_fft.c linguist-vendored
+/core/c_src/equalizer/kiss_fftr.c linguist-vendored

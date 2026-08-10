@@ -7,6 +7,8 @@ All notable changes to Orpheus will be documented in this file.
 ### Added
 
 - Playback state gets saved after app is closed
+- Equalizer bars
+- Support for .wav and .ogg files
 - Lua functions:
   - set_property
 
@@ -22,10 +24,7 @@ All notable changes to Orpheus will be documented in this file.
   that supports them installed
 - MPRIS functions still run even if not on Linux
 
-### Limitations
-
-- Playlists can't be created or edited from within the app
-- Only .mp3 and .flac files are valid
+---
 
 ## [0.2.0] - 2026-08-01
 

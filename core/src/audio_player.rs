@@ -85,6 +85,9 @@ unsafe extern "C" {
         out_bucket_count: *mut u64,
     ) -> *mut f32;
     fn miniaudio_free_waveform(waveform: *mut f32);
+    fn miniaudio_equalizer(path: *const i8, position_seconds: f64) -> *mut f32;
+    fn miniaudio_equalizer_win(path: *const i16, position_seconds: f64) -> *mut f32;
+    fn miniaudio_free_equalizer(equalizer: *mut f32);
 }
 
 /// Desktop implementation backed by `miniaudio` (see `miniaudio.c`),
