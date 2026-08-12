@@ -153,6 +153,12 @@ pub fn build_runtime(
         eprintln!("Error building the script runtime: {e}");
     }
 
+    if let Ok(on_startup) = lua.globals().get::<mlua::Function>("on_startup")
+        && let Err(e) = on_startup.call::<()>(())
+    {
+        eprintln!("Error in on_startup: {e}");
+    }
+
     ScriptRuntime::new(lua)
 }
 

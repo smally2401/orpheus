@@ -9,9 +9,11 @@
         "window_width",
         "window_height",
         "keymaps",
-        "theme",
         "playlists",
         "list_music_files",
-        "set_property"
+        "set_property",
+        "on_startup",
+        "on_song_change",
+        "on_song_halfway"
     ]
 }

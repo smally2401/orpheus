@@ -182,10 +182,11 @@ impl TickState {
                 let position = local_backend.get_current_position().as_secs_f64();
                 let tx = player_tx.clone();
 
-                tokio::spawn(async move{
+                tokio::spawn(async move {
                     let result = tokio::task::spawn_blocking(move || {
                         MiniAudioPlayer::get_equalizer(&path, position)
-                    }).await;
+                    })
+                    .await;
 
                     if let Ok(Ok(bars)) = result {
                         let _ = tx.try_send(PlayerEvent::EqualizerReady(bars));

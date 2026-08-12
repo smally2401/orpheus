@@ -27,10 +27,6 @@ use crate::config::keys::default_keymaps;
 use crate::config::keys::load_keymaps;
 use crate::config::playlist::PlaylistDef;
 use crate::config::playlist::get_playlists;
-use crate::config::theme::Theme;
-use crate::config::theme::load_backgrounds;
-use crate::config::theme::load_text_colors;
-use crate::config::theme::load_text_sizes;
 use crate::utils::expand_tilde;
 use mlua::Lua;
 use std::collections::HashMap;
@@ -66,7 +62,6 @@ pub struct Config {
     pub window_state: WindowState,
     pub keymaps: HashMap<KeyCombo, KeyAction>,
     pub playlists: Vec<PlaylistDef>,
-    pub theme: Theme,
 }
 
 impl Default for Config {
@@ -77,7 +72,6 @@ impl Default for Config {
             window_state: WindowState::default(),
             keymaps: default_keymaps(),
             playlists: Vec::new(),
-            theme: Theme::default(),
         }
     }
 }
@@ -233,23 +227,12 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
     let keymaps = load_keymaps(&globals);
     let playlists = get_playlists(&globals);
 
-    let bg = load_backgrounds(&globals, &defaults.theme.bg);
-    let text_color = load_text_colors(&globals, &defaults.theme.text_color);
-    let text_size = load_text_sizes(&globals, &defaults.theme.text_size);
-
-    let theme = Theme {
-        bg,
-        text_color,
-        text_size,
-    };
-
     Config {
         music_dir: music_dir.to_string(),
         default_volume,
         window_state,
         keymaps,
         playlists,
-        theme,
     }
 }
 

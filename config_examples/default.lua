@@ -10,37 +10,31 @@ keymaps = {
     volume_down = "DownArrow",
 }
 
-theme = {
-    bg = {
-        sidebar = "#0e101d",
-        now_playing_bar = "#0a0a0f",
-        library_view = "#1f1d2f",
-        album_view = "#1f1d2f",
-        playlists_view = "#1f1d2f",
-        open_playlist_view = "#1f1d2f",
-    },
+function on_startup()
+    set_property("sidebar", "bg", "#0e101d")
+    set_property("now_playing_bar", "bg", "#0a0a0f")
+    set_property("library_view", "bg", "#1f1d2f")
+    set_property("album_view", "bg", "#1f1d2f")
+    set_property("playlists_view", "bg", "#1f1d2f")
+    set_property("open_playlist_view", "bg", "#1f1d2f")
 
-    text_color = {
-        sidebar = "#cdd6f4",
-        now_playing_song = "#cdd6f4",
-        now_playing_artist = "#cdd6f4",
-        detail_view_header_title = "#cdd6f4",
-        detail_view_header_subtitle = "#cdd6f4",
-        library_list_title = "#cdd6f4",
-        library_list_subtitle = "#cdd6f4",
-        album_list_title = "#cdd6f4",
-        album_list_subtitle = "#cdd6f4",
-    },
+    set_property("sidebar", "text_color", "#cdd6f4")
+    set_property("now_playing_song", "text_color", "#cdd6f4")
+    set_property("now_playing_artist", "text_color", "#cdd6f4")
+    set_property("detail_view_header_title", "text_color", "#cdd6f4")
+    set_property("detail_view_header_subtitle", "text_color", "#cdd6f4")
+    set_property("library_list_title", "text_color", "#cdd6f4")
+    set_property("library_list_subtitle", "text_color", "#cdd6f4")
+    set_property("album_list_title", "text_color", "#cdd6f4")
+    set_property("album_list_subtitle", "text_color", "#cdd6f4")
 
-    text_size = {
-        sidebar = 18,
-        now_playing_song = 15,
-        now_playing_artist = 12,
-        detail_view_header_title = 28,
-        detail_view_header_subtitle = 18,
-        library_list_title = 15,
-        library_list_subtitle = 12,
-        album_list_title = 15,
-        album_list_subtitle = 12,
-    },
-}
+    set_property("sidebar", "text_size", 18)
+    set_property("now_playing_song", "text_size", 15)
+    set_property("now_playing_artist", "text_size", 12)
+    set_property("detail_view_header_title", "text_size", 28)
+    set_property("detail_view_header_subtitle", "text_size", 18)
+    set_property("library_list_title", "text_size", 15)
+    set_property("library_list_subtitle", "text_size", 12)
+    set_property("album_list_title", "text_size", 15)
+    set_property("album_list_subtitle", "text_size", 12)
+end

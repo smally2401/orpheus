@@ -13,41 +13,6 @@
 ---@field open_library string?
 ---@field open_playlists string?
 
----@class OrpheusBg
----@field sidebar HexColor?
----@field now_playing_bar HexColor?
----@field library_view HexColor?
----@field album_view HexColor?
----@field playlists_view HexColor?
----@field open_playlist_view HexColor?
-
----@class OrpheusTextColor
----@field sidebar HexColor?
----@field now_playing_song HexColor?
----@field now_playing_artist HexColor?
----@field detail_view_header_title HexColor?
----@field detail_view_header_subtitle HexColor?
----@field library_list_title HexColor?
----@field library_list_subtitle HexColor?
----@field album_list_title HexColor?
----@field album_list_subtitle HexColor?
-
----@class OrpheusTextSize
----@field sidebar integer?
----@field now_playing_song integer?
----@field now_playing_artist integer?
----@field detail_view_header_title integer?
----@field detail_view_header_subtitle integer?
----@field library_list_title integer?
----@field library_list_subtitle integer?
----@field album_list_title integer?
----@field album_list_subtitle integer?
-
----@class OrpheusTheme
----@field bg OrpheusBg?
----@field text_color OrpheusTextColor?
----@field text_size OrpheusTextSize?
-
 ---@class OrpheusPlaylist
 ---@field name string
 ---@field songs string[]
@@ -61,6 +26,9 @@
 ---@field title string
 ---@field artist string
 ---@field album string
+
+--- The shape `on_startup` must have if you define it.
+---@alias OrpheusStartupCallback fun()
 
 --- The shape `on_song_change` must have if you define it.
 ---@alias OrpheusSongChangeCallback fun(song: OrpheusCurrentSong)
@@ -90,9 +58,6 @@ window_height = 600
 ---@type OrpheusKeymaps?
 keymaps = {}
 
----@type OrpheusTheme?
-theme = {}
-
 ---@type OrpheusPlaylist[]?
 playlists = {}
 
@@ -111,6 +76,12 @@ function list_music_files(relative_dir) end
 ---@param property "bg"|"text_color"|"text_size"
 ---@param value string|number
 function set_property(element, property, value) end
+
+--- Called once by Orpheus at startup, after config.lua has finished
+--- running. Define this yourself to, for example, set initial theme 
+--- colors/sizes via `set_property`.
+---@type OrpheusStartupCallback
+on_startup = nil
 
 --- Called by Orpheus whenever the current track changes. Define this
 --- yourself in config.lua if you want to react to song changes (e.g.

@@ -31,7 +31,6 @@ use orpheus_core::config::keys::KeyCombo;
 use orpheus_core::config::load_config;
 use orpheus_core::config::scripting::ScriptEvent;
 use orpheus_core::config::scripting::build_runtime;
-use orpheus_core::config::theme::Theme;
 use orpheus_core::config::theme::UiElement;
 use orpheus_core::player_bridge::PlayerCommand;
 use orpheus_core::player_bridge::PlayerEvent;
@@ -64,7 +63,6 @@ async fn main() -> Result<(), slint::PlatformError> {
     build_script_runtime_thread(contents, script_rx, tx.clone());
 
     apply_window_config(&ui, &config.window_state);
-    apply_theme(&ui, &config.theme);
     ui.set_current_volume(config.default_volume);
 
     wire_callbacks(&ui, &tx);
@@ -275,13 +273,6 @@ fn handle_keymaps(
             _ => {}
         }
     });
-}
-
-/// Applies the user's color theme to the UI.
-fn apply_theme(ui: &AppWindow, theme: &Theme) {
-    for (element, property) in theme.properties() {
-        set_property(ui, element, &property);
-    }
 }
 
 /// Attaches every Slint UI callback to a `PlayerCommand` sent over `tx`.

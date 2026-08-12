@@ -18,8 +18,8 @@ See the `config_examples/` folder for runnable examples.
 | `window_width` | float | 800 | Window width on launch. |
 | `window_height` | float | 600 | Window height on launch. |
 | `keymaps` | table | see below | Custom keybindings. See below. |
-| `theme` | table | see below | UI colors and text sizes. See below. |
 | `playlists` | table | `{}` | A list of playlist definitions. See below. |
+| `on_startup` | function | *(none)* | Called once at startup. See "Scripting hooks" below. |
 | `on_song_change` | function | *(none)* | Called whenever the current track changes. See "Scripting hooks" below. |
 | `on_song_halfway` | function | *(none)* | Called partway through the current track. See "Scripting hooks" below. |
 
@@ -47,11 +47,6 @@ relevant assignment in `config.lua`:
 keymaps = {
     toggle_play = "Space",
     -- typing here now suggests next_track, prev_track, etc.
-}
-
----@type OrpheusTheme
-theme = {
-    -- typing here now suggests bg, text_color_text_size
 }
 ```
 
@@ -117,92 +112,6 @@ than one action, that entry is skipped with a warning and the rest of the
 table still loads.
 
 [List of valid key names](KEYS.txt)
-
-## Theme
-
-`theme` is a table of three nested sub-tables: `bg`, `text_color`, and
-`text_size`. Each is keyed by UI region/element name, and each key falls back
-independently to its default, so you only need to set the ones you want to
-change.
-
-```lua
-theme = {
-    bg = {
-        sidebar = "#0e101d",
-        now_playing_bar = "#0a0a0f",
-        library_view = "#1f1d2f",
-        album_view = "#1f1d2f",
-        playlists_view = "#1f1d2f",
-        open_playlist_view = "#1f1d2f",
-    },
-
-    text_color = {
-        sidebar = "#cdd6f4",
-        now_playing_song = "#cdd6f4",
-        now_playing_artist = "#cdd6f4",
-        detail_view_header_title = "#cdd6f4",
-        detail_view_header_subtitle = "#cdd6f4",
-        library_list_title = "#cdd6f4",
-        library_list_subtitle = "#cdd6f4",
-        album_list_title = "#cdd6f4",
-        album_list_subtitle = "#cdd6f4",
-    },
-
-    text_size = {
-        sidebar = 18,
-        now_playing_song = 15,
-        now_playing_artist = 12,
-        detail_view_header_title = 28,
-        detail_view_header_subtitle = 18,
-        library_list_title = 15,
-        library_list_subtitle = 12,
-        album_list_title = 15,
-        album_list_subtitle = 12,
-    },
-}
-```
-
-### `theme.bg`
-
-| Key | Default | Description |
-| --- | --- | --- |
-| `sidebar` | `"#0e101d"` | Background color of the sidebar. |
-| `now_playing_bar` | `"#0a0a0f"` | Background color of the bottom bar. |
-| `library_view` | `"#1f1d2f"` | Background color of the library. |
-| `album_view` | `"#1f1d2f"` | Background color of an opened album. |
-| `playlists_view` | `"#1f1d2f"` | Background color of the playlists section. |
-| `open_playlist_view` | `"#1f1d2f"` | Background color of an openeed playlist. |
-
-### `theme.text_color`
-
-| Key | Default | Description |
-| --- | --- | --- |
-| `sidebar` | `"#cdd6f4"` | Color of sidebar text. |
-| `now_playing_song` | `"#cdd6f4"` | Color of song title text in bottom bar. |
-| `now_playing_artist` | `"#cdd6f4"` | Color of artist name text in bottom bar. |
-| `detail_view_header_title` | `"#cdd6f4"` | Color of the album/playlist title at the top of an open album/playlist. |
-| `detail_view_header_subtitle` | `"#cdd6f4"` | Color of the subtitle below the header title (artist/track count). |
-| `library_list_title` | `"#cdd6f4"` | Color of the album/playlist title in the list views. |
-| `library_list_subtitle` | `"#cdd6f4"` | Color of the subtitle below the entry title (artist/track count). |
-| `album_list_title` | `"#cdd6f4"` | Color of the song titles inside open album/playlist views. |
-| `album_list_subtitle` | `"#cdd6f4"` | Color of the artist names inside open album/playlist views. |
-
-Colors in both `bg` and `text_color` must be 6-digit hex strings, with or
-without a leading `#`. Anything else falls back to the default for that key.
-
-### `theme.text_size`
-
-| Key | Default (px) | Description |
-| --- | --- | --- |
-| `sidebar` | 18 | Size of sidebar text. |
-| `now_playing_song` | 15 | Size of song title text in bottom bar. |
-| `now_playing_artist` | 12 | Size of artist name text in bottom bar. |
-| `detail_view_header_title` | 28 | Size of the album/playlist title at the top of an open album/playlist. |
-| `detail_view_header_subtitle` |18 | Size of the subtitle below the header title (artist/track count). |
-| `library_list_title` | 15 | Size of the album/playlist title in the list views. |
-| `library_list_subtitle` | 12 | Size of the subtitle below the entry title (artist/track count). |
-| `album_list_title` | 15 | Size of the song titles inside open album/playlist views. |
-| `album_list_subtitle` | 12 | Size of the artist names inside open album/playlist views. |
 
 ## Defining playlists
 
@@ -290,6 +199,20 @@ your config, separate from everything above (which is only read once at
 startup). This is what powers things like scrobbling or a custom
 now-playing display, entirely from Lua.
 
+### `on_startup`
+
+Define this as a top-level function in `config.lua` to run once, right
+after Orpheus finishes loading your config.
+
+```lua
+function on_startup()
+    set_property("sidebar", "bg", "#0e101d")
+    set_property("now_playing_bar", "bg", "#0a0a0f")
+    set_property("sidebar", "text_color", "#cdd6f4")
+    set_property("sidebar", "text_size", 18)
+end
+```
+
 ### `on_song_change`
 
 Define this as a top-level function in `config.lua` to be notified every
@@ -357,8 +280,8 @@ playback.
 
 ### A note on trust
 
-Unlike the rest of `config.lua`, code inside `on_song_change` and
-`on_song_halfway` runs with full access to Lua's standard library,
+Unlike the rest of `config.lua`, code inside `on_startup`, `on_song_change` 
+and `on_song_halfway` runs with full access to Lua's standard library,
 including `os` and `io`, and can load native (C-compiled) Lua modules via
 `require`. This is necessary for things like the Last.fm scrobbling example,
 which needs an HTTP client. It also means a hook can run shell commands

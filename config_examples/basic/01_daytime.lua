@@ -8,52 +8,42 @@
 local t = os.date("*t")
 local hour = t.hour
 
-if hour >= 22 or hour <= 7 then
-    -- nighttime
-    theme = {
-        bg = {
-            sidebar = "#0e101d",
-            now_playing_bar = "#0a0a0f",
-            library_view = "#1f1d2f",
-            album_view = "#1f1d2f",
-            playlists_view = "#1f1d2f",
-            open_playlist_view = "#1f1d2f",
-        },
+function on_startup()
+    if hour >= 22 or hour <= 7 then
+        -- nighttime
+        set_property("sidebar", "bg", "#0e101d")
+        set_property("now_playing_bar", "bg", "#0a0a0f")
+        set_property("library_view", "bg", "#1f1d2f")
+        set_property("album_view", "bg", "#1f1d2f")
+        set_property("playlists_view", "bg", "#1f1d2f")
+        set_property("open_playlist_view", "bg", "#1f1d2f")
 
-        text_color = {
-            sidebar = "#cdd6f4",
-            now_playing_song = "#cdd6f4",
-            now_playing_artist = "#cdd6f4",
-            detail_view_header_title = "#cdd6f4",
-            detail_view_header_subtitle = "#cdd6f4",
-            library_list_title = "#cdd6f4",
-            library_list_subtitle = "#cdd6f4",
-            album_list_title = "#cdd6f4",
-            album_list_subtitle = "#cdd6f4",
-        },
-    }
-else
-    -- daytime
-    theme = {
-        bg = {
-            sidebar = "#e6e8f5",
-            now_playing_bar = "#f4f5fb",
-            library_view = "#d6d4eb",
-            album_view = "#d6d4eb",
-            playlists_view = "#d6d4eb",
-            open_playlist_view = "#d6d4eb",
-        },
+        set_property("sidebar", "text_color", "#cdd6f4")
+        set_property("now_playing_song", "text_color", "#cdd6f4")
+        set_property("now_playing_artist", "text_color", "#cdd6f4")
+        set_property("detail_view_header_title", "text_color", "#cdd6f4")
+        set_property("detail_view_header_subtitle", "text_color", "#cdd6f4")
+        set_property("library_list_title", "text_color", "#cdd6f4")
+        set_property("library_list_subtitle", "text_color", "#cdd6f4")
+        set_property("album_list_title", "text_color", "#cdd6f4")
+        set_property("album_list_subtitle", "text_color", "#cdd6f4")
+    else
+        -- daytime
+        set_property("sidebar", "bg", "#e6e8f5")
+        set_property("now_playing_bar", "bg", "#f4f5fb")
+        set_property("library_view", "bg", "#d6d4eb")
+        set_property("album_view", "bg", "#d6d4eb")
+        set_property("playlists_view", "bg", "#d6d4eb")
+        set_property("open_playlist_view", "bg", "#d6d4eb")
 
-        text_color = {
-            sidebar = "#1a1a1a",
-            now_playing_song = "#1a1a1a",
-            now_playing_artist = "#1a1a1a",
-            detail_view_header_title = "#1a1a1a",
-            detail_view_header_subtitle = "#1a1a1a",
-            library_list_title = "#1a1a1a",
-            library_list_subtitle = "#1a1a1a",
-            album_list_title = "#1a1a1a",
-            album_list_subtitle = "#1a1a1a",
-        },
-    }
+        set_property("sidebar", "text_color", "#1a1a1a")
+        set_property("now_playing_song", "text_color", "#1a1a1a")
+        set_property("now_playing_artist", "text_color", "#1a1a1a")
+        set_property("detail_view_header_title", "text_color", "#1a1a1a")
+        set_property("detail_view_header_subtitle", "text_color", "#1a1a1a")
+        set_property("library_list_title", "text_color", "#1a1a1a")
+        set_property("library_list_subtitle", "text_color", "#1a1a1a")
+        set_property("album_list_title", "text_color", "#1a1a1a")
+        set_property("album_list_subtitle", "text_color", "#1a1a1a")
+    end
 end

@@ -11,6 +11,7 @@ All notable changes to Orpheus will be documented in this file.
 - Support for .wav and .ogg files
 - Lua functions:
   - set_property
+  - on_startup
 
 ### Fixed
 
