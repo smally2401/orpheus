@@ -172,9 +172,17 @@ fn build_player_event_thread(
                         }
 
                         // todo: do path check
-                        WaveformReady { path: _path, waveform } => {
+                        WaveformReady {
+                            path: _path,
+                            waveform,
+                        } => {
                             let model = ModelRc::new(VecModel::from(waveform));
                             ui.set_current_waveform(model);
+                        }
+
+                        EqualizerReady(equalizer) => {
+                            let model = ModelRc::new(VecModel::from(equalizer));
+                            ui.set_current_equalizer(model);
                         }
                     }
                 }

@@ -61,6 +61,7 @@ pub enum PlayerEvent {
         path: PathBuf,
         waveform: Vec<f32>,
     },
+    EqualizerReady(Vec<f32>),
 }
 
 /// Something the UI (or MPRIS) wants the player to do. Sent over the
@@ -176,6 +177,22 @@ impl TickState {
             let artist = track.artist.clone();
             let total_duration = track.duration.as_secs();
 
+            if !local_backend.is_paused() {
+                let path = track.path.clone();
+                let position = local_backend.get_current_position().as_secs_f64();
+                let tx = player_tx.clone();
+
+                tokio::spawn(async move{
+                    let result = tokio::task::spawn_blocking(move || {
+                        MiniAudioPlayer::get_equalizer(&path, position)
+                    }).await;
+
+                    if let Ok(Ok(bars)) = result {
+                        let _ = tx.try_send(PlayerEvent::EqualizerReady(bars));
+                    }
+                });
+            }
+
             let current_album = (track.album_title.clone(), track.album_artist.clone());
             let album_changed = self.last_song_info.as_ref() != Some(&current_album);
             if album_changed {
@@ -193,7 +210,8 @@ impl TickState {
 
                     let result = tokio::task::spawn_blocking(move || {
                         MiniAudioPlayer::get_waveform(&path_clone, 50, false)
-                    }).await;
+                    })
+                    .await;
 
                     if let Ok(Ok(waveform)) = result {
                         let _ = tx.send(PlayerEvent::WaveformReady { path, waveform }).await;

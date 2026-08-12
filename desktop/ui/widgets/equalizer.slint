@@ -1,0 +1,23 @@
+export component Equalizer inherits Rectangle {
+    in property <[float]> current-equalizer;
+
+    private property <length> bar-spacing: 2px;
+    private property <int> bar-count: current-equalizer.length;
+    private property <length> bar-width: (root.width - (bar-count - 1) * bar-spacing) / bar-count;
+    
+    height: 40px;
+    background: #0a0a0f;
+
+    for value[i] in current-equalizer: Rectangle {
+        x: i * (bar-width + bar-spacing);
+        width: bar-width;
+        height: (parent.height - 3px) * value + 2px;
+        y: parent.height - self.height;
+        background: #cdd6f4;
+
+        animate height {
+            duration: 100ms;
+            easing: linear;
+        }
+    }
+}

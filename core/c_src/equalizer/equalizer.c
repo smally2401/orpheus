@@ -6,7 +6,7 @@
 #define FFT_SIZE 8192
 #define BAR_COUNT 32
 
-float* miniaudio_equalizer(const char* path, double position_seconds)
+float* miniaudio_equalizer(const char* path, double position_seconds, int* out_bar_count)
 {
     ma_decoder decoder;
     ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 1, 0);
@@ -29,9 +29,6 @@ float* miniaudio_equalizer(const char* path, double position_seconds)
     ma_uint64 target_frame = (ma_uint64)(position_seconds * sample_rate);
     result = ma_decoder_seek_to_pcm_frame(&decoder, target_frame);
 
-    printf("%i\n", sample_rate);
-    printf("%llu\n", target_frame);
-
     if (result != MA_SUCCESS)
     {
         ma_decoder_uninit(&decoder);
@@ -51,7 +48,6 @@ float* miniaudio_equalizer(const char* path, double position_seconds)
 
     if (frames_read != FFT_SIZE)
     {
-        puts("seeked too close to the end");
         free(buffer);
         ma_decoder_uninit(&decoder);
         return NULL;
@@ -161,10 +157,11 @@ float* miniaudio_equalizer(const char* path, double position_seconds)
         }
     }
 
+    *out_bar_count = BAR_COUNT;
     return bars;
 }
 
-float* miniaudio_equalizer_win(const wchar_t* path, double position_seconds)
+float* miniaudio_equalizer_win(const wchar_t* path, double position_seconds, int* out_bar_count)
 {
     ma_decoder decoder;
     ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 1, 0);
@@ -187,9 +184,6 @@ float* miniaudio_equalizer_win(const wchar_t* path, double position_seconds)
     ma_uint64 target_frame = (ma_uint64)(position_seconds * sample_rate);
     result = ma_decoder_seek_to_pcm_frame(&decoder, target_frame);
 
-    printf("%i\n", sample_rate);
-    printf("%llu\n", target_frame);
-
     if (result != MA_SUCCESS)
     {
         ma_decoder_uninit(&decoder);
@@ -209,7 +203,6 @@ float* miniaudio_equalizer_win(const wchar_t* path, double position_seconds)
 
     if (frames_read != FFT_SIZE)
     {
-        puts("seeked too close to the end");
         free(buffer);
         ma_decoder_uninit(&decoder);
         return NULL;
@@ -319,6 +312,7 @@ float* miniaudio_equalizer_win(const wchar_t* path, double position_seconds)
         }
     }
 
+    *out_bar_count = BAR_COUNT;
     return bars;
 }
 

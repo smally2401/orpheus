@@ -6,9 +6,10 @@ import { NowPlayingBar } from "now_playing/now_playing_bar.slint";
 import { Sidebar } from "sidebar.slint";
 import { PlaylistsView } from "views/playlists_view.slint";
 import { OpenPlaylistView } from "views/open_playlist_view.slint";
+import { Waveform } from "widgets/waveform.slint";
+import { Equalizer } from "widgets/equalizer.slint";
 
 import "../../assets/fonts/NotoSans-Regular.ttf";
-import { Waveform } from "waveform.slint";
 
 enum View { Library, Album, Playlists, OpenPlaylist }
 
@@ -34,7 +35,8 @@ export component AppWindow inherits Window {
     in-out property <SlintPlaylist> viewing-playlist;
     in-out property <int> viewing-playlist-index;
 
-    in-out property <[float]> current-waveform;
+    in property <[float]> current-waveform;
+    in property <[float]> current-equalizer;
 
     forward-focus: key-handler;
     callback key_pressed_event(key: string, ctrl: bool, shift: bool, alt: bool);
@@ -173,6 +175,10 @@ export component AppWindow inherits Window {
                         }
                     }
             }
+        }
+
+        Equalizer {
+            current-equalizer: root.current-equalizer;
         }
 
         NowPlayingBar {

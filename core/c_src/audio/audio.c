@@ -400,32 +400,32 @@ float* miniaudio_waveform_win(const wchar_t* path, ma_uint64 bucket_count, bool 
 		return NULL;
 	}
 
-	for (ma_uint64 bucket_index = 0; bucket_index < bucket_count; bucket_index++)
+	for (ma_uint64 i = 0; i < bucket_count; i++)
 	{		
-		ma_uint64 start_frame = bucket_index * frames_per_bucket;
+		ma_uint64 start_frame = i * frames_per_bucket;
 		ma_uint64 end_frame =
-			bucket_index == bucket_count - 1 ? frames_read : start_frame + frames_per_bucket;
+			i == bucket_count - 1 ? frames_read : start_frame + frames_per_bucket;
 
 		if (!use_rms)
 		{
 			float sample = 0.0f;
-			for (ma_uint64 sample_index = start_frame; sample_index < end_frame; sample_index++)
+			for (ma_uint64 j = start_frame; j < end_frame; j++)
 			{
-				sample = fmaxf(sample, fabsf(buffer[sample_index]));
+				sample = fmaxf(sample, fabsf(buffer[j]));
 			}
 
-			output_buckets[bucket_index] = sample;
+			output_buckets[i] = sample;
 		}
 		else
 		{
 			float sum_of_squares = 0.0f;
-			for (ma_uint64 sample_index = start_frame; sample_index < end_frame; sample_index++)
+			for (ma_uint64 j = start_frame; j < end_frame; j++)
 			{
-				sum_of_squares += buffer[sample_index] * buffer[sample_index];
+				sum_of_squares += buffer[j] * buffer[j];
 			}
 
 			ma_uint64 count = end_frame - start_frame;
-			output_buckets[bucket_index] = sqrtf(sum_of_squares / (float)count);
+			output_buckets[i] = sqrtf(sum_of_squares / (float)count);
 		}
 	}
 

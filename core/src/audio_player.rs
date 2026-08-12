@@ -85,8 +85,16 @@ unsafe extern "C" {
         out_bucket_count: *mut u64,
     ) -> *mut f32;
     fn miniaudio_free_waveform(waveform: *mut f32);
-    fn miniaudio_equalizer(path: *const i8, position_seconds: f64) -> *mut f32;
-    fn miniaudio_equalizer_win(path: *const i16, position_seconds: f64) -> *mut f32;
+    fn miniaudio_equalizer(
+        path: *const i8,
+        position_seconds: f64,
+        out_bar_count: *mut i32,
+    ) -> *mut f32;
+    fn miniaudio_equalizer_win(
+        path: *const u16,
+        position_seconds: f64,
+        out_bar_count: *mut i32,
+    ) -> *mut f32;
     fn miniaudio_free_equalizer(equalizer: *mut f32);
 }
 
@@ -128,7 +136,7 @@ impl MiniAudioPlayer {
                 .chain(std::iter::once(0))
                 .collect();
 
-            let ptr: *const u16 = wide.as_ptr();
+            let ptr = wide.as_ptr();
 
             unsafe {
                 miniaudio_waveform_win(
@@ -165,6 +173,46 @@ impl MiniAudioPlayer {
         }
 
         Ok(waveform_vec)
+    }
+
+    pub(crate) fn get_equalizer(
+        path: &Path,
+        position_seconds: f64,
+    ) -> Result<Vec<f32>, Box<dyn Error + Send + Sync>> {
+        let mut bar_count: i32 = 0;
+
+        let equalizer_ptr: *mut f32 = if cfg!(windows) {
+            let os_str = path.as_os_str();
+
+            let wide: Vec<u16> = os_str
+                .to_string_lossy()
+                .encode_utf16()
+                .chain(std::iter::once(0))
+                .collect();
+
+            let ptr = wide.as_ptr();
+
+            unsafe { miniaudio_equalizer_win(ptr, position_seconds, &mut bar_count) }
+        } else {
+            let c_path = CString::new(path.as_os_str().as_encoded_bytes())?;
+
+            unsafe { miniaudio_equalizer(c_path.as_ptr(), position_seconds, &mut bar_count) }
+        };
+
+        if equalizer_ptr.is_null() {
+            return Err("Failed to get equalizer".into());
+        }
+
+        let equalizer_slice =
+            unsafe { std::slice::from_raw_parts(equalizer_ptr, bar_count as usize) };
+
+        let equalizer_vec = equalizer_slice.to_vec();
+
+        unsafe {
+            miniaudio_free_equalizer(equalizer_ptr);
+        }
+
+        Ok(equalizer_vec)
     }
 }
 
