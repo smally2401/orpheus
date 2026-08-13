@@ -15,16 +15,10 @@ use crate::config::theme::UiProperty;
 use crate::local_backend::Album;
 use crate::local_backend::LocalBackend;
 use crate::local_backend::RepeatMode;
-use crate::mpris::MprisCommand;
-use crate::mpris::repeat_mode_to_loop_status;
-use crate::mpris::spawn_mpris;
-use crate::mpris::track_id_for_path;
-use crate::mpris::write_art_cache;
 use crate::player_bridge::PlayerEvent::EqualizerReady;
 use crate::state::restore_state;
 use crate::utils::DecodedSong;
 use crate::utils::expand_tilde;
-use mpris_server::PlaybackStatus;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -152,7 +146,6 @@ impl TickState {
     fn on_tick(
         &mut self,
         local_backend: &mut LocalBackend,
-        mpris_tx: &mpsc::Sender<MprisCommand>,
         player_tx: &mpsc::Sender<PlayerEvent>,
     ) {
         if local_backend.track_finished() && !self.queue_exhausted {
@@ -162,16 +155,9 @@ impl TickState {
         let is_paused = local_backend.is_paused();
         if is_paused != self.was_paused {
             self.was_paused = is_paused;
-            let status = if is_paused {
-                PlaybackStatus::Paused
-            } else {
-                PlaybackStatus::Playing
-            };
-            let _ = mpris_tx.try_send(MprisCommand::UpdateStatus(status));
         }
 
         let current_position = local_backend.get_current_position().as_secs();
-        let _ = mpris_tx.try_send(MprisCommand::UpdatePosition(current_position));
 
         let eq_bars = if !is_paused {
             local_backend.player.equalizer_tick()
@@ -211,20 +197,6 @@ impl TickState {
                     if let Ok(Ok(waveform)) = result {
                         let _ = tx.send(PlayerEvent::WaveformReady { path, waveform }).await;
                     }
-                });
-
-                let art_url = track
-                    .art
-                    .as_ref()
-                    .and_then(|bytes| write_art_cache(&track.path, bytes));
-
-                let _ = mpris_tx.try_send(MprisCommand::UpdateMetadata {
-                    title: track.title.clone(),
-                    artist: track.artist.clone(),
-                    album: track.album_title.clone(),
-                    track_id: track_id_for_path(&track.path),
-                    length: track.duration.as_secs(),
-                    art_url,
                 });
 
                 let current_song = CurrentSong::from(track.as_ref());
@@ -289,7 +261,6 @@ pub fn spawn_player_bridge(
 
     let (tx, mut rx) = mpsc::channel::<PlayerCommand>(100);
     let (player_tx, player_rx) = mpsc::channel::<PlayerEvent>(100);
-    let mpris_tx = spawn_mpris(tx.clone());
 
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_millis(100));
@@ -300,14 +271,14 @@ pub fn spawn_player_bridge(
 
                 maybe_command = rx.recv() => {
                     if let Some(command) = maybe_command {
-                        handle_command(&command, &mut local_backend, &mpris_tx, &mut tick_state, &player_tx);
+                        handle_command(&command, &mut local_backend, &mut tick_state, &player_tx);
                     } else {
                         break;
                     }
                 }
 
                 _ = interval.tick() => {
-                    tick_state.on_tick(&mut local_backend, &mpris_tx, &player_tx);
+                    tick_state.on_tick(&mut local_backend, &player_tx);
                 }
             }
         }
@@ -331,7 +302,6 @@ pub fn spawn_player_bridge(
 fn handle_command(
     command: &PlayerCommand,
     local_backend: &mut LocalBackend,
-    mpris_tx: &mpsc::Sender<MprisCommand>,
     tick_state: &mut TickState,
     event_tx: &mpsc::Sender<PlayerEvent>,
 ) {
@@ -368,13 +338,12 @@ fn handle_command(
         }
         SetPosition(dur) => {
             let _ = local_backend.set_position(*dur);
-            let _ = mpris_tx.try_send(MprisCommand::Seeked(*dur as u64));
         }
         SeekForward => {
-            seek_by(local_backend, mpris_tx, SEEK_STEP, false);
+            seek_by(local_backend, SEEK_STEP, false);
         }
         SeekBackward => {
-            seek_by(local_backend, mpris_tx, SEEK_STEP, true);
+            seek_by(local_backend, SEEK_STEP, true);
         }
         SetVolume(vol) => {
             set_volume_and_update_ui(local_backend, *vol, event_tx);
@@ -397,21 +366,15 @@ fn handle_command(
         }
         ToggleRepeat => {
             local_backend.toggle_repeat();
-            let loop_status = repeat_mode_to_loop_status(local_backend.get_repeat());
-            let _ = mpris_tx.try_send(MprisCommand::UpdateLoopStatus(loop_status));
         }
         ToggleShuffle => {
             local_backend.toggle_shuffle();
-            let _ = mpris_tx.try_send(MprisCommand::UpdateShuffle(local_backend.is_shuffle()));
         }
         SetRepeat(mode) => {
             local_backend.set_repeat(*mode);
-            let loop_status = repeat_mode_to_loop_status(local_backend.get_repeat());
-            let _ = mpris_tx.try_send(MprisCommand::UpdateLoopStatus(loop_status));
         }
         SetShuffle(shuffle) => {
             local_backend.set_shuffle(*shuffle);
-            let _ = mpris_tx.try_send(MprisCommand::UpdateShuffle(local_backend.is_shuffle()));
         }
         OpenPlaylist(i) => {
             open_playlist(*i, local_backend, event_tx);
@@ -426,7 +389,6 @@ fn handle_command(
 
 fn seek_by(
     backend: &mut LocalBackend,
-    mpris_tx: &mpsc::Sender<MprisCommand>,
     offset_secs: u64,
     backwards: bool,
 ) {
@@ -437,7 +399,6 @@ fn seek_by(
         current_pos + offset_secs
     };
     let _ = backend.set_position(new_pos as usize);
-    let _ = mpris_tx.try_send(MprisCommand::Seeked(new_pos));
 }
 
 fn set_volume_and_update_ui(

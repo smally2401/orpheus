@@ -17,8 +17,6 @@ script instead of a static file.
   cover art, and automatic album grouping
 - Playlists defined in a Lua config file, including playlists generated
   programmatically from folder contents (see `config_examples/`)
-- MPRIS integration (Linux), so playback shows up in your desktop's media
-  controls, lock screen widget, and media keys
 - Configurable UI colors and music library location, all via one
   `config.lua` file
 

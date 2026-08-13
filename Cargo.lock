@@ -3567,7 +3567,6 @@ dependencies = [
  "image",
  "lofty",
  "mlua",
- "mpris-server",
  "serde",
  "serde_json",
  "strum",

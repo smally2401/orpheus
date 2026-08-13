@@ -19,12 +19,15 @@ All notable changes to Orpheus will be documented in this file.
 - Windows executable no longer opens a command window
 - Major performance issues
 
+### Removed
+
+- MPRIS support on the app's core
+
 ### Issues
 
 - When a track ends naturally, next track fires on_song_halfway instantly
 - Control buttons don't render correctly if user doesn't have a font
   that supports them installed
-- MPRIS functions still run even if not on Linux
 - Audio plays for a bit when launching the app
 
 ---
