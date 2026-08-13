@@ -19,6 +19,9 @@ use rand::seq::SliceRandom;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
 use std::error::Error;
 use std::ffi::OsStr;
 use std::path::Path;
@@ -157,12 +160,14 @@ impl LocalBackend {
 
         let mut albums: HashMap<(String, String), Album> = HashMap::new();
         let mut song_paths: HashMap<PathBuf, Arc<Song>> = HashMap::new();
+        let mut art_cache: HashMap<u64, Arc<Vec<u8>>> = HashMap::new();
+
         for path in audio_files {
             let Ok(tagged_file) = lofty::read_from_path(&path) else {
                 continue;
             };
 
-            let song = Arc::new(song_from_tagged_file(&path, &tagged_file));
+            let song = Arc::new(song_from_tagged_file(&path, &tagged_file, &mut art_cache));
             song_paths.insert(path.clone(), song.clone());
 
             let album = albums
@@ -565,7 +570,9 @@ impl Drop for LocalBackend {
 /// than leaving them blank: every song should have something displayable.
 /// Cover art prefers an explicit front cover picture, falling back to
 /// whatever picture is embedded first if there's no front cover tagged.
-fn song_from_tagged_file(path: &Path, tagged_file: &TaggedFile) -> Song {
+/// Extracted art bytes are deduplicated through `art_cache` (see
+/// `dedup_art`) rather than allocated fresh per song.
+fn song_from_tagged_file(path: &Path, tagged_file: &TaggedFile, art_cache: &mut HashMap<u64, Arc<Vec<u8>>>) -> Song {
     let tag = tagged_file
         .primary_tag()
         .or_else(|| tagged_file.first_tag());
@@ -600,8 +607,7 @@ fn song_from_tagged_file(path: &Path, tagged_file: &TaggedFile) -> Song {
         pics.iter()
             .find(|p| p.pic_type() == PictureType::CoverFront)
             .or_else(|| pics.first())
-            .map(|p| p.data().to_vec())
-            .map(Arc::new)
+            .map(|p| dedup_art(art_cache, p.data().to_vec()))
     });
 
     Song {
@@ -631,4 +637,21 @@ fn build_playlists(path: &Path, playlist_defs: Vec<PlaylistDef>) -> Vec<Playlist
             art: def.art.map(|a| path.join(a)),
         })
         .collect()
+}
+
+/// Dediplicates cover art bytes through `cache`, keyed by content hash.
+/// 
+/// Many rippers/taggers embed the same cover image in every track of an
+/// album, so without this, each `Song` would independently allocate its
+/// own copy of identical picture bytes. Retruns a clone of the existing
+/// `Arc` on a cache hit, or inserts and returns a new one.
+fn dedup_art(cache: &mut HashMap<u64, Arc<Vec<u8>>>, data: Vec<u8>) -> Arc<Vec<u8>> {
+    let mut hasher = DefaultHasher::new();
+    data.hash(&mut hasher);
+    let key = hasher.finish();
+
+    cache
+        .entry(key)
+        .or_insert_with( || Arc::new(data))
+        .clone()
 }

@@ -17,6 +17,7 @@ All notable changes to Orpheus will be documented in this file.
 
 - Volume percentage now shows correct info
 - Windows executable no longer opens a command window
+- Major performance issues
 
 ### Issues
 
@@ -24,7 +25,7 @@ All notable changes to Orpheus will be documented in this file.
 - Control buttons don't render correctly if user doesn't have a font
   that supports them installed
 - MPRIS functions still run even if not on Linux
-- App takes a long time to start with a large library
+- Audio plays for a bit when launching the app
 
 ---
 
