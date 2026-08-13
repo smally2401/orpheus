@@ -7,7 +7,7 @@
 use crate::local_backend::LocalBackend;
 use crate::local_backend::RepeatMode;
 use crate::local_backend::Song;
-use rand::seq::SliceRandom;
+use crate::shuffle::Xorshift64;
 use serde::Deserialize;
 use serde::Serialize;
 use std::error::Error;
@@ -139,8 +139,8 @@ pub(crate) fn restore_state(backend: &mut LocalBackend) {
     backend.set_volume(0.0);
 
     if state.shuffle {
-        let mut rng = rand::rng();
-        backend.order.shuffle(&mut rng);
+        let mut rng = Xorshift64::new();
+        rng.shuffle(&mut backend.order);
         let new_pos = backend
             .order
             .iter()

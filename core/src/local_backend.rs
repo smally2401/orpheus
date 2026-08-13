@@ -9,21 +9,21 @@
 use crate::audio_player::AudioPlayer;
 use crate::audio_player::MiniAudioPlayer;
 use crate::config::playlist::PlaylistDef;
+use crate::shuffle::Xorshift64;
 use crate::state::save_playback_state;
 use lofty::file::AudioFile;
 use lofty::file::TaggedFile;
 use lofty::file::TaggedFileExt;
 use lofty::picture::PictureType;
 use lofty::tag::ItemKey;
-use rand::seq::SliceRandom;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
-use std::hash::Hash;
-use std::hash::Hasher;
 use std::error::Error;
 use std::ffi::OsStr;
+use std::hash::Hash;
+use std::hash::Hasher;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -298,8 +298,8 @@ impl LocalBackend {
         self.order = (0..self.queue.len()).collect();
 
         if self.shuffle {
-            let mut rng = rand::rng();
-            self.order.shuffle(&mut rng);
+            let mut rng = Xorshift64::new();
+            rng.shuffle(&mut self.order);
         }
 
         self.index = 0;
@@ -321,8 +321,8 @@ impl LocalBackend {
         self.order = (0..self.queue.len()).collect();
 
         if self.shuffle {
-            let mut rng = rand::rng();
-            self.order.shuffle(&mut rng);
+            let mut rng = Xorshift64::new();
+            rng.shuffle(&mut self.order);
 
             let new_pos = self
                 .order
@@ -353,8 +353,8 @@ impl LocalBackend {
         self.order = (0..self.queue.len()).collect();
 
         if self.shuffle {
-            let mut rng = rand::rng();
-            self.order.shuffle(&mut rng);
+            let mut rng = Xorshift64::new();
+            rng.shuffle(&mut self.order);
         }
 
         self.index = 0;
@@ -376,8 +376,8 @@ impl LocalBackend {
         self.order = (0..self.queue.len()).collect();
 
         if self.shuffle {
-            let mut rng = rand::rng();
-            self.order.shuffle(&mut rng);
+            let mut rng = Xorshift64::new();
+            rng.shuffle(&mut self.order);
 
             let new_pos = self
                 .order
@@ -497,8 +497,8 @@ impl LocalBackend {
         let real_index = self.order[self.index];
 
         if self.shuffle {
-            let mut rng = rand::rng();
-            self.order.shuffle(&mut rng);
+            let mut rng = Xorshift64::new();
+            rng.shuffle(&mut self.order);
             let new_pos = self
                 .order
                 .iter()
@@ -572,7 +572,11 @@ impl Drop for LocalBackend {
 /// whatever picture is embedded first if there's no front cover tagged.
 /// Extracted art bytes are deduplicated through `art_cache` (see
 /// `dedup_art`) rather than allocated fresh per song.
-fn song_from_tagged_file(path: &Path, tagged_file: &TaggedFile, art_cache: &mut HashMap<u64, Arc<Vec<u8>>>) -> Song {
+fn song_from_tagged_file(
+    path: &Path,
+    tagged_file: &TaggedFile,
+    art_cache: &mut HashMap<u64, Arc<Vec<u8>>>,
+) -> Song {
     let tag = tagged_file
         .primary_tag()
         .or_else(|| tagged_file.first_tag());
@@ -640,7 +644,7 @@ fn build_playlists(path: &Path, playlist_defs: Vec<PlaylistDef>) -> Vec<Playlist
 }
 
 /// Dediplicates cover art bytes through `cache`, keyed by content hash.
-/// 
+///
 /// Many rippers/taggers embed the same cover image in every track of an
 /// album, so without this, each `Song` would independently allocate its
 /// own copy of identical picture bytes. Retruns a clone of the existing
@@ -650,8 +654,5 @@ fn dedup_art(cache: &mut HashMap<u64, Arc<Vec<u8>>>, data: Vec<u8>) -> Arc<Vec<u
     data.hash(&mut hasher);
     let key = hasher.finish();
 
-    cache
-        .entry(key)
-        .or_insert_with( || Arc::new(data))
-        .clone()
+    cache.entry(key).or_insert_with(|| Arc::new(data)).clone()
 }
