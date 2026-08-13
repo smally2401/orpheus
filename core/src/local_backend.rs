@@ -96,7 +96,7 @@ pub enum RepeatMode {
 
 /// Owns the active `AudioPlayer`, the scanned library, and playback state.
 pub(crate) struct LocalBackend {
-    player: Box<dyn AudioPlayer>,
+    pub(crate) player: Box<dyn AudioPlayer>,
 
     pub(crate) library: Vec<Album>,
     pub(crate) playlists: Vec<Playlist>,

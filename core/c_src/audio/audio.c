@@ -6,8 +6,7 @@
 
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
-#include <stdbool.h>
-#include <stdlib.h>
+#include "../headers/eq_state.h"
 
 typedef struct
 {
@@ -20,6 +19,9 @@ typedef struct
 	// Mirrors "paused" as reported to Rust via `miniaudio_is_paused`.
 	// Set by both `miniaudio_pause` and `miniaudio_stop`.
 	bool paused;
+	// Persistent equalizer decoder + FFT state. Tied to the lifetime of
+	// the currently loaded sound.
+	EqState eq;
 } MiniAudioPlayerC;
 
 // Allocates a player and initializes its `ma_engine` on the default
@@ -34,7 +36,9 @@ MiniAudioPlayerC* miniaudio_create(void)
 		return NULL;
 	}
 
-	if (ma_engine_init(NULL, &player->engine) != MA_SUCCESS)
+	ma_result result = ma_engine_init(NULL, &player->engine);
+
+	if (result != MA_SUCCESS)
 	{
 		free(player);
 		return NULL;
@@ -43,14 +47,16 @@ MiniAudioPlayerC* miniaudio_create(void)
 	return player;
 }
 
-// Tears down the current sound (if any) and the engine, then frees the
-// player itself.
+// Tears down the current sound (if any), the equalizer state, and the
+// enfine, then frees the player itself
 void miniaudio_destroy(MiniAudioPlayerC* player)
 {
 	if (!player)
 	{
 		return;
 	}
+
+	eq_state_uninit(&player->eq);
 
 	if (player->has_sound)
 	{
@@ -62,14 +68,9 @@ void miniaudio_destroy(MiniAudioPlayerC* player)
 }
 
 // Loads `path` as the player's active sound, replacing whatever was
-// previously loaded (uninits the old `ma_sound` first, if any). Uses
-// flag `0`, i.e. streaming decode rather than up-front full decode:
-// loads are fast regardless of file length, at the cost of slower
-// seeks on formats without a seek table (notably MP3, FLAC seeks are
-// cheap since dr_flag can index via STREAMINFO). Tried full up-front
-// decode (`MA_SOUND_FLAG_DECODE`) instead: it made every load
-// noticeably slower in exchange for instant seeks, worse trade for how
-// this app is used, reverted.
+// previously loaded (uninits the old `ma_sound` and old `EqState`
+// first, if any). Uses flag `0`, i.e. streaming decode rather than
+// up-front full decode.
 bool miniaudio_load_file(MiniAudioPlayerC* player, const char* path)
 {
 	if (!player)
@@ -83,10 +84,14 @@ bool miniaudio_load_file(MiniAudioPlayerC* player, const char* path)
 		player->has_sound = false;
 	}
 
-	if (ma_sound_init_from_file(&player->engine, path, 0, NULL, NULL, &player->sound) == MA_SUCCESS)
+	eq_state_uninit(&player->eq);
+	ma_result result = ma_sound_init_from_file(&player->engine, path, 0, NULL, NULL, &player->sound);
+
+	if (result == MA_SUCCESS)
 	{
 		player->has_sound = true;
 		player->paused = false;
+		eq_state_init(&player->eq, path);
 		return true;
 	}
 
@@ -94,8 +99,7 @@ bool miniaudio_load_file(MiniAudioPlayerC* player, const char* path)
 }
 
 // Windows counterpart to `miniaudio_load_file`, taking a wide
-// (UTF-16) path via `ma_sound_init_from_file_w`. Same streaming
-// behaviour and semantics otherwise.
+// (UTF-16) path via `ma_sound_init_from_file_w`.
 bool miniaudio_load_file_win(MiniAudioPlayerC* player, const wchar_t* path)
 {
 	if (!player)
@@ -109,11 +113,14 @@ bool miniaudio_load_file_win(MiniAudioPlayerC* player, const wchar_t* path)
 		player->has_sound = false;
 	}
 
-	if (ma_sound_init_from_file_w(&player->engine, path, 0, NULL, NULL, &player->sound) ==
-	    MA_SUCCESS)
+	eq_state_uninit(&player->eq);
+	ma_result result = ma_sound_init_from_file_w(&player->engine, path, 0, NULL, NULL, &player->sound);
+
+	if (result == MA_SUCCESS)
 	{
 		player->has_sound = true;
 		player->paused = false;
+		eq_state_init_win(&player->eq, path);
 		return true;
 	}
 
@@ -152,12 +159,13 @@ void miniaudio_stop(MiniAudioPlayerC* player)
 		ma_sound_stop(&player->sound);
 		ma_sound_seek_to_pcm_frame(&player->sound, 0);
 		player->paused = true;
+		eq_state_uninit(&player->eq);
 	}
 }
 
 // Seeks to an absolute position in seconds, converting to a PCM frame
-// index using the engine's sample rate. Returns false if nothing is
-// loaded or the underlying seek fails.
+// index using the engine's sample rate. Also re-syncs the equalizer
+// decoder so the visualizer doesn't drift from the audio.
 bool miniaudio_seek_seconds(MiniAudioPlayerC* player, double seconds)
 {
 	if (!player || !player->has_sound)
@@ -168,7 +176,10 @@ bool miniaudio_seek_seconds(MiniAudioPlayerC* player, double seconds)
 	ma_uint32 sample_rate = ma_engine_get_sample_rate(&player->engine);
 	ma_uint64 frame = (ma_uint64)(seconds * (double)sample_rate);
 
-	return ma_sound_seek_to_pcm_frame(&player->sound, frame) == MA_SUCCESS;
+	bool sound_ok = ma_sound_seek_to_pcm_frame(&player->sound, frame) == MA_SUCCESS;
+	eq_state_seek(&player->eq, seconds);
+
+	return sound_ok;
 }
 
 // Current playback position in seconds, derived from the sound's PCM
@@ -231,6 +242,16 @@ void miniaudio_set_volume(MiniAudioPlayerC* player, float volume)
 	}
 
 	ma_engine_set_volume(&player->engine, volume);
+}
+
+bool miniaudio_equalizer_tick(MiniAudioPlayerC* player, float** out_bars, int* out_bar_count)
+{
+	if (!player)
+	{
+		return false;
+	}
+
+	return eq_state_tick(&player->eq, out_bars, out_bar_count);
 }
 
 float* miniaudio_waveform(const char* path, ma_uint64 bucket_count, bool use_rms, ma_uint64* out_bucket_count)

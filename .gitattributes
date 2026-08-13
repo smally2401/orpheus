@@ -1,3 +1,4 @@
-*.h linguist-vendored
+/core/c_src/audio/miniaudio.h linguist-vendored
+/core/c_src/equalizer/*.h linguist-vendored
 /core/c_src/equalizer/kiss_fft.c linguist-vendored
 /core/c_src/equalizer/kiss_fftr.c linguist-vendored

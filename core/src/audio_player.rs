@@ -1,14 +1,21 @@
 //! Platform agnostic audio playback interface.
 //!
 //! Desktop playback goes through `MiniAudioPlayer`m a thin FFI wrapper
-//! around the `miniaudio` C library (see `miniaudio.c`). Mobile/Android
+//! around the `miniaudio` C library (see `audio.c`). Mobile/Android
 //! targets can implement `AudioPlayer` using platfor native audio
 //! engines (oboe/aaudio) without leaking implementation details.
 
 use std::error::Error;
 use std::ffi::CString;
+use std::ffi::c_char;
+use std::ffi::c_double;
+use std::ffi::c_float;
+use std::ffi::c_int;
 use std::path::Path;
 use std::time::Duration;
+
+#[cfg(target_os = "windows")]
+use std::os::windows::ffi::OsStrExt;
 
 /// Anything that can load, play, pause, and seek audio tracks.
 ///
@@ -38,67 +45,66 @@ pub(crate) trait AudioPlayer: Send {
     /// rather than an already open file handle.
     fn append(&mut self, path: &Path) -> Result<(), Box<dyn Error>>;
     fn volume(&self) -> f32;
+    /// Called ever tick while playing. Returns None if window is still
+    /// filling or no track is loaded
+    fn equalizer_tick(&mut self) -> Option<Vec<f32>>;
 }
 
 /// Opaque handle to the C-side `MiniAudioPlayerC` struct (see
-/// `miniaudio.c`). Its layout is never inspected frm Rust, only passed
+/// `audio.c`). Its layout is never inspected frm Rust, only passed
 /// back to the FFI functions that created it.
 #[repr(C)]
 struct OpaqueBackend {
     _private: [u8; 0],
 }
 
-// FFI bindings to `miniaudio.c`. Every function takes the
+// FFI bindings to `audio.c`. Every function takes the
 // `OpaqueBackend` pointer returned by `miniaudio_create` as its first
 // argument and is a thin wrapper around the underlying `ma_engine`/
-// `ma_sound` calls: see `miniaudio.c` for what each one actually does.
+// `ma_sound` calls: see `audio.c` for what each one actually does.
 unsafe extern "C" {
     fn miniaudio_create() -> *mut OpaqueBackend;
     fn miniaudio_destroy(player: *mut OpaqueBackend);
     /// `path` must be a NUL-terminated, platform native narrow C string.
     /// Use `miniaudio_load_file_win` on Windows instead: see
     /// `MiniAudioPlayer::append`.
-    fn miniaudio_load_file(player: *mut OpaqueBackend, path: *const i8) -> bool;
+    #[cfg(not(target_os = "windows"))]
+    fn miniaudio_load_file(player: *mut OpaqueBackend, path: *const c_char) -> bool;
     /// Windows-only counterpart to `miniaudio_load_file` taking a
     /// NUL-terminated UTF-16 string, since Windows paths aren't reliably
     /// representable as narrow C strings.
+    #[cfg(target_os = "windows")]
     fn miniaudio_load_file_win(player: *mut OpaqueBackend, path: *const u16) -> bool;
     fn miniaudio_play(player: *mut OpaqueBackend);
     fn miniaudio_pause(player: *mut OpaqueBackend);
     fn miniaudio_stop(player: *mut OpaqueBackend);
-    fn miniaudio_seek_seconds(player: *mut OpaqueBackend, seconds: f64) -> bool;
-    fn miniaudio_get_position_seconds(player: *mut OpaqueBackend) -> f64;
+    fn miniaudio_seek_seconds(player: *mut OpaqueBackend, seconds: c_double) -> bool;
+    fn miniaudio_get_position_seconds(player: *mut OpaqueBackend) -> c_double;
     fn miniaudio_is_empty(player: *mut OpaqueBackend) -> bool;
     fn miniaudio_is_paused(player: *mut OpaqueBackend) -> bool;
-    fn miniaudio_volume(player: *mut OpaqueBackend) -> f32;
-    fn miniaudio_set_volume(player: *mut OpaqueBackend, volume: f32);
+    fn miniaudio_volume(player: *mut OpaqueBackend) -> c_float;
+    fn miniaudio_set_volume(player: *mut OpaqueBackend, volume: c_float);
     fn miniaudio_waveform(
-        path: *const i8,
+        path: *const c_char,
         bucket_count: u64,
         use_rms: bool,
         out_bucket_count: *mut u64,
-    ) -> *mut f32;
+    ) -> *mut c_float;
     fn miniaudio_waveform_win(
         path: *const u16,
         bucket_count: u64,
         use_rms: bool,
         out_bucket_count: *mut u64,
-    ) -> *mut f32;
-    fn miniaudio_free_waveform(waveform: *mut f32);
-    fn miniaudio_equalizer(
-        path: *const i8,
-        position_seconds: f64,
-        out_bar_count: *mut i32,
-    ) -> *mut f32;
-    fn miniaudio_equalizer_win(
-        path: *const u16,
-        position_seconds: f64,
-        out_bar_count: *mut i32,
-    ) -> *mut f32;
-    fn miniaudio_free_equalizer(equalizer: *mut f32);
+    ) -> *mut c_float;
+    fn miniaudio_free_waveform(waveform: *mut c_float);
+    fn miniaudio_equalizer_tick(
+        player: *mut OpaqueBackend,
+        out_bars: *mut *mut c_float,
+        out_count: *mut c_int,
+    ) -> bool;
 }
 
-/// Desktop implementation backed by `miniaudio` (see `miniaudio.c`),
+/// Desktop implementation backed by `miniaudio` (see `audio.c`),
 /// wrapping a single `ma_engine` + `ma_sound` pair behind an opaque
 /// pointer.
 pub(crate) struct MiniAudioPlayer {
@@ -174,46 +180,6 @@ impl MiniAudioPlayer {
 
         Ok(waveform_vec)
     }
-
-    pub(crate) fn get_equalizer(
-        path: &Path,
-        position_seconds: f64,
-    ) -> Result<Vec<f32>, Box<dyn Error + Send + Sync>> {
-        let mut bar_count: i32 = 0;
-
-        let equalizer_ptr: *mut f32 = if cfg!(windows) {
-            let os_str = path.as_os_str();
-
-            let wide: Vec<u16> = os_str
-                .to_string_lossy()
-                .encode_utf16()
-                .chain(std::iter::once(0))
-                .collect();
-
-            let ptr = wide.as_ptr();
-
-            unsafe { miniaudio_equalizer_win(ptr, position_seconds, &mut bar_count) }
-        } else {
-            let c_path = CString::new(path.as_os_str().as_encoded_bytes())?;
-
-            unsafe { miniaudio_equalizer(c_path.as_ptr(), position_seconds, &mut bar_count) }
-        };
-
-        if equalizer_ptr.is_null() {
-            return Err("Failed to get equalizer".into());
-        }
-
-        let equalizer_slice =
-            unsafe { std::slice::from_raw_parts(equalizer_ptr, bar_count as usize) };
-
-        let equalizer_vec = equalizer_slice.to_vec();
-
-        unsafe {
-            miniaudio_free_equalizer(equalizer_ptr);
-        }
-
-        Ok(equalizer_vec)
-    }
 }
 
 impl Drop for MiniAudioPlayer {
@@ -288,28 +254,45 @@ impl AudioPlayer for MiniAudioPlayer {
         // Windows paths aren't reliably representable as narrow C
         // strings, so route through the wide (UTF-16) variant there.
         // Everywhere else a plain CString works.
-        let ok = if cfg!(windows) {
-            let os_str = path.as_os_str();
-
-            let wide: Vec<u16> = os_str
-                .to_string_lossy()
-                .encode_utf16()
-                .chain(std::iter::once(0))
+        #[cfg(target_os = "windows")]
+        {
+            let wide: Vec<u16> = OsStr::new(path.as_os_str())
+                .encode_wide()
+                .chain(Some(0))
                 .collect();
 
-            let ptr: *const u16 = wide.as_ptr();
+            unsafe {
+                if miniaudio_load_file_win(self.ptr, wide.as_ptr()) {
+                    return Ok(());
+                }
+            }
+        }
 
-            unsafe { miniaudio_load_file_win(self.ptr, ptr) }
-        } else {
-            let c_path = CString::new(path.as_os_str().as_encoded_bytes())?;
+        #[cfg(not(target_os = "windows"))]
+        {
+            let c_path = CString::new(path.as_os_str().to_string_lossy().as_bytes())?;
 
-            unsafe { miniaudio_load_file(self.ptr, c_path.as_ptr()) }
-        };
+            unsafe {
+                if miniaudio_load_file(self.ptr, c_path.as_ptr()) {
+                    return Ok(());
+                }
+            }
+        }
 
-        if ok {
-            Ok(())
-        } else {
-            Err("Failed to load file".into())
+        Err("Failed to load audio file".into())
+    }
+
+    fn equalizer_tick(&mut self) -> Option<Vec<f32>> {
+        let mut bars: *mut c_float = std::ptr::null_mut();
+        let mut count: c_int = 0;
+
+        unsafe {
+            if miniaudio_equalizer_tick(self.ptr, &mut bars, &mut count) {
+                let slice = std::slice::from_raw_parts(bars, count as usize);
+                Some(slice.to_vec())
+            } else {
+                None
+            }
         }
     }
 }

@@ -1,322 +1,346 @@
-#include "kiss_fft.h"
-#include "kiss_fftr.h"
-#include "../audio/miniaudio.h"
-#include <unistd.h>
+#include "../headers/eq_state.h"
 
-#define FFT_SIZE 8192
-#define BAR_COUNT 32
-
-float* miniaudio_equalizer(const char* path, double position_seconds, int* out_bar_count)
+static void eq_state_reset_window(EqState* state)
 {
-    ma_decoder decoder;
-    ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 1, 0);
-    ma_result result = ma_decoder_init_file(path, &config, &decoder);
+	state->window_valid = 0;
+	memset(state->window, 0, sizeof(state->window));
+}
 
-    if (result != MA_SUCCESS)
+static bool eq_state_compute_bars(EqState* state)
+{
+	int output_size = (FFT_SIZE / 2) + 1;
+
+	kiss_fftr(state->cfg, state->window, state->freqdata);
+
+	for (int i = 0; i < output_size; i++)
+	{
+		float real = state->freqdata[i].r;
+		float imag = state->freqdata[i].i;
+        state->magnitude[i] = sqrtf((real * real) + (imag * imag));
+	}
+
+	for (int i = 0; i < BAR_COUNT; i++)
+	{
+		int start_bin = (int)roundf(state->boundaries[i]);
+		int end_bin = (int)roundf(state->boundaries[i + 1]);
+
+		if (start_bin > end_bin)
+		{
+			state->bars[i] = 0.0f;
+			continue;
+		}
+
+		float max = 0.0f;
+		for (int j = start_bin; j < end_bin && j < output_size; j++)
+		{
+			max = fmaxf(max, state->magnitude[j]);
+		}
+
+		state->bars[i] = max;
+	}
+
+	float max_val = 0.0f;
+	for (int i = 0; i < BAR_COUNT; i++)
+	{
+		max_val = fmaxf(max_val, state->bars[i]);
+	}
+
+	if (max_val > 0.0f)
+	{
+		for (int i = 0; i < BAR_COUNT; i++)
+		{
+			state->bars[i] /= max_val;
+		}
+	}
+
+	return true;
+}
+
+void eq_state_uninit(EqState* state)
+{
+    if (state->decoder_active)
     {
-        return NULL;
+        ma_decoder_uninit(&state->decoder);
+        state->decoder_active = false;
     }
 
-    ma_uint32 sample_rate;
-    result = ma_decoder_get_data_format(&decoder, NULL, NULL, &sample_rate, NULL, 0);
-
-    if (result != MA_SUCCESS)
+    if (state->cfg)
     {
-        ma_decoder_uninit(&decoder);
-        return NULL;
+        kiss_fftr_free(state->cfg);
+        state->cfg = NULL;
     }
 
-    ma_uint64 target_frame = (ma_uint64)(position_seconds * sample_rate);
-    result = ma_decoder_seek_to_pcm_frame(&decoder, target_frame);
+    free(state->freqdata);
+    free(state->magnitude);
+    free(state->bars);
+    free(state->boundaries);
 
-    if (result != MA_SUCCESS)
+    memset(state, 0, sizeof(EqState));
+}
+
+bool eq_state_init(EqState* state, const char* path)
+{
+	memset(state, 0, sizeof(EqState));
+
+	ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 1, 0);
+    ma_result result = ma_decoder_init_file(path, &config, &state->decoder);
+
+	if (result != MA_SUCCESS)
+	{
+		return false;
+	}
+
+    state->decoder_active = true;
+
+    ma_uint32 sample_rate = 0;
+    result = ma_decoder_get_data_format(&state->decoder, NULL, NULL, &sample_rate, NULL, 0);
+
+    if (result != MA_SUCCESS || sample_rate == 0)
     {
-        ma_decoder_uninit(&decoder);
-        return NULL;
+        eq_state_uninit(state);
+        return false;
     }
 
-    float* buffer = malloc(FFT_SIZE * sizeof(float));
-
-    if (!buffer)
+    state->step = sample_rate / 10;
+    if (state->step == 0)
     {
-        ma_decoder_uninit(&decoder);
-        return NULL;
+        state->step = 1;
+    }
+    if (state->step > FFT_SIZE)
+    {
+        state->step = FFT_SIZE;
     }
 
-    ma_uint64 frames_read;
-    result = ma_decoder_read_pcm_frames(&decoder, buffer, FFT_SIZE, &frames_read);
-
-    if (frames_read != FFT_SIZE)
+    state->cfg = kiss_fftr_alloc(FFT_SIZE, 0, NULL, NULL);
+    if (!state->cfg)
     {
-        free(buffer);
-        ma_decoder_uninit(&decoder);
-        return NULL;
-    }
-
-    ma_decoder_uninit(&decoder);
-    
-    kiss_fftr_cfg cfg = kiss_fftr_alloc(FFT_SIZE, 0, NULL, NULL);
-
-    if (!cfg)
-    {
-        free(buffer);
-        return NULL;
+        eq_state_uninit(state);
+        return false;
     }
 
     int output_size = (FFT_SIZE / 2) + 1;
-    kiss_fft_cpx* freqdata = malloc(output_size * sizeof(kiss_fft_cpx));
 
-    if (!freqdata)
+    state->freqdata = malloc(output_size * sizeof(kiss_fft_cpx));
+    if (!state->freqdata)
     {
-        free(buffer);
-        kiss_fftr_free(cfg);
-        return NULL;
+        eq_state_uninit(state);
+        return false;
     }
 
-    kiss_fftr(cfg, buffer, freqdata);
-    float* magnitude = malloc(output_size * sizeof(float));
-
-    if (!magnitude)
+    state->magnitude = malloc(output_size * sizeof(float));
+    if (!state->magnitude)
     {
-        free(buffer);
-        kiss_fftr_free(cfg);
-        free(freqdata);
-        return NULL;
+        eq_state_uninit(state);
+        return false;
     }
 
-    for (int i = 0; i < output_size; i++)
+    state->bars = malloc(BAR_COUNT * sizeof(float));
+    if (!state->bars)
     {
-        float real = freqdata[i].r;
-        float imag = freqdata[i].i;
-        magnitude[i] = sqrtf((real * real) + (imag * imag));
+        eq_state_uninit(state);
+        return false;
     }
 
-    free(buffer);
-    kiss_fftr_free(cfg);
-    free(freqdata);
+    state->boundaries = malloc((BAR_COUNT + 1) * sizeof(float));
+    if (!state->boundaries)
+    {
+        eq_state_uninit(state);
+        return false;
+    }
 
     float low = 1.0f;
     float high = (float)(output_size - 1);
-    float* boundaries = malloc((BAR_COUNT + 1) * sizeof(float));
-
-    if (!boundaries)
-    {
-        free(magnitude);
-        return NULL;
-    }
-
     for (int i = 0; i <= BAR_COUNT; i++)
     {
         float fraction = (float)i / BAR_COUNT;
-        boundaries[i] = low * powf(high / low, fraction);
+        state->boundaries[i] = low * powf(high / low, fraction);
     }
 
-    float* bars = malloc(BAR_COUNT * sizeof(float));
-
-    if (!bars)
-    {
-        free(magnitude);
-        free(boundaries);
-        return NULL;
-    }
-
-    for (int i = 0; i < BAR_COUNT; i++)
-    {
-        int start_bin = (int)roundf(boundaries[i]);
-        int end_bin = (int)roundf(boundaries[i + 1]);
-
-        if (start_bin == end_bin)
-        {
-            bars[i] = 0.0f;
-            continue;
-        }
-
-        float max = 0.0f;
-        for (int j = start_bin; j < end_bin; j++)
-        {
-            max = fmaxf(max, magnitude[j]);
-        }
-
-        bars[i] = max;
-    }
-
-    free(magnitude);
-    free(boundaries);
-
-    float max = 0.0f;
-    for (int i = 0; i < BAR_COUNT; i++)
-    {
-        max = fmaxf(max, bars[i]);
-    }
-
-    if (max > 0.0f)
-    {
-        for (int i = 0; i < BAR_COUNT; i++)
-        {
-            bars[i] /= max;
-        }
-    }
-
-    *out_bar_count = BAR_COUNT;
-    return bars;
+    eq_state_reset_window(state);
+    return true;
 }
 
-float* miniaudio_equalizer_win(const wchar_t* path, double position_seconds, int* out_bar_count)
+bool eq_state_init_win(EqState* state, const wchar_t* path)
 {
-    ma_decoder decoder;
-    ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 1, 0);
-    ma_result result = ma_decoder_init_file_w(path, &config, &decoder);
+	memset(state, 0, sizeof(EqState));
 
-    if (result != MA_SUCCESS)
+	ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 1, 0);
+    ma_result result = ma_decoder_init_file_w(path, &config, &state->decoder);
+
+	if (result != MA_SUCCESS)
+	{
+		return false;
+	}
+
+    state->decoder_active = true;
+
+    ma_uint32 sample_rate = 0;
+    result = ma_decoder_get_data_format(&state->decoder, NULL, NULL, &sample_rate, NULL, 0);
+
+    if (result != MA_SUCCESS || sample_rate == 0)
     {
-        return NULL;
+        eq_state_uninit(state);
+        return false;
     }
 
-    ma_uint32 sample_rate;
-    result = ma_decoder_get_data_format(&decoder, NULL, NULL, &sample_rate, NULL, 0);
-
-    if (result != MA_SUCCESS)
+    state->step = sample_rate / 10;
+    if (state->step == 0)
     {
-        ma_decoder_uninit(&decoder);
-        return NULL;
+        state->step = 1;
+    }
+    if (state->step > FFT_SIZE)
+    {
+        state->step = FFT_SIZE;
     }
 
-    ma_uint64 target_frame = (ma_uint64)(position_seconds * sample_rate);
-    result = ma_decoder_seek_to_pcm_frame(&decoder, target_frame);
-
-    if (result != MA_SUCCESS)
+    state->cfg = kiss_fftr_alloc(FFT_SIZE, 0, NULL, NULL);
+    if (!state->cfg)
     {
-        ma_decoder_uninit(&decoder);
-        return NULL;
-    }
-
-    float* buffer = malloc(FFT_SIZE * sizeof(float));
-
-    if (!buffer)
-    {
-        ma_decoder_uninit(&decoder);
-        return NULL;
-    }
-
-    ma_uint64 frames_read;
-    result = ma_decoder_read_pcm_frames(&decoder, buffer, FFT_SIZE, &frames_read);
-
-    if (frames_read != FFT_SIZE)
-    {
-        free(buffer);
-        ma_decoder_uninit(&decoder);
-        return NULL;
-    }
-
-    ma_decoder_uninit(&decoder);
-    
-    kiss_fftr_cfg cfg = kiss_fftr_alloc(FFT_SIZE, 0, NULL, NULL);
-
-    if (!cfg)
-    {
-        free(buffer);
-        return NULL;
+        eq_state_uninit(state);
+        return false;
     }
 
     int output_size = (FFT_SIZE / 2) + 1;
-    kiss_fft_cpx* freqdata = malloc(output_size * sizeof(kiss_fft_cpx));
 
-    if (!freqdata)
+    state->freqdata = malloc(output_size * sizeof(kiss_fft_cpx));
+    if (!state->freqdata)
     {
-        free(buffer);
-        kiss_fftr_free(cfg);
-        return NULL;
+        eq_state_uninit(state);
+        return false;
     }
 
-    kiss_fftr(cfg, buffer, freqdata);
-    float* magnitude = malloc(output_size * sizeof(float));
-
-    if (!magnitude)
+    state->magnitude = malloc(output_size * sizeof(float));
+    if (!state->magnitude)
     {
-        free(buffer);
-        kiss_fftr_free(cfg);
-        free(freqdata);
-        return NULL;
+        eq_state_uninit(state);
+        return false;
     }
 
-    for (int i = 0; i < output_size; i++)
+    state->bars = malloc(BAR_COUNT * sizeof(float));
+    if (!state->bars)
     {
-        float real = freqdata[i].r;
-        float imag = freqdata[i].i;
-        magnitude[i] = sqrtf((real * real) + (imag * imag));
+        eq_state_uninit(state);
+        return false;
     }
 
-    free(buffer);
-    kiss_fftr_free(cfg);
-    free(freqdata);
+    state->boundaries = malloc((BAR_COUNT + 1) * sizeof(float));
+    if (!state->boundaries)
+    {
+        eq_state_uninit(state);
+        return false;
+    }
 
     float low = 1.0f;
     float high = (float)(output_size - 1);
-    float* boundaries = malloc((BAR_COUNT + 1) * sizeof(float));
-
-    if (!boundaries)
-    {
-        free(magnitude);
-        return NULL;
-    }
-
     for (int i = 0; i <= BAR_COUNT; i++)
     {
         float fraction = (float)i / BAR_COUNT;
-        boundaries[i] = low * powf(high / low, fraction);
+        state->boundaries[i] = low * powf(high / low, fraction);
     }
 
-    float* bars = malloc(BAR_COUNT * sizeof(float));
-
-    if (!bars)
-    {
-        free(magnitude);
-        free(boundaries);
-        return NULL;
-    }
-
-    for (int i = 0; i < BAR_COUNT; i++)
-    {
-        int start_bin = (int)roundf(boundaries[i]);
-        int end_bin = (int)roundf(boundaries[i + 1]);
-
-        if (start_bin == end_bin)
-        {
-            bars[i] = 0.0f;
-            continue;
-        }
-
-        float max = 0.0f;
-        for (int j = start_bin; j < end_bin; j++)
-        {
-            max = fmaxf(max, magnitude[j]);
-        }
-
-        bars[i] = max;
-    }
-
-    free(magnitude);
-    free(boundaries);
-
-    float max = 0.0f;
-    for (int i = 0; i < BAR_COUNT; i++)
-    {
-        max = fmaxf(max, bars[i]);
-    }
-
-    if (max > 0.0f)
-    {
-        for (int i = 0; i < BAR_COUNT; i++)
-        {
-            bars[i] /= max;
-        }
-    }
-
-    *out_bar_count = BAR_COUNT;
-    return bars;
+    eq_state_reset_window(state);
+    return true;
 }
 
-void miniaudio_free_equalizer(float* equalizer)
+// Reads the next chunk of frames sequentially, advances the sliding window,
+// and runs the FFT. Returns false if the decoder isn't active, the window
+// isn't full yet, or we've hit the end of the file with no data.
+//
+// On success, *out_bars points to state->bars (BAR_COUNT floats). The caller
+// must NOT free this pointer, it is owned by EqState.
+bool eq_state_tick(EqState* state, float** out_bars, int* out_bar_count)
 {
-    free(equalizer);
+    *out_bars = NULL;
+    *out_bar_count = 0;
+
+    if (!state->decoder_active)
+    {
+        return false;
+    }
+
+    ma_uint64 to_read = state->step;
+    float* read_dest = NULL;
+
+    if (state->window_valid < FFT_SIZE)
+    {
+        // First few ticks: fill the window from the left
+        ma_uint64 space = FFT_SIZE - state->window_valid;
+        if (to_read > space)
+        {
+            to_read = space;
+        }
+        read_dest = state->window + state->window_valid;
+    }
+    else
+    {
+        // Window is full: shift left by step, append new frames at the end
+        memmove(state->window, state->window + state->step, (FFT_SIZE - state->step) * sizeof(float));
+        read_dest = state->window + (FFT_SIZE - state->step);
+    }
+
+    ma_uint64 frames_read = 0;
+    ma_result result = ma_decoder_read_pcm_frames(&state->decoder, read_dest, to_read, &frames_read);
+
+    if (frames_read == 0)
+    {
+        if (result != MA_SUCCESS && result != MA_AT_END)
+        {
+            return false;
+        }
+
+        if (state->window_valid == 0)
+        {
+            return false;
+        }
+    }
+
+    if (state->window_valid < FFT_SIZE)
+    {
+        state->window_valid += frames_read;
+        if (state->window_valid > FFT_SIZE)
+        {
+            state->window_valid = FFT_SIZE;
+        }
+    }
+
+    if (state->window_valid < FFT_SIZE)
+    {
+        return false;
+    }
+
+    eq_state_compute_bars(state);
+
+    *out_bars = state->bars;
+    *out_bar_count = BAR_COUNT;
+    return true;
+}
+
+// Seeks the decoder to an absolute position in seconds and clears the window
+// so the next tick refills it. This is the ONLY place we ever seek, and it
+// should only be called on user scrub or resume from pause.
+bool eq_state_seek(EqState* state, double seconds)
+{
+    if (!state->decoder_active)
+    {
+        return false;
+    }
+
+    ma_uint32 sample_rate = 0;
+    ma_result result = ma_decoder_get_data_format(&state->decoder, NULL, NULL, &sample_rate, NULL, 0);
+
+    if (result != MA_SUCCESS || sample_rate == 0)
+    {
+        return false;
+    }
+
+    ma_uint64 target_frame = (ma_uint64)(seconds * (double)sample_rate);
+    result = ma_decoder_seek_to_pcm_frame(&state->decoder, target_frame);
+
+    if (result != MA_SUCCESS)
+    {
+        return false;
+    }
+
+    eq_state_reset_window(state);
+    return true;
 }

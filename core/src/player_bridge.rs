@@ -20,6 +20,7 @@ use crate::mpris::repeat_mode_to_loop_status;
 use crate::mpris::spawn_mpris;
 use crate::mpris::track_id_for_path;
 use crate::mpris::write_art_cache;
+use crate::player_bridge::PlayerEvent::EqualizerReady;
 use crate::state::restore_state;
 use crate::utils::DecodedSong;
 use crate::utils::expand_tilde;
@@ -172,26 +173,19 @@ impl TickState {
         let current_position = local_backend.get_current_position().as_secs();
         let _ = mpris_tx.try_send(MprisCommand::UpdatePosition(current_position));
 
+        let eq_bars = if !is_paused {
+            local_backend.player.equalizer_tick()
+        } else {
+            None
+        };
+
         if let Some(track) = local_backend.get_current_song() {
             let title = track.title.clone();
             let artist = track.artist.clone();
             let total_duration = track.duration.as_secs();
 
-            if !local_backend.is_paused() {
-                let path = track.path.clone();
-                let position = local_backend.get_current_position().as_secs_f64();
-                let tx = player_tx.clone();
-
-                tokio::spawn(async move {
-                    let result = tokio::task::spawn_blocking(move || {
-                        MiniAudioPlayer::get_equalizer(&path, position)
-                    })
-                    .await;
-
-                    if let Ok(Ok(bars)) = result {
-                        let _ = tx.try_send(PlayerEvent::EqualizerReady(bars));
-                    }
-                });
+            if let Some(bars) = eq_bars {
+                let _ = player_tx.try_send(EqualizerReady(bars));
             }
 
             let current_album = (track.album_title.clone(), track.album_artist.clone());
