@@ -10,6 +10,13 @@ use crate::local_backend::Song;
 use crate::player_bridge::PlayerCommand;
 use mlua::Lua;
 
+pub struct ScriptState {
+    pub is_paused: bool,
+    pub volume: f32,
+    pub shuffle: bool,
+    pub repeat: String,
+}
+
 /// A playback event reported from `player_bridge`'s tick loop to the
 /// dedicated script runtime thread (see `main.rs`), which turns each
 /// variant into the matching `ScriptRuntime` call.
@@ -145,8 +152,12 @@ pub fn build_runtime(
 ) -> ScriptRuntime {
     let lua = unsafe { Lua::unsafe_new() };
 
-    if let Err(e) = register_set_property(&lua, tx) {
+    if let Err(e) = register_set_property(&lua, tx.clone()) {
         eprintln!("Could not register set_property: {e}");
+    }
+
+    if let Err(e) = register_playback_commands(&lua, tx) {
+        eprintln!("Could not register playback commands: {e}");
     }
 
     if let Err(e) = lua.load(contents).exec() {
@@ -221,4 +232,80 @@ fn register_set_property(
     )?;
 
     lua.globals().set("set_property", func)
+}
+
+/// Registers the `player` table as a Lua global, giving scripts direct
+/// playback control (`player.play()`, `player.next_track()`, etc.).
+fn register_playback_commands(
+    lua: &Lua,
+    tx: tokio::sync::mpsc::Sender<PlayerCommand>,
+) -> mlua::Result<()> {
+    use crate::player_bridge::PlayerCommand::*;
+
+    let player_table = lua.create_table()?;
+
+    let tx_clone = tx.clone();
+    let toggle_play_func = lua.create_function(move |_, ()| {
+        let _ = tx_clone.try_send(TogglePlay);
+        Ok(())
+    })?;
+    player_table.set("toggle_play", toggle_play_func)?;
+
+    let tx_clone = tx.clone();
+    let play_func = lua.create_function(move |_, ()| {
+        let _ = tx_clone.try_send(Play);
+        Ok(())
+    })?;
+    player_table.set("play", play_func)?;
+
+    let tx_clone = tx.clone();
+    let pause_func = lua.create_function(move |_, ()| {
+        let _ = tx_clone.try_send(Pause);
+        Ok(())
+    })?;
+    player_table.set("pause", pause_func)?;
+
+    let tx_clone = tx.clone();
+    let next_func = lua.create_function(move |_, ()| {
+        let _ = tx_clone.try_send(NextTrack);
+        Ok(())
+    })?;
+    player_table.set("next_track", next_func)?;
+
+    let tx_clone = tx.clone();
+    let prev_func = lua.create_function(move |_, ()| {
+        let _ = tx_clone.try_send(PrevTrack);
+        Ok(())
+    })?;
+    player_table.set("prev_track", prev_func)?;
+
+    let tx_clone = tx.clone();
+    let seek_func = lua.create_function(move |_, secs: usize| {
+        let _ = tx_clone.try_send(SetPosition(secs));
+        Ok(())
+    })?;
+    player_table.set("seek", seek_func)?;
+
+    let tx_clone = tx.clone();
+    let vol_func = lua.create_function(move |_, vol: f32| {
+        let _ = tx_clone.try_send(SetVolume(vol));
+        Ok(())
+    })?;
+    player_table.set("set_volume", vol_func)?;
+
+    let tx_clone = tx.clone();
+    let repeat_func = lua.create_function(move |_, ()| {
+        let _ = tx_clone.try_send(ToggleRepeat);
+        Ok(())
+    })?;
+    player_table.set("toggle_repeat", repeat_func)?;
+
+    let tx_clone = tx.clone();
+    let shuffle_func = lua.create_function(move |_, ()| {
+        let _ = tx_clone.try_send(ToggleShuffle);
+        Ok(())
+    })?;
+    player_table.set("toggle_shuffle", shuffle_func)?;
+
+    lua.globals().set("player", player_table)
 }
