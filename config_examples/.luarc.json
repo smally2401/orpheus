@@ -12,6 +12,9 @@
         "playlists",
         "list_music_files",
         "set_property",
+        "player",
+        "defer",
+        "every",
         "on_startup",
         "on_song_change",
         "on_song_halfway"

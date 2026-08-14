@@ -278,6 +278,61 @@ Malformed calls (wrong value type, invalid hex, unknown property) are
 logged and ignored, so a mistake here can't crash a script or interrupt
 playback.
 
+### `player`
+
+Scripts can control playback directly via the `player` table, from any
+scripting context (`on_startup`, `on_song_change`, `on_song_halfway`, or
+any function you define and call yourself).
+
+Available functions:
+
+| Function | Description |
+| --- | --- |
+| `player.play()` | Resume playback. |
+| `player.pause()` | Pause playback. |
+| `player.toggle_play()` | Toggle between playing and paused. |
+| `player.next_track()` | Skip to the next track in the queue. |
+| `player.prev_track()` | Go back to the previous track in the queue. |
+| `player.seek(seconds)` | Jump to an absolute position (in seconds) within the current track. |
+| `player.seek_by(seconds)` | Seek relative to the current position. Negative values seek backward. |
+| `player.set_volume(volume)` | Set volume, from `0.0` to `1.0`. |
+| `player.toggle_repeat()` | Cycle repeat mode: off -> queue -> track -> off. |
+| `player.toggle_shuffle()` | Toggle shuffle on/off. |
+| `player.current_song()` | Returns the currently playing song as a table (`title`, `artist`, `album`), or `nil` if nothing's played yet. |
+
+All `player` functions except `current_song` return nothing. Malformed 
+calls (wrong argument type or count) raise a Lua error the normal way.
+Playback commands themselves fail silently if issued in an invalid state
+(e.g. seeking with no track loaded), rather than crashing the script.
+
+### `defer` and `every`
+
+Scripts can schedule code to run later, from any scripting context, using
+two global functions:
+
+```lua
+defer(seconds, fn) -> nil
+every(seconds, fn) -> nil
+```
+
+`defer` runs `fn` once, after `seconds` have passed. `every` runs `fn`
+repeatedly, once every `seconds`, indefinitely.
+
+```lua
+function on_startup()
+    every(60, function()
+        print("still playing: " .. player.current_song())
+    end)
+end
+```
+
+`seconds` accepts fractional values (e.g. `0.5`). Timer callbacks can call
+any other scripting API, including `player.*` and `set_property`. Errors
+raised inside a timer callback are logged and otherwise ignored, same as
+`on_song_change`/`on_song_halfway`: a bug in one timer can't crash the
+script or stop other timers from firing. An `every` timer keeps
+re-scheduling itself even if a given firing errors.
+
 ### A note on trust
 
 Unlike the rest of `config.lua`, code inside `on_startup`, `on_song_change` 

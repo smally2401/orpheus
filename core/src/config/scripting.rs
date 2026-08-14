@@ -9,13 +9,27 @@ use crate::config::theme::is_valid_hex_color;
 use crate::local_backend::Song;
 use crate::player_bridge::PlayerCommand;
 use mlua::Lua;
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::time::Instant;
+use std::time::Duration;
 
-pub struct ScriptState {
-    pub is_paused: bool,
-    pub volume: f32,
-    pub shuffle: bool,
-    pub repeat: String,
+/// A single pending or repeating timer, registered via `defer`/`every`.
+pub(super) struct Timer {
+    deadline: Instant,
+    /// `Some(interval)` for `evert`, re-armed after firing. `None` for
+    /// `defer`, removed after firing once.
+    interval: Option<Duration>,
+    callback: mlua::RegistryKey,
 }
+
+/// Shared, script-thread-only queue of pending timers
+type TimerQueue = Rc<RefCell<Vec<Timer>>>;
+
+/// Shared, script-thread-only cache of the currently playing song, kept
+/// in sync by `ScriptRuntime::fire_song_change` and read synchronously by
+/// `player.current_song()`.
+type CurrentSongCell = Rc<RefCell<Option<CurrentSong>>>;
 
 /// A playback event reported from `player_bridge`'s tick loop to the
 /// dedicated script runtime thread (see `main.rs`), which turns each
@@ -33,6 +47,8 @@ pub struct ScriptRuntime {
     lua: Lua,
     on_song_change: Option<mlua::RegistryKey>,
     on_song_halfway: Option<mlua::RegistryKey>,
+    current_song: CurrentSongCell,
+    timers: TimerQueue,
 }
 
 impl ScriptRuntime {
@@ -40,7 +56,7 @@ impl ScriptRuntime {
     /// capturing `on_song_change` and `on_song_halfway` if the script
     /// defined them. Either, both, or neither may be present: each is
     /// independently optional.
-    pub(super) fn new(lua: Lua) -> Self {
+    pub(super) fn new(lua: Lua, current_song: CurrentSongCell, timers: TimerQueue) -> Self {
         let on_song_change = lua
             .globals()
             .get::<mlua::Function>("on_song_change")
@@ -57,13 +73,18 @@ impl ScriptRuntime {
             lua,
             on_song_change,
             on_song_halfway,
+            current_song,
+            timers,
         }
     }
 
-    /// Calls the user's `on_song_change(song)`, if one was registered.
-    /// Errors from the script are logged and otherwise ignored, so a bug
-    /// in someone's `config.lua` can't interrupt playback.
+    /// Calls the user's `on_song_change(song)`, if one was registered, and
+    /// updates the cached `current_song` so `player.current_song()` reflects
+    /// the new track for any script code that runs afterward (including
+    /// from unrelated callbacks, not just this hook).
     pub fn fire_song_change(&self, song: CurrentSong) {
+        *self.current_song.borrow_mut() = Some(song.clone());
+
         let Some(key) = &self.on_song_change else {
             return;
         };
@@ -99,6 +120,43 @@ impl ScriptRuntime {
 
         if let Err(e) = func.call::<()>(()) {
             eprintln!("Error in on_song_halfway: {e}");
+        }
+    }
+
+    /// The `Instant` of the soonest pending timer, if any. Used by the
+    /// script thread's main loop to compute how long to block on
+    /// `recv_timeout` before it needs to wake up and check for due timers.
+    pub fn next_deadline(&self) -> Option<Instant> {
+        self.timers.borrow().iter().map(|t| t.deadline).min()
+    }
+
+    /// Fires every timer whose deadline has passed, re-arming `every`
+    /// timers for their next interval. Errors from a timer callback are
+    /// logged and otherwise ignored, same as the other hooks.
+    pub fn fire_due_timers(&self) {
+        let now = Instant::now();
+
+        let (due, still_pending): (Vec<_>, Vec<_>) =
+            self.timers.borrow_mut().drain(..).partition(|t| t.deadline <= now);
+        *self.timers.borrow_mut() = still_pending;
+
+        for timer in due {
+            if let Ok(func) = self.lua.registry_value::<mlua::Function>(&timer.callback)
+                && let Err(e) = func.call::<()>(())
+            {
+                eprintln!("Error in deferred callback: {e}");
+            }
+
+            if let Some(interval) = timer.interval {
+                self.timers.borrow_mut().push(Timer {
+                    deadline: now + interval,
+                    interval: Some(interval),
+                    callback: timer.callback,
+                });
+
+            } else {
+                let _ = self.lua.remove_registry_value(timer.callback);
+            }
         }
     }
 }
@@ -151,13 +209,19 @@ pub fn build_runtime(
     tx: tokio::sync::mpsc::Sender<PlayerCommand>,
 ) -> ScriptRuntime {
     let lua = unsafe { Lua::unsafe_new() };
+    let current_song: CurrentSongCell = Rc::new(RefCell::new(None));
+    let timers: TimerQueue = Rc::new(RefCell::new(Vec::new()));
 
     if let Err(e) = register_set_property(&lua, tx.clone()) {
         eprintln!("Could not register set_property: {e}");
     }
 
-    if let Err(e) = register_playback_commands(&lua, tx) {
+    if let Err(e) = register_playback_commands(&lua, tx, current_song.clone()) {
         eprintln!("Could not register playback commands: {e}");
+    }
+
+    if let Err(e) = register_timers(&lua, timers.clone()) {
+        eprintln!("Could not register timers: {e}");
     }
 
     if let Err(e) = lua.load(contents).exec() {
@@ -170,7 +234,7 @@ pub fn build_runtime(
         eprintln!("Error in on_startup: {e}");
     }
 
-    ScriptRuntime::new(lua)
+    ScriptRuntime::new(lua, current_song, timers)
 }
 
 /// Registers `set_property(element, property, value) -> nil` as a Lua
@@ -239,6 +303,7 @@ fn register_set_property(
 fn register_playback_commands(
     lua: &Lua,
     tx: tokio::sync::mpsc::Sender<PlayerCommand>,
+    current_song: CurrentSongCell,
 ) -> mlua::Result<()> {
     use crate::player_bridge::PlayerCommand::*;
 
@@ -280,11 +345,18 @@ fn register_playback_commands(
     player_table.set("prev_track", prev_func)?;
 
     let tx_clone = tx.clone();
-    let seek_func = lua.create_function(move |_, secs: usize| {
-        let _ = tx_clone.try_send(SetPosition(secs));
+    let seek_func = lua.create_function(move |_, pos: usize| {
+        let _ = tx_clone.try_send(SetPosition(pos));
         Ok(())
     })?;
     player_table.set("seek", seek_func)?;
+
+    let tx_clone = tx.clone();
+    let seek_by_func = lua.create_function(move |_, secs: i64| {
+        let _ = tx_clone.try_send(SeekBy(secs));
+        Ok(())
+    })?;
+    player_table.set("seek_by", seek_by_func)?;
 
     let tx_clone = tx.clone();
     let vol_func = lua.create_function(move |_, vol: f32| {
@@ -307,5 +379,42 @@ fn register_playback_commands(
     })?;
     player_table.set("toggle_shuffle", shuffle_func)?;
 
+    let current_song_func = lua.create_function(move |lua, ()| {
+        match current_song.borrow().clone() {
+            Some(song) => song.into_lua_table(lua).map(mlua::Value::Table),
+            None => Ok(mlua::Value::Nil),
+        }
+    })?;
+    player_table.set("current_song", current_song_func)?;
+
     lua.globals().set("player", player_table)
+}
+
+/// Registers the `defer` and `every` functions.
+fn register_timers(lua: &Lua, timers: TimerQueue) -> mlua::Result<()> {
+    let timers_clone = timers.clone();
+    let defer_func = lua.create_function(move |lua, (secs, func): (f64, mlua::Function)| {
+        let key = lua.create_registry_value(func)?;
+        timers_clone.borrow_mut().push(Timer {
+            deadline: Instant::now() + Duration::from_secs_f64(secs),
+            interval: None,
+            callback: key,
+        });
+        Ok(())
+    })?;
+    lua.globals().set("defer", defer_func)?;
+
+    let every_func = lua.create_function(move |lua, (secs, func): (f64, mlua::Function)| {
+        let key = lua.create_registry_value(func)?;
+        let interval = Duration::from_secs_f64(secs);
+        timers.borrow_mut().push(Timer {
+            deadline: Instant::now() + interval,
+            interval: Some(interval),
+            callback: key,
+        });
+        Ok(())
+    })?;
+    lua.globals().set("every", every_func)?;
+
+    Ok(())
 }

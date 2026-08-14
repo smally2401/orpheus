@@ -74,6 +74,7 @@ pub enum PlayerCommand {
     SetPosition(usize),
     SeekForward,
     SeekBackward,
+    SeekBy(i64),
     SetVolume(f32),
     VolumeUp,
     VolumeDown,
@@ -143,11 +144,7 @@ impl TickState {
     /// changes to the script runtime, and pushes updated track info
     /// (title, artist, position, art) to the UI. Called on a fixed
     /// interval from `spawn_player_bridge`'s main loop.
-    fn on_tick(
-        &mut self,
-        local_backend: &mut LocalBackend,
-        player_tx: &mpsc::Sender<PlayerEvent>,
-    ) {
+    fn on_tick(&mut self, local_backend: &mut LocalBackend, player_tx: &mpsc::Sender<PlayerEvent>) {
         if local_backend.track_finished() && !self.queue_exhausted {
             self.queue_exhausted = !local_backend.next(false).unwrap_or(false);
         }
@@ -345,6 +342,9 @@ fn handle_command(
         SeekBackward => {
             seek_by(local_backend, SEEK_STEP, true);
         }
+        SeekBy(secs) => {
+            seek_by(local_backend, secs.unsigned_abs() as u64, *secs < 0);
+        }
         SetVolume(vol) => {
             set_volume_and_update_ui(local_backend, *vol, event_tx);
         }
@@ -387,11 +387,7 @@ fn handle_command(
     }
 }
 
-fn seek_by(
-    backend: &mut LocalBackend,
-    offset_secs: u64,
-    backwards: bool,
-) {
+fn seek_by(backend: &mut LocalBackend, offset_secs: u64, backwards: bool) {
     let current_pos = backend.get_current_position().as_secs();
     let new_pos = if backwards {
         current_pos.saturating_sub(offset_secs)

@@ -12,6 +12,8 @@ All notable changes to Orpheus will be documented in this file.
 - Lua functions:
   - set_property
   - on_startup
+  - player.*
+  - defer and every
 
 ### Fixed
 
@@ -28,7 +30,6 @@ All notable changes to Orpheus will be documented in this file.
 - When a track ends naturally, next track fires on_song_halfway instantly
 - Control buttons don't render correctly if user doesn't have a font
   that supports them installed
-- Audio plays for a bit when launching the app
 
 ---
 

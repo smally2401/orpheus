@@ -19,9 +19,9 @@
 ---@field sort boolean?
 ---@field art string?
 
---- A snapshot of the currently playing song, passed to `on_song_change`.
---- All three fields are always present together, there's no
---- partial/optional version of this table.
+--- A snapshot of the currently playing song, passed to `on_song_change`
+--- and returned by `player.current_song()`. All three fields are always
+--- present together.
 ---@class OrpheusCurrentSong
 ---@field title string
 ---@field artist string
@@ -76,6 +76,65 @@ function list_music_files(relative_dir) end
 ---@param property "bg"|"text_color"|"text_size"
 ---@param value string|number
 function set_property(element, property, value) end
+
+--- Direct playback control, callable from any scripting context
+--- (`on_startup`, `on_song_change`, `on_song_halfway`, timer callbacks,
+--- or any function you define and call yourself).
+---@class OrpheusPlayer
+local OrpheusPlayer = {}
+
+--- Resume playback.
+function OrpheusPlayer.play() end
+
+--- Pause playback.
+function OrpheusPlayer.pause() end
+
+--- Toggle between playing and paused.
+function OrpheusPlayer.toggle_play() end
+
+--- Skip to the next track in the queue.
+function OrpheusPlayer.next_track() end
+
+--- Go back to the previous track in the queue.
+function OrpheusPlayer.prev_track() end
+
+--- Jump to an absolute position (in seconds) within the current track.
+---@param seconds number
+function OrpheusPlayer.seek(seconds) end
+
+--- Seek relative to the current position. Negative values seek backward.
+---@param seconds number
+function OrpheusPlayer.seek_by(seconds) end
+
+--- Set volume, from 0.0 to 1.0
+---@param volume number
+function OrpheusPlayer.set_volume(volume) end
+
+--- Cycle repeat mode: off -> queue -> track -> off.
+function OrpheusPlayer.toggle_repeat() end
+
+--- Toggle shuffle on/off.
+function OrpheusPlayer.toggle_shuffle() end
+
+--- Returns the currently playing song, or nil if nothing's played yet
+--- this session.
+---@return OrpheusCurrentSong?
+function OrpheusPlayer.current_song() end
+
+---@type OrpheusPlayer
+player = {}
+
+--- Runs `fn` once, after `seconds` have passed. `seconds` accepts
+--- fracntional values.
+---@param seconds number
+---@param fn fun()
+function defer(seconds, fn) end
+
+--- Runs `fn` repeatedly, once every `seconds`, indefinitely. `seconds`
+--- accepts fractional values.
+---@param seconds number
+---@param fn fun()
+function every(seconds, fn) end
 
 --- Called once by Orpheus at startup, after config.lua has finished
 --- running. Define this yourself to, for example, set initial theme 

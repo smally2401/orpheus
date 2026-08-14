@@ -40,6 +40,9 @@ use slint::Model;
 use slint::ModelRc;
 use slint::VecModel;
 use std::collections::HashMap;
+use std::sync::mpsc::RecvTimeoutError;
+use std::time::Duration;
+use std::time::Instant;
 use tokio::sync::mpsc::Sender;
 
 slint::include_modules!();
@@ -194,22 +197,39 @@ fn build_player_event_thread(
 /// `fire_song_change` is called after receiving a message so a script's
 /// `on_song_change` sees consistent state if it calls `current_song()`
 /// itself.
+/// 
+/// The loop blocks on `script_rx` with a timeout rather than a plain
+/// `recv`, so it can wake up in time to fire pending `defer`/`every`
+/// timers even when no `ScriptEvent` arrives (see
+/// `ScriptRuntime::next_deadline`/`fire_due_timers`). Falls back to a
+/// long, arbitrary timeout when no timers are pending, just to avoid
+/// blocking forever. Timers are checked after every wake, whether it was
+/// a real event or a timeout, so a `ScriptEvent` arriving right before a
+/// timer's deadline doesn't delay that timer any further than necessary.
 fn build_script_runtime_thread(
     contents: String,
     script_rx: std::sync::mpsc::Receiver<ScriptEvent>,
     tx: tokio::sync::mpsc::Sender<PlayerCommand>,
 ) {
+    use orpheus_core::config::scripting::ScriptEvent::*;
+
     std::thread::spawn(move || {
         let script_runtime = build_runtime(&contents, tx);
-        while let Ok(event) = script_rx.recv() {
-            match event {
-                ScriptEvent::SongChanged(song) => {
-                    script_runtime.fire_song_change(song);
-                }
-                ScriptEvent::SongHalfway => {
-                    script_runtime.fire_song_halfway();
-                }
+        
+        loop {
+            let timeout = script_runtime
+                .next_deadline()
+                .map(|d| d.saturating_duration_since(Instant::now()))
+                .unwrap_or(Duration::from_secs(3600));
+
+            match script_rx.recv_timeout(timeout) {
+                Ok(SongChanged(song)) => script_runtime.fire_song_change(song),
+                Ok(SongHalfway) => script_runtime.fire_song_halfway(),
+                Err(RecvTimeoutError::Timeout) => {}
+                Err(RecvTimeoutError::Disconnected) => break,
             }
+
+            script_runtime.fire_due_timers();
         }
     });
 }
