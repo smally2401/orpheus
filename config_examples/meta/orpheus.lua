@@ -43,9 +43,6 @@
 --- The shape `on_song_change` must have if you define it.
 ---@alias OrpheusSongChangeCallback fun(song: OrpheusCurrentSong)
 
---- The shape `on_song_halfway` must have if you define it.
----@alias OrpheusSongHalfwayCallback fun()
-
 --- Path to your music library. `~` is expanded to your home directory.
 ---@type string
 music_dir = "~/Music"
@@ -158,11 +155,3 @@ on_startup = nil
 --- if left undefined.
 ---@type OrpheusSongChangeCallback?
 on_song_change = nil
-
---- Called by Orpheus partway through the current track (roughly halfway
---- through its duration). Define this yourself if you want to react at
---- that point specifically, e.g. Last.fm-style scrobbling, which requires
---- waiting until partway through a track before submitting a scrobble.
---- Not called if left undefined.
----@type OrpheusSongHalfwayCallback?
-on_song_halfway = nil

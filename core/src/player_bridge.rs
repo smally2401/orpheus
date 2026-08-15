@@ -112,11 +112,6 @@ struct TickState {
     /// new queue. Reset to `false` whenever a command changes the queue
     /// (see `handle_command`).
     queue_exhausted: bool,
-    /// True once `ScriptEvent::SongHalfway` has been sent for the
-    /// currently playing track, so it only fires once per track. Reset
-    /// to `false` whenever the track changes (see the `last_song_path`
-    /// check below).
-    halfway_fired: bool,
     /// Reports song changes to the dedicated script runtime thread (see
     /// `main.rs`), so `config.lua`'s `on_song_change` can be called and
     /// `current_song()` can stay up to date. Sent alongside the existing
@@ -139,7 +134,6 @@ impl TickState {
             last_song_path: None,
             was_paused: true,
             queue_exhausted: true,
-            halfway_fired: false,
             script_tx,
             playback_state,
         }
@@ -194,16 +188,9 @@ impl TickState {
 
             if self.last_song_path.as_ref() != Some(&track.path) {
                 self.last_song_path = Some(track.path.clone());
-                self.halfway_fired = false;
 
                 let current_song = CurrentSong::from(track.as_ref());
                 let _ = self.script_tx.send(ScriptEvent::SongChanged(current_song));
-            }
-
-            if !self.halfway_fired && total_duration > 0 && current_position >= (total_duration / 2)
-            {
-                self.halfway_fired = true;
-                let _ = self.script_tx.send(ScriptEvent::SongHalfway);
             }
 
             let track_art = track.art.clone();

@@ -16,7 +16,6 @@
         "defer",
         "every",
         "on_startup",
-        "on_song_change",
-        "on_song_halfway"
+        "on_song_change"
     ]
 }

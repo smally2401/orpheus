@@ -1,3 +1,5 @@
+-- Simple showcase of the playlists feature.
+
 music_dir = "~/my-stuff/music"
 
 playlists = {

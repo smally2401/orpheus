@@ -217,7 +217,6 @@ fn build_script_runtime_thread(
 
             match script_rx.recv_timeout(timeout) {
                 Ok(SongChanged(song)) => script_runtime.fire_song_change(song),
-                Ok(SongHalfway) => script_runtime.fire_song_halfway(),
                 Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => break,
             }

@@ -21,7 +21,6 @@ See the `config_examples/` folder for runnable examples.
 | `playlists` | table | `{}` | A list of playlist definitions. See below. |
 | `on_startup` | function | *(none)* | Called once at startup. See "Scripting hooks" below. |
 | `on_song_change` | function | *(none)* | Called whenever the current track changes. See "Scripting hooks" below. |
-| `on_song_halfway` | function | *(none)* | Called partway through the current track. See "Scripting hooks" below. |
 
 Both `window_width` and `window_height` must exist for them to take effect.
 
@@ -226,23 +225,6 @@ end
 ```
 
 `song` has the fields `title`, `artist` and `album`. Leaving `on_song_change`
-undefined is fine, it's simply never called.
-
-### `on_song_halfway`
-
-Define this as a top-level function in `config.lua` to be notified partway
-through the current track (roughly halfway through its duration). Takes no
-arguments.
-
-```lua
-function on_song_halfway()
-    print("halfway through the current track")
-end
-```
-
-This exists primarily for services like Last.fm, whose scrobbling rules
-require waiting until partway through a track before submitting a scrobble
-(rather than scrobbling immediately on `on_song_change`). Leaving it
 undefined is fine, it's simply never called.
 
 ### `set_property`

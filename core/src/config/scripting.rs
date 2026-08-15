@@ -60,7 +60,6 @@ type TimerQueue = Rc<RefCell<Vec<Timer>>>;
 /// variant into the matching `ScriptRuntime` call.
 pub enum ScriptEvent {
     SongChanged(CurrentSong),
-    SongHalfway,
 }
 
 /// Owns the `Lua` instance for the lifetime of the app, plus whatever
@@ -70,7 +69,6 @@ pub enum ScriptEvent {
 pub struct ScriptRuntime {
     lua: Lua,
     on_song_change: Option<mlua::RegistryKey>,
-    on_song_halfway: Option<mlua::RegistryKey>,
     timers: TimerQueue,
 }
 
@@ -86,16 +84,9 @@ impl ScriptRuntime {
             .ok()
             .and_then(|f| lua.create_registry_value(f).ok());
 
-        let on_song_halfway = lua
-            .globals()
-            .get::<mlua::Function>("on_song_halfway")
-            .ok()
-            .and_then(|f| lua.create_registry_value(f).ok());
-
         Self {
             lua,
             on_song_change,
-            on_song_halfway,
             timers,
         }
     }
@@ -120,26 +111,6 @@ impl ScriptRuntime {
 
         if let Err(e) = func.call::<()>(table) {
             eprintln!("Error in on_song_change: {e}");
-        }
-    }
-
-    /// Calls the user's `on_song_halfway()`, if one was registered. Takes
-    /// no arguments, unlike `fire_song_change`, since by the time this
-    /// fires the script already knows what's playing from the
-    /// `on_song_change` call it received earlier for the same track.
-    /// Errors from the script are logged and otherwise ignored, so a bug
-    /// in someone's `config.lua` can't interrupt playback.
-    pub fn fire_song_halfway(&self) {
-        let Some(key) = &self.on_song_halfway else {
-            return;
-        };
-
-        let Ok(func) = self.lua.registry_value::<mlua::Function>(key) else {
-            return;
-        };
-
-        if let Err(e) = func.call::<()>(()) {
-            eprintln!("Error in on_song_halfway: {e}");
         }
     }
 

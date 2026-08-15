@@ -28,7 +28,6 @@ All notable changes to Orpheus will be documented in this file.
 
 ### Issues
 
-- When a track ends naturally, next track fires on_song_halfway instantly
 - Control buttons don't render correctly if user doesn't have a font
   that supports them installed
 
