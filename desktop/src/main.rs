@@ -29,6 +29,7 @@ use orpheus_core::config::WindowState;
 use orpheus_core::config::keys::KeyAction;
 use orpheus_core::config::keys::KeyCombo;
 use orpheus_core::config::load_config;
+use orpheus_core::config::scripting::PlaybackStateHandle;
 use orpheus_core::config::scripting::ScriptEvent;
 use orpheus_core::config::scripting::build_runtime;
 use orpheus_core::config::theme::UiElement;
@@ -55,7 +56,7 @@ async fn main() -> Result<(), slint::PlatformError> {
 
     let (config, contents) = load_config();
 
-    let (tx, player_event_rx, library, playlists) = spawn_player_bridge(
+    let (tx, player_event_rx, library, playlists, playback_state) = spawn_player_bridge(
         &config.music_dir,
         config.playlists,
         config.default_volume,
@@ -63,7 +64,7 @@ async fn main() -> Result<(), slint::PlatformError> {
     );
 
     build_player_event_thread(&ui, player_event_rx);
-    build_script_runtime_thread(contents, script_rx, tx.clone());
+    build_script_runtime_thread(contents, script_rx, tx.clone(), playback_state);
 
     apply_window_config(&ui, &config.window_state);
     ui.set_current_volume(config.default_volume);
@@ -197,7 +198,7 @@ fn build_player_event_thread(
 /// `fire_song_change` is called after receiving a message so a script's
 /// `on_song_change` sees consistent state if it calls `current_song()`
 /// itself.
-/// 
+///
 /// The loop blocks on `script_rx` with a timeout rather than a plain
 /// `recv`, so it can wake up in time to fire pending `defer`/`every`
 /// timers even when no `ScriptEvent` arrives (see
@@ -210,12 +211,13 @@ fn build_script_runtime_thread(
     contents: String,
     script_rx: std::sync::mpsc::Receiver<ScriptEvent>,
     tx: tokio::sync::mpsc::Sender<PlayerCommand>,
+    playback_state: PlaybackStateHandle,
 ) {
     use orpheus_core::config::scripting::ScriptEvent::*;
 
     std::thread::spawn(move || {
-        let script_runtime = build_runtime(&contents, tx);
-        
+        let script_runtime = build_runtime(&contents, tx, playback_state);
+
         loop {
             let timeout = script_runtime
                 .next_deadline()

@@ -11,8 +11,37 @@ use crate::player_bridge::PlayerCommand;
 use mlua::Lua;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::Instant;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
+use std::time::Instant;
+
+/// Live playback state, updated every tick by `player_bridge`'s
+/// `TickState::on_tick` and read syncrhonously by `player.get_state()`.
+#[derive(Clone)]
+pub struct PlaybackState {
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub position: u64,
+    pub duration: u64,
+    pub paused: bool,
+}
+
+pub type PlaybackStateHandle = Arc<Mutex<Option<PlaybackState>>>;
+
+impl PlaybackState {
+    fn into_lua_table(self, lua: &Lua) -> mlua::Result<mlua::Table> {
+        let table = lua.create_table()?;
+        table.set("title", self.title)?;
+        table.set("artist", self.artist)?;
+        table.set("album", self.album)?;
+        table.set("position", self.position)?;
+        table.set("duration", self.duration)?;
+        table.set("paused", self.paused)?;
+        Ok(table)
+    }
+}
 
 /// A single pending or repeating timer, registered via `defer`/`every`.
 pub(super) struct Timer {
@@ -136,8 +165,11 @@ impl ScriptRuntime {
     pub fn fire_due_timers(&self) {
         let now = Instant::now();
 
-        let (due, still_pending): (Vec<_>, Vec<_>) =
-            self.timers.borrow_mut().drain(..).partition(|t| t.deadline <= now);
+        let (due, still_pending): (Vec<_>, Vec<_>) = self
+            .timers
+            .borrow_mut()
+            .drain(..)
+            .partition(|t| t.deadline <= now);
         *self.timers.borrow_mut() = still_pending;
 
         for timer in due {
@@ -153,7 +185,6 @@ impl ScriptRuntime {
                     interval: Some(interval),
                     callback: timer.callback,
                 });
-
             } else {
                 let _ = self.lua.remove_registry_value(timer.callback);
             }
@@ -207,6 +238,7 @@ impl CurrentSong {
 pub fn build_runtime(
     contents: &str,
     tx: tokio::sync::mpsc::Sender<PlayerCommand>,
+    playback_state: PlaybackStateHandle,
 ) -> ScriptRuntime {
     let lua = unsafe { Lua::unsafe_new() };
     let current_song: CurrentSongCell = Rc::new(RefCell::new(None));
@@ -216,7 +248,7 @@ pub fn build_runtime(
         eprintln!("Could not register set_property: {e}");
     }
 
-    if let Err(e) = register_playback_commands(&lua, tx, current_song.clone()) {
+    if let Err(e) = register_playback_commands(&lua, tx, current_song.clone(), playback_state) {
         eprintln!("Could not register playback commands: {e}");
     }
 
@@ -304,6 +336,7 @@ fn register_playback_commands(
     lua: &Lua,
     tx: tokio::sync::mpsc::Sender<PlayerCommand>,
     current_song: CurrentSongCell,
+    playback_state: PlaybackStateHandle,
 ) -> mlua::Result<()> {
     use crate::player_bridge::PlayerCommand::*;
 
@@ -379,13 +412,21 @@ fn register_playback_commands(
     })?;
     player_table.set("toggle_shuffle", shuffle_func)?;
 
-    let current_song_func = lua.create_function(move |lua, ()| {
-        match current_song.borrow().clone() {
+    let current_song_func =
+        lua.create_function(move |lua, ()| match current_song.borrow().clone() {
             Some(song) => song.into_lua_table(lua).map(mlua::Value::Table),
             None => Ok(mlua::Value::Nil),
-        }
-    })?;
+        })?;
     player_table.set("current_song", current_song_func)?;
+
+    let get_state_func =
+        lua.create_function(
+            move |lua, ()| match playback_state.lock().unwrap().clone() {
+                Some(state) => state.into_lua_table(lua).map(mlua::Value::Table),
+                None => Ok(mlua::Value::Nil),
+            },
+        )?;
+    player_table.set("get_state", get_state_func)?;
 
     lua.globals().set("player", player_table)
 }

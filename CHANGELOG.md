@@ -24,6 +24,7 @@ All notable changes to Orpheus will be documented in this file.
 ### Removed
 
 - MPRIS support on the app's core
+- Installer binary
 
 ### Issues
 

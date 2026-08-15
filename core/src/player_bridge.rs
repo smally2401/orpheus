@@ -10,6 +10,8 @@
 use crate::audio_player::MiniAudioPlayer;
 use crate::config::playlist::PlaylistDef;
 use crate::config::scripting::CurrentSong;
+use crate::config::scripting::PlaybackState;
+use crate::config::scripting::PlaybackStateHandle;
 use crate::config::scripting::ScriptEvent;
 use crate::config::theme::UiProperty;
 use crate::local_backend::Album;
@@ -21,6 +23,7 @@ use crate::utils::DecodedSong;
 use crate::utils::expand_tilde;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 use tokio::sync::mpsc;
 
@@ -125,10 +128,17 @@ struct TickState {
     /// MPRIS metadata update in `on_tick`, since both fire on exactly the
     /// same "track changed" condition.
     script_tx: std::sync::mpsc::Sender<ScriptEvent>,
+    /// Live playback state, kept in sync every tick, read by
+    /// `player.get_state()` on the script thread. See
+    /// `config::scripting::PlaybackState`.
+    playback_state: PlaybackStateHandle,
 }
 
 impl TickState {
-    fn new(script_tx: std::sync::mpsc::Sender<ScriptEvent>) -> Self {
+    fn new(
+        script_tx: std::sync::mpsc::Sender<ScriptEvent>,
+        playback_state: PlaybackStateHandle,
+    ) -> Self {
         TickState {
             last_song_info: None,
             last_song_path: None,
@@ -136,6 +146,7 @@ impl TickState {
             queue_exhausted: true,
             halfway_fired: false,
             script_tx,
+            playback_state,
         }
     }
 
@@ -166,6 +177,15 @@ impl TickState {
             let title = track.title.clone();
             let artist = track.artist.clone();
             let total_duration = track.duration.as_secs();
+
+            *self.playback_state.lock().unwrap() = Some(PlaybackState {
+                title: title.clone(),
+                artist: artist.clone(),
+                album: track.album_title.clone(),
+                position: current_position,
+                duration: total_duration,
+                paused: is_paused,
+            });
 
             if let Some(bars) = eq_bars {
                 let _ = player_tx.try_send(EqualizerReady(bars));
@@ -218,6 +238,9 @@ impl TickState {
         } else {
             self.last_song_info = None;
             self.last_song_path = None;
+
+            *self.playback_state.lock().unwrap() = None;
+
             let _ = player_tx.try_send(PlayerEvent::SetCurrentTrackInfo {
                 title: String::from("No song playing"),
                 artist: String::from("---"),
@@ -247,6 +270,7 @@ pub fn spawn_player_bridge(
     mpsc::Receiver<PlayerEvent>,
     Vec<Album>,
     Vec<PlaylistPreview>,
+    PlaybackStateHandle,
 ) {
     let path = setup_music_dir(music_dir);
     let mut local_backend = LocalBackend::new(&path, playlist_defs, default_volume);
@@ -259,9 +283,12 @@ pub fn spawn_player_bridge(
     let (tx, mut rx) = mpsc::channel::<PlayerCommand>(100);
     let (player_tx, player_rx) = mpsc::channel::<PlayerEvent>(100);
 
+    let playback_state: PlaybackStateHandle = Arc::new(Mutex::new(None));
+    let playback_state_for_tick = playback_state.clone();
+
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_millis(100));
-        let mut tick_state = TickState::new(script_tx);
+        let mut tick_state = TickState::new(script_tx, playback_state_for_tick);
 
         loop {
             tokio::select! {
@@ -281,7 +308,7 @@ pub fn spawn_player_bridge(
         }
     });
 
-    (tx, player_rx, library, playlists)
+    (tx, player_rx, library, playlists, playback_state)
 }
 
 /// Applies a single `Playercommand` to the backend.
