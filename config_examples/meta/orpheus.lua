@@ -27,6 +27,16 @@
 ---@field artist string
 ---@field album string
 
+--- Live playback state, returned by `player.get_state()`. All fields are
+--- always present together.
+---@class OrpheusPlaybackState
+---@field title string
+---@field artist string
+---@field album string
+---@field position number Current position within the track, in seconds.
+---@field duration number Total track duration, in seconds.
+---@field paused boolean
+
 --- The shape `on_startup` must have if you define it.
 ---@alias OrpheusStartupCallback fun()
 
@@ -116,10 +126,10 @@ function OrpheusPlayer.toggle_repeat() end
 --- Toggle shuffle on/off.
 function OrpheusPlayer.toggle_shuffle() end
 
---- Returns the currently playing song, or nil if nothing's played yet
+--- Returns the current playback state, or nil if nothing's played yet
 --- this session.
----@return OrpheusCurrentSong?
-function OrpheusPlayer.current_song() end
+---@return OrpheusPlaybackState?
+function OrpheusPlayer.get_state() end
 
 ---@type OrpheusPlayer
 player = {}

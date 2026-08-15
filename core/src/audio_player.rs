@@ -84,19 +84,6 @@ unsafe extern "C" {
     fn miniaudio_is_paused(player: *mut OpaqueBackend) -> bool;
     fn miniaudio_volume(player: *mut OpaqueBackend) -> c_float;
     fn miniaudio_set_volume(player: *mut OpaqueBackend, volume: c_float);
-    fn miniaudio_waveform(
-        path: *const c_char,
-        bucket_count: u64,
-        use_rms: bool,
-        out_bucket_count: *mut u64,
-    ) -> *mut c_float;
-    fn miniaudio_waveform_win(
-        path: *const u16,
-        bucket_count: u64,
-        use_rms: bool,
-        out_bucket_count: *mut u64,
-    ) -> *mut c_float;
-    fn miniaudio_free_waveform(waveform: *mut c_float);
     fn miniaudio_equalizer_tick(
         player: *mut OpaqueBackend,
         out_bars: *mut *mut c_float,
@@ -124,61 +111,6 @@ impl MiniAudioPlayer {
         assert!(!ptr.is_null(), "Failed to initialize miniaudio engine");
 
         Self { ptr }
-    }
-
-    pub(crate) fn get_waveform(
-        path: &Path,
-        bucket_count: u64,
-        use_rms: bool,
-    ) -> Result<Vec<f32>, Box<dyn Error + Send + Sync>> {
-        let mut actual_bucket_count: u64 = 0;
-
-        let waveform_ptr: *mut f32 = if cfg!(windows) {
-            let os_str = path.as_os_str();
-
-            let wide: Vec<u16> = os_str
-                .to_string_lossy()
-                .encode_utf16()
-                .chain(std::iter::once(0))
-                .collect();
-
-            let ptr = wide.as_ptr();
-
-            unsafe {
-                miniaudio_waveform_win(
-                    ptr,
-                    bucket_count,
-                    use_rms,
-                    &mut actual_bucket_count as *mut u64,
-                )
-            }
-        } else {
-            let c_path = CString::new(path.as_os_str().as_encoded_bytes())?;
-
-            unsafe {
-                miniaudio_waveform(
-                    c_path.as_ptr(),
-                    bucket_count,
-                    use_rms,
-                    &mut actual_bucket_count as *mut u64,
-                )
-            }
-        };
-
-        if waveform_ptr.is_null() {
-            return Err("Failed to get waveform".into());
-        }
-
-        let waveform_slice =
-            unsafe { std::slice::from_raw_parts(waveform_ptr, actual_bucket_count as usize) };
-
-        let waveform_vec = waveform_slice.to_vec();
-
-        unsafe {
-            miniaudio_free_waveform(waveform_ptr);
-        }
-
-        Ok(waveform_vec)
     }
 }
 

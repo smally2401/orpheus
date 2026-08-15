@@ -7,7 +7,6 @@
 //! forever, alternating between handling incoming commands and polling
 //! playback state on a fixed interval (see `TickState::on_tick`).
 
-use crate::audio_player::MiniAudioPlayer;
 use crate::config::playlist::PlaylistDef;
 use crate::config::scripting::CurrentSong;
 use crate::config::scripting::PlaybackState;
@@ -54,10 +53,6 @@ pub enum PlayerEvent {
         playlist_index: usize,
         track_index: usize,
         decoded: DecodedSong,
-    },
-    WaveformReady {
-        path: PathBuf,
-        waveform: Vec<f32>,
     },
     EqualizerReady(Vec<f32>),
 }
@@ -200,21 +195,6 @@ impl TickState {
             if self.last_song_path.as_ref() != Some(&track.path) {
                 self.last_song_path = Some(track.path.clone());
                 self.halfway_fired = false;
-
-                let path = track.path.clone();
-                let tx = player_tx.clone();
-                tokio::spawn(async move {
-                    let path_clone = path.clone();
-
-                    let result = tokio::task::spawn_blocking(move || {
-                        MiniAudioPlayer::get_waveform(&path_clone, 50, false)
-                    })
-                    .await;
-
-                    if let Ok(Ok(waveform)) = result {
-                        let _ = tx.send(PlayerEvent::WaveformReady { path, waveform }).await;
-                    }
-                });
 
                 let current_song = CurrentSong::from(track.as_ref());
                 let _ = self.script_tx.send(ScriptEvent::SongChanged(current_song));

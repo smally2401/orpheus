@@ -298,9 +298,9 @@ Available functions:
 | `player.set_volume(volume)` | Set volume, from `0.0` to `1.0`. |
 | `player.toggle_repeat()` | Cycle repeat mode: off -> queue -> track -> off. |
 | `player.toggle_shuffle()` | Toggle shuffle on/off. |
-| `player.current_song()` | Returns the currently playing song as a table (`title`, `artist`, `album`), or `nil` if nothing's played yet. |
+| `player.get_state()` | Returns the current playback state as a table (`title`, `artist`, `album`, `position`, `duration`, `paused`), or `nil` if nothing's played yet. |
 
-All `player` functions except `current_song` return nothing. Malformed 
+All `player` functions except `get_state` return nothing. Malformed 
 calls (wrong argument type or count) raise a Lua error the normal way.
 Playback commands themselves fail silently if issued in an invalid state
 (e.g. seeking with no track loaded), rather than crashing the script.
@@ -321,7 +321,10 @@ repeatedly, once every `seconds`, indefinitely.
 ```lua
 function on_startup()
     every(60, function()
-        print("still playing: " .. player.current_song())
+        local state = player.get_state()
+        if state then
+            print("still playing: " .. state.title .. " (" .. state.position .. "/" .. state.duration .. "s)")
+        end
     end)
 end
 ```

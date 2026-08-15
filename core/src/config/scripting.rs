@@ -55,11 +55,6 @@ pub(super) struct Timer {
 /// Shared, script-thread-only queue of pending timers
 type TimerQueue = Rc<RefCell<Vec<Timer>>>;
 
-/// Shared, script-thread-only cache of the currently playing song, kept
-/// in sync by `ScriptRuntime::fire_song_change` and read synchronously by
-/// `player.current_song()`.
-type CurrentSongCell = Rc<RefCell<Option<CurrentSong>>>;
-
 /// A playback event reported from `player_bridge`'s tick loop to the
 /// dedicated script runtime thread (see `main.rs`), which turns each
 /// variant into the matching `ScriptRuntime` call.
@@ -76,7 +71,6 @@ pub struct ScriptRuntime {
     lua: Lua,
     on_song_change: Option<mlua::RegistryKey>,
     on_song_halfway: Option<mlua::RegistryKey>,
-    current_song: CurrentSongCell,
     timers: TimerQueue,
 }
 
@@ -85,7 +79,7 @@ impl ScriptRuntime {
     /// capturing `on_song_change` and `on_song_halfway` if the script
     /// defined them. Either, both, or neither may be present: each is
     /// independently optional.
-    pub(super) fn new(lua: Lua, current_song: CurrentSongCell, timers: TimerQueue) -> Self {
+    pub(super) fn new(lua: Lua, timers: TimerQueue) -> Self {
         let on_song_change = lua
             .globals()
             .get::<mlua::Function>("on_song_change")
@@ -102,7 +96,6 @@ impl ScriptRuntime {
             lua,
             on_song_change,
             on_song_halfway,
-            current_song,
             timers,
         }
     }
@@ -112,8 +105,6 @@ impl ScriptRuntime {
     /// the new track for any script code that runs afterward (including
     /// from unrelated callbacks, not just this hook).
     pub fn fire_song_change(&self, song: CurrentSong) {
-        *self.current_song.borrow_mut() = Some(song.clone());
-
         let Some(key) = &self.on_song_change else {
             return;
         };
@@ -241,14 +232,13 @@ pub fn build_runtime(
     playback_state: PlaybackStateHandle,
 ) -> ScriptRuntime {
     let lua = unsafe { Lua::unsafe_new() };
-    let current_song: CurrentSongCell = Rc::new(RefCell::new(None));
     let timers: TimerQueue = Rc::new(RefCell::new(Vec::new()));
 
     if let Err(e) = register_set_property(&lua, tx.clone()) {
         eprintln!("Could not register set_property: {e}");
     }
 
-    if let Err(e) = register_playback_commands(&lua, tx, current_song.clone(), playback_state) {
+    if let Err(e) = register_playback_commands(&lua, tx, playback_state) {
         eprintln!("Could not register playback commands: {e}");
     }
 
@@ -266,7 +256,7 @@ pub fn build_runtime(
         eprintln!("Error in on_startup: {e}");
     }
 
-    ScriptRuntime::new(lua, current_song, timers)
+    ScriptRuntime::new(lua, timers)
 }
 
 /// Registers `set_property(element, property, value) -> nil` as a Lua
@@ -335,7 +325,6 @@ fn register_set_property(
 fn register_playback_commands(
     lua: &Lua,
     tx: tokio::sync::mpsc::Sender<PlayerCommand>,
-    current_song: CurrentSongCell,
     playback_state: PlaybackStateHandle,
 ) -> mlua::Result<()> {
     use crate::player_bridge::PlayerCommand::*;
@@ -411,13 +400,6 @@ fn register_playback_commands(
         Ok(())
     })?;
     player_table.set("toggle_shuffle", shuffle_func)?;
-
-    let current_song_func =
-        lua.create_function(move |lua, ()| match current_song.borrow().clone() {
-            Some(song) => song.into_lua_table(lua).map(mlua::Value::Table),
-            None => Ok(mlua::Value::Nil),
-        })?;
-    player_table.set("current_song", current_song_func)?;
 
     let get_state_func =
         lua.create_function(
