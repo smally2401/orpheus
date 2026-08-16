@@ -57,6 +57,9 @@ export component NowPlayingBar {
 
                 HorizontalLayout {
                     alignment: center;
+                    height: 32px;
+                    padding-top: 2px;
+                    
                     TrackButtons {
                         play-paused-clicked => { root.play-paused-clicked() }
                         next-track-clicked => { root.next-track-clicked() }

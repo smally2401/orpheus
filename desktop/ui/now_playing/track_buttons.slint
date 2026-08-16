@@ -1,4 +1,4 @@
-import { Button } from "std-widgets.slint";
+import { IconButton } from "../widgets/icon_button.slint";
 
 export component TrackButtons {
     callback play-paused-clicked();
@@ -7,50 +7,41 @@ export component TrackButtons {
     callback shuffle-clicked();
     callback repeat-clicked();
 
-    HorizontalLayout {
-        padding-top: 10px;
-        spacing: 10px;
+    in property <bool> playing: false;
 
-        Button {
-            width: 40px;
-            height: 40px;
-            text: "";
+    HorizontalLayout {
+        spacing: 40px;
+
+        IconButton {
+            icon-image: @image-url("../../../assets/icons/shuffle.png");
             clicked => {
                 root.shuffle-clicked();
             }
         }
 
-        Button {
-            width: 40px;
-            height: 40px;
-            text: "⏮";
+        IconButton {
+            icon-image: @image-url("../../../assets/icons/prev.png");
             clicked => {
                 root.prev-track-clicked();
             }
         }
 
-        Button {
-            width: 40px;
-            height: 40px;
-            text: "▶";
+        IconButton {
+            icon-image: root.playing ? @image-url("../../../assets/icons/pause.png") : @image-url("../../../assets/icons/play.png");
             clicked => {
                 root.play-paused-clicked();
             }
         }
 
-        Button {
-            width: 40px;
-            height: 40px;
-            text: "⏭";
+        IconButton {
+            icon-image: @image-url("../../../assets/icons/next.png");
             clicked => {
                 root.next-track-clicked();
             }
         }
 
-        Button {
-            width: 40px;
-            height: 40px;
-            text: "󰑖";
+        IconButton {
+            icon-image: @image-url("../../../assets/icons/repeat.png");
             clicked => {
                 root.repeat-clicked();
             }

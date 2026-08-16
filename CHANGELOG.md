@@ -19,17 +19,13 @@ All notable changes to Orpheus will be documented in this file.
 
 - Volume percentage now shows correct info
 - Windows executable no longer opens a command window
-- Major performance issues
+- Fixed major performance issues
+- Turned control buttons into icons so they render correctly
 
 ### Removed
 
 - MPRIS support on the app's core
 - Installer binary
-
-### Issues
-
-- Control buttons don't render correctly if user doesn't have a font
-  that supports them installed
 
 ---
 

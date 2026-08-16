@@ -8,15 +8,12 @@ import { PlaylistsView } from "views/playlists_view.slint";
 import { OpenPlaylistView } from "views/open_playlist_view.slint";
 import { Equalizer } from "widgets/equalizer.slint";
 
-import "../../assets/fonts/NotoSans-Regular.ttf";
-
 enum View { Library, Album, Playlists, OpenPlaylist }
 
 export component AppWindow inherits Window {
 
     title: "orpheus";
     background: #1e1e2e;
-    default-font-family: "Noto Sans";
 
     in property <[SlintAlbum]> albums: [];
     in-out property <View> current-view: View.Library;
@@ -173,10 +170,6 @@ export component AppWindow inherits Window {
                         }
                     }
             }
-        }
-
-        Equalizer {
-            current-equalizer: root.current-equalizer;
         }
 
         NowPlayingBar {

@@ -1,8 +1,9 @@
--- Demonstrates on_song_change and on_song_halfway together, scrobbling together
--- Last.fm: on_song_change sends a "now playing" update immediately,
--- on_song_halfway submits the actual scrobble once the track is far
--- enough along (Last.fm's own rules require waiting until partway through
--- a track before scrobbling it).
+-- Demonstrates on_song_change and player.get_state() together for
+-- Last.fm scrobbling: on_song_change sends a "now playing" update
+-- immediately, then a periodic timer checks playback position and
+-- submits the actual scrobble once the track is far enough along
+-- (Last.fm's own rules require waiting until partway through a track
+-- before scrobbling it).
 --
 -- Before this will work:
 --   1. Replace API_KEY, API_SECRET, and SESSION_KEY below. Get an API key
@@ -33,6 +34,7 @@ local API_URL = "https://ws.audioscrobbler.com/2.0/"
 
 local current_track = nil
 local track_start_time = 0
+local scrobbled = false
 
 local https, ltn12, md5
 
@@ -145,6 +147,7 @@ function on_song_change(song)
 
     current_track = song
     track_start_time = os.time()
+    scrobbled = false
 
     print(string.format("[Last.fm] Now Playing: %s - %s", song.artist, song.title))
 
@@ -154,21 +157,31 @@ function on_song_change(song)
     end
 end
 
-function on_song_halfway()
-    if not current_track then
-        return
-    end
+function on_startup()
+    every(5, function()
+        if scrobbled or not current_track then
+            return
+        end
 
-    print(string.format("[Last.fm] Scrobbling: %s - %s", current_track.artist, current_track.title))
+        local state = player.get_state()
+        if not state or state.duration == 0 then
+            return
+        end
 
-    local ok, err = scrobble(
-        current_track.artist,
-        current_track.title,
-        current_track.album,
-        track_start_time
-    )
+        if state.position >= (state.duration / 2) then
+            scrobbled = true
+            print(string.format("[Last.fm] Scrobbling: %s - %s", current_track.artist, current_track.title))
 
-    if not ok then
-        print("[Last.fm] Scrobble failed:", err)
-    end
+            local ok, err = scrobble(
+                current_track.artist,
+                current_track.title,
+                current_track.album,
+                track_start_time
+            )
+
+            if not ok then
+                print("[Last.fm] Scrobble failed:", err)
+            end
+        end
+    end)
 end

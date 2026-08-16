@@ -1,0 +1,40 @@
+export component IconButton {
+    in property <string> icon: "";
+    in property <image> icon-image;
+    in property <length> button-size: 32px;
+    in property <length> icon-size: 18px;
+    in property <color> icon-color: #cdd6f4;
+    in property <int> icon-text-size: 18;
+    in property <bool> enabled: true;
+
+    callback clicked();
+
+    Rectangle {
+        width: root.button-size;
+        height: root.button-size;
+        border-radius: root.button-size / 2;
+        background: touch.pressed ? #ffffff22 : (touch.has-hover ? #ffffff11 : transparent);
+
+        touch := TouchArea {
+            enabled: root.enabled;
+            clicked => {
+                root.clicked();
+            }
+        }
+    }
+
+    if root.icon-image.width > 0: Image {
+        source: root.icon-image;
+        width: root.icon-size;
+        height: root.icon-size;
+        colorize: root.enabled ? root.icon-color : root.icon-color.with-alpha(0.4);
+    }
+
+    if root.icon-image.width == 0: Text {
+        text: root.icon;
+        font-size: root.icon-text-size * 1px;
+        color: root.enabled ? root.icon-color : root.icon-color.with-alpha(0.4);
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
