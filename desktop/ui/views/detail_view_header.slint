@@ -1,4 +1,5 @@
 import { Button } from "std-widgets.slint";
+import { IconButton } from "../widgets/icon_button.slint";
 
 export component DetailViewHeader {
     in property <image> art;
@@ -14,7 +15,7 @@ export component DetailViewHeader {
 
     HorizontalLayout {
         alignment: start;
-        spacing: 10px;
+        spacing: 35px;
 
         VerticalLayout {
             alignment: center;
@@ -42,11 +43,14 @@ export component DetailViewHeader {
             }
         }
 
-        Button {
-            text: "▶";
-            width: 70px;
-            height: 70px;
-            clicked => { root.play-clicked(); }
+        IconButton {
+            icon-image: @image-url("../../../assets/icons/play.png");
+            button-size: 70px;
+            icon-size: 32px;
+            
+            clicked => {
+                root.play-clicked();
+            }
         }
     }
 }

@@ -1,9 +1,8 @@
-import { Slider } from "std-widgets.slint";
+import { SeekSlider } from "../widgets/seek_slider.slint";
 
 export component ProgressBar {
     in property <int> current-position: -1;
     in property <int> total-duration: -1;
-    private property <bool> dragging: false;
 
     callback seek-requested(int);
 
@@ -11,12 +10,6 @@ export component ProgressBar {
         let mins: int = total-seconds / 60;
         let secs = mod(total-seconds, 60);
         return mins + ":" + (secs < 10 ? "0" + secs : secs);
-    }
-
-    changed current-position => {
-        if !root.dragging {
-            slider.value = root.current-position;
-        }
     }
 
     HorizontalLayout {
@@ -29,17 +22,12 @@ export component ProgressBar {
             vertical-alignment: center;
         }
 
-        slider := Slider {
-            minimum: 0;
-            maximum: root.total-duration;
-            value: root.current-position;
-            
-            changed(val) => {
-                root.dragging = true;
-            }
+        SeekSlider {
+            horizontal-stretch: 1;
+            current-position: root.current-position;
+            total-duration: root.total-duration;
 
-            released(val) => {
-                root.dragging = false;
+            seek-requested(val) => {
                 root.seek-requested(val);
             }
         }

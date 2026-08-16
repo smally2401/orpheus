@@ -1,0 +1,31 @@
+import { Slider } from "std-widgets.slint";
+
+export component SeekSlider {
+    in property <int> current-position: -1;
+    in property <int> total-duration: -1;
+    private property <bool> dragging: false;
+
+    callback seek-requested(int);
+
+    changed current-position => {
+        if !root.dragging {
+            slider.value = root.current-position;
+        }
+    }
+
+    slider := Slider {
+        width: 100%;
+        minimum: 0;
+        maximum: root.total-duration;
+        value: root.current-position;
+
+        changed(val) => {
+            root.dragging = true;
+        }
+
+        released(val) => {
+            root.dragging = false;
+            root.seek-requested(val);
+        }
+    }
+}

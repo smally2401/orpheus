@@ -27,6 +27,10 @@ All notable changes to Orpheus will be documented in this file.
 - MPRIS support on the app's core
 - Installer binary
 
+### Issues
+
+- Albums don't order by disc number correctly
+
 ---
 
 ## [0.2.0] - 2026-08-01

@@ -1,4 +1,4 @@
-import { Slider } from "std-widgets.slint";
+import { VolumeSlider } from "../widgets/volume_slider.slint";
 
 export component VolumeBar {
     in property <float> current-volume;
@@ -15,18 +15,17 @@ export component VolumeBar {
         spacing: 5px;
 
         Text {
-            text: format-percentage(root.current_volume);
+            text: format-percentage(root.current-volume);
             font-size: 10px;
             vertical-alignment: center;
         }
 
-        slider := Slider {
-            minimum: 0;
-            maximum: 1;
-            value: root.current-volume;
-
-            changed(vol) => {
-                volume-changed(vol);
+        VolumeSlider {
+            horizontal-stretch: 1;
+            current-volume: root.current-volume;
+            
+            volume-changed(vol) => {
+                root.volume-changed(vol);
             }
         }
     }

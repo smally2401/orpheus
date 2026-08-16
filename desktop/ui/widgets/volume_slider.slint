@@ -1,0 +1,17 @@
+import { Slider } from "std-widgets.slint";
+
+export component VolumeSlider {
+    in property <float> current-volume;
+    callback volume-changed(float);
+
+    Slider {
+        minimum: 0;
+        maximum: 1;
+        width: 100%;
+        value: root.current-volume;
+
+        changed(vol) => {
+            root.volume-changed(vol);
+        }
+    }
+}
