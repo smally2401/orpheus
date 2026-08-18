@@ -117,6 +117,7 @@ impl ScriptRuntime {
     /// The `Instant` of the soonest pending timer, if any. Used by the
     /// script thread's main loop to compute how long to block on
     /// `recv_timeout` before it needs to wake up and check for due timers.
+    #[must_use]
     pub fn next_deadline(&self) -> Option<Instant> {
         self.timers.borrow().iter().map(|t| t.deadline).min()
     }
@@ -199,7 +200,7 @@ impl CurrentSong {
 /// `ScriptRuntime` from elsewhere.
 pub fn build_runtime(
     contents: &str,
-    tx: tokio::sync::mpsc::Sender<PlayerCommand>,
+    tx: &tokio::sync::mpsc::Sender<PlayerCommand>,
     playback_state: PlaybackStateHandle,
 ) -> ScriptRuntime {
     let lua = unsafe { Lua::unsafe_new() };
@@ -295,7 +296,7 @@ fn register_set_property(
 /// playback control (`player.play()`, `player.next_track()`, etc.).
 fn register_playback_commands(
     lua: &Lua,
-    tx: tokio::sync::mpsc::Sender<PlayerCommand>,
+    tx: &tokio::sync::mpsc::Sender<PlayerCommand>,
     playback_state: PlaybackStateHandle,
 ) -> mlua::Result<()> {
     use crate::player_bridge::PlayerCommand::*;

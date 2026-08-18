@@ -1,0 +1,14 @@
+export enum WidgetNodeKind {
+    Button,
+    Row,
+    Column,
+    Spacer,
+}
+
+export struct WidgetNode {
+    kind: WidgetNodeKind,
+    icon: image,
+    icon-text: string,
+    action: string,
+    size: int,
+}

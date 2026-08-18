@@ -207,13 +207,14 @@ fn build_script_runtime_thread(
     use orpheus_core::config::scripting::ScriptEvent::*;
 
     std::thread::spawn(move || {
-        let script_runtime = build_runtime(&contents, tx, playback_state);
+        let script_runtime = build_runtime(&contents, &tx, playback_state);
 
         loop {
             let timeout = script_runtime
                 .next_deadline()
-                .map(|d| d.saturating_duration_since(Instant::now()))
-                .unwrap_or(Duration::from_secs(3600));
+                .map_or(Duration::from_secs(3600), |d| {
+                    d.saturating_duration_since(Instant::now())
+                });
 
             match script_rx.recv_timeout(timeout) {
                 Ok(SongChanged(song)) => script_runtime.fire_song_change(song),

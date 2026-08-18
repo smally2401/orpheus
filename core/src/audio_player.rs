@@ -219,7 +219,7 @@ impl AudioPlayer for MiniAudioPlayer {
         let mut count: c_int = 0;
 
         unsafe {
-            if miniaudio_equalizer_tick(self.ptr, &mut bars, &mut count) {
+            if miniaudio_equalizer_tick(self.ptr, &raw mut bars, &raw mut count) {
                 let slice = std::slice::from_raw_parts(bars, count as usize);
                 Some(slice.to_vec())
             } else {

@@ -20,6 +20,7 @@ pub mod scripting;
 /// Theme parsing: `Background`, `TextColor`, `TextSize`, `Theme`, and the
 /// Lua-loading logic that turns a nested `theme` table into a `Theme`.
 pub mod theme;
+pub mod widgets;
 
 use crate::config::keys::KeyAction;
 use crate::config::keys::KeyCombo;
@@ -27,6 +28,8 @@ use crate::config::keys::default_keymaps;
 use crate::config::keys::load_keymaps;
 use crate::config::playlist::PlaylistDef;
 use crate::config::playlist::get_playlists;
+use crate::config::widgets::WidgetSpec;
+use crate::config::widgets::load_widgets;
 use crate::utils::expand_tilde;
 use mlua::Lua;
 use std::collections::HashMap;
@@ -62,6 +65,7 @@ pub struct Config {
     pub window_state: WindowState,
     pub keymaps: HashMap<KeyCombo, KeyAction>,
     pub playlists: Vec<PlaylistDef>,
+    pub widgets: HashMap<String, WidgetSpec>,
 }
 
 impl Default for Config {
@@ -72,6 +76,7 @@ impl Default for Config {
             window_state: WindowState::default(),
             keymaps: default_keymaps(),
             playlists: Vec::new(),
+            widgets: HashMap::new(),
         }
     }
 }
@@ -115,6 +120,7 @@ const DEFAULT_LUARC_JSON: &str = include_str!("../../../config_examples/.luarc.j
 /// `music_dir` before it can be registered, but `music_dir` itself only
 /// becomes known by running the user's script. See `load_lua` for the
 /// second half of this.
+#[must_use]
 pub fn load_config() -> (Config, String) {
     let ConfigFile::Custom(file_contents) = load_config_file() else {
         return (Config::default(), String::new());
@@ -226,6 +232,7 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
     let window_state = load_window_state(&globals, &defaults.window_state);
     let keymaps = load_keymaps(&globals);
     let playlists = get_playlists(&globals);
+    let widgets = load_widgets(&globals);
 
     Config {
         music_dir: music_dir.to_string(),
@@ -233,6 +240,7 @@ fn load_lua(contents: &str, music_dir: &str) -> Config {
         window_state,
         keymaps,
         playlists,
+        widgets,
     }
 }
 

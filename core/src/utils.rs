@@ -57,6 +57,7 @@ pub(crate) fn art_or_placeholder(art: Option<&[u8]>) -> &[u8] {
 /// 100x100 thumbnail, same as `art_rust_to_slint`, but stops short of
 /// building a `slint::Image`. Safe to call from any thread, including
 /// `spawn_blocking`.
+#[must_use]
 pub fn decode_art(art: Option<&[u8]>) -> DecodedArt {
     let bytes = art_or_placeholder(art);
     let image = image::load_from_memory(bytes).expect("placeholder art is a valid image");

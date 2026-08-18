@@ -156,10 +156,10 @@ impl TickState {
 
         let current_position = local_backend.get_current_position().as_secs();
 
-        let eq_bars = if !is_paused {
-            local_backend.player.equalizer_tick()
-        } else {
+        let eq_bars = if is_paused {
             None
+        } else {
+            local_backend.player.equalizer_tick()
         };
 
         if let Some(track) = local_backend.get_current_song() {
@@ -227,6 +227,7 @@ impl TickState {
 /// `song_tx` is where song changes get reported to, for `config.lua`'s
 /// `on_song_change`/`current_song()` support: see `main.rs`'s dedicated
 /// script runtime thread, which owns the other end of this channel.
+#[must_use]
 pub fn spawn_player_bridge(
     music_dir: &str,
     playlist_defs: Vec<PlaylistDef>,
@@ -337,7 +338,7 @@ fn handle_command(
             seek_by(local_backend, SEEK_STEP, true);
         }
         SeekBy(secs) => {
-            seek_by(local_backend, secs.unsigned_abs() as u64, *secs < 0);
+            seek_by(local_backend, secs.unsigned_abs(), *secs < 0);
         }
         SetVolume(vol) => {
             set_volume_and_update_ui(local_backend, *vol, event_tx);

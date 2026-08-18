@@ -23,6 +23,7 @@ pub enum KeyAction {
 }
 
 impl KeyAction {
+    #[must_use]
     pub fn to_command(self) -> Option<PlayerCommand> {
         use crate::player_bridge::PlayerCommand::*;
 
