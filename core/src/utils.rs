@@ -74,7 +74,8 @@ pub fn decode_art(art: Option<&[u8]>) -> DecodedArt {
 /// Paths without a `~/` prefix are returned as-is. Used for user-supplied
 /// paths from `config.lua` (`music_dir`), which shouldn't require users to
 /// spell out their home directory.
-pub(crate) fn expand_tilde(path: &str) -> PathBuf {
+#[must_use]
+pub fn expand_tilde(path: &str) -> PathBuf {
     if let Some(stripped) = path.strip_prefix("~/") {
         dirs::home_dir().map_or_else(|| PathBuf::from(path), |home| home.join(stripped))
     } else {

@@ -7,6 +7,9 @@ import { Sidebar } from "sidebar.slint";
 import { PlaylistsView } from "views/playlists_view.slint";
 import { OpenPlaylistView } from "views/open_playlist_view.slint";
 import { Equalizer } from "widgets/equalizer.slint";
+import { WidgetNodeKind, WidgetLeaf, WidgetRow } from "widgets/widget_node.slint";
+
+export { WidgetNodeKind, WidgetLeaf }
 
 enum View { Library, Album, Playlists, OpenPlaylist }
 
@@ -63,6 +66,8 @@ export component AppWindow inherits Window {
 
     callback seek-requested(int);
     callback volume-changed(float);
+
+    callback widget-action-triggered(string);
 
     // LUA CONFIG
     in property <color> sidebar-bg: #0e101d;
@@ -169,6 +174,17 @@ export component AppWindow inherits Window {
                             root.playlist-opened(i);
                         }
                     }
+            }
+        }
+
+        WidgetRow {
+            leaves: [
+                { kind: WidgetNodeKind.Button, icon-text: "prev", action: "prev_track", size: 32 },
+                { kind: WidgetNodeKind.Button, icon-text: "toggle play", action: "toggle_play", size: 32 },
+                { kind: WidgetNodeKind.Button, icon-text: "next", action: "next_track", size: 32 },
+            ];
+            action-triggered(a) => {
+                root.widget-action-triggered(a)
             }
         }
 

@@ -1,15 +1,16 @@
-//! `WidgetSpec`: a tree of composable UI primitives that a `config.lua`
-//! script can describle to build custom widgets (e.g. a standalone
-//! play/pause button, or a reordered row of transport controls) out of
-//! a small fixed set of building blocks. Parsed once from Lua tables at
-//! config load time (see `parse_widget_spec` below), rendering a
-//! `WidgetSpec` into actual Slint components happens on the dekstop
-//! side (`orpheus-desktop::config::widgets`).
+//! `WidgetSpec`: a small, composable set of UI primitives that a
+//! `config.lua` script can describe to build custom widgets (e.g. a
+//! standalone play/pause button, or a reordered row of transport
+//! controls) out of a fixed set of building blocks. Parsed once from
+//! Lua tables at config-load time (see `parse_widget_spec` below),
+//! turning a `WidgetSpec` into actual Slint components happens on the
+//! desktop side (`orpheus-desktop::config::widgets`).
 
 use crate::player_bridge::PlayerCommand;
 use std::collections::HashMap;
 
 /// A player action a `WidgetSpec::Button` can trigger when clicked.
+#[derive(Clone, Copy)]
 pub enum WidgetAction {
     TogglePlay,
     Play,
@@ -52,10 +53,8 @@ impl WidgetAction {
     }
 }
 
-/// One node in a widget tree. A `config.lua` script builds these by
-/// returning nested tables from `widgets.<name> = { type = "row", ... }`
-/// (see `parse_widget_spec`).
-pub enum WidgetSpec {
+/// A leaf node: either a clickable button or fixed empty space.
+pub enum WidgetLeaf {
     Button {
         /// Path to an icon image, relative to the config directory
         /// (e.g. `"icons/play.png"`). `None` falls back to `icon_text`.
@@ -66,18 +65,23 @@ pub enum WidgetSpec {
         action: WidgetAction,
         size: i32,
     },
-    Row(Vec<WidgetSpec>),
-    Column(Vec<WidgetSpec>),
     Spacer(i32),
 }
 
-/// Parses a single `WidgetSpec` node from a Lua table. Malformed nodes
+/// A top-leveñ widget a script can define under `widgets.<name>` in
+/// `config.lua`.
+pub enum WidgetSpec {
+    Row(Vec<WidgetLeaf>),
+    Column(Vec<WidgetLeaf>),
+}
+
+/// Parses a single `WidgetLeaf` node from a Lua table. Malformed leaves
 /// (missing/invalid `type`, unknown action name, wrong field type) return
 /// an error describing what was wrong.
-pub fn parse_widget_spec(table: &mlua::Table) -> mlua::Result<WidgetSpec> {
+pub fn parse_widget_leaf(table: &mlua::Table) -> mlua::Result<WidgetLeaf> {
     let node_type: String = table
         .get("type")
-        .map_err(|_| mlua::Error::runtime("widget node is missing required field 'type'"))?;
+        .map_err(|_| mlua::Error::runtime("widget leaf is missing required field 'type'"))?;
 
     match node_type.as_str() {
         "button" => {
@@ -100,7 +104,7 @@ pub fn parse_widget_spec(table: &mlua::Table) -> mlua::Result<WidgetSpec> {
 
             let size: i32 = table.get("size").unwrap_or(40);
 
-            Ok(WidgetSpec::Button {
+            Ok(WidgetLeaf::Button {
                 icon,
                 icon_text,
                 action,
@@ -108,32 +112,46 @@ pub fn parse_widget_spec(table: &mlua::Table) -> mlua::Result<WidgetSpec> {
             })
         }
 
-        "row" | "column" => {
-            let children_table: mlua::Table = table.get("children").map_err(|_| {
-                mlua::Error::runtime(format!("{node_type} widget is missing 'children'"))
-            })?;
-
-            let mut children = Vec::new();
-            for pair in children_table.sequence_values::<mlua::Table>() {
-                children.push(parse_widget_spec(&pair?)?);
-            }
-
-            Ok(if node_type == "row" {
-                WidgetSpec::Row(children)
-            } else {
-                WidgetSpec::Column(children)
-            })
-        }
-
         "spacer" => {
             let size: i32 = table.get("size").unwrap_or(8);
-            Ok(WidgetSpec::Spacer(size))
+            Ok(WidgetLeaf::Spacer(size))
         }
 
+        "row" | "column" => Err(mlua::Error::runtime(
+            "widgets can only be nested one level deep, a row/column cannot hold another row or column"
+        )),
+
         other => Err(mlua::Error::runtime(format!(
-            "'{other}' is not a valid widget type (expected 'button', 'row', 'column' or 'spacer')"
+            "'{other}' is not a valid widget leaf type (expected 'button' or 'spacer')"
         ))),
     }
+}
+
+pub fn parse_widget_spec(table: &mlua::Table) -> mlua::Result<WidgetSpec> {
+    let node_type: String = table
+        .get("type")
+        .map_err(|_| mlua::Error::runtime("widget is missing required field 'type'"))?;
+
+    if node_type != "row" && node_type != "column" {
+        return Err(mlua::Error::runtime(format!(
+            "'{node_type}' is not a valid top-level widget type (expected 'row' or 'column')"
+        )));
+    }
+
+    let children_table: mlua::Table = table
+        .get("children")
+        .map_err(|_| mlua::Error::runtime(format!("{node_type} widget is missing 'children'")))?;
+
+    let mut children = Vec::new();
+    for pair in children_table.sequence_values::<mlua::Table>() {
+        children.push(parse_widget_leaf(&pair?)?);
+    }
+
+    Ok(if node_type == "row" {
+        WidgetSpec::Row(children)
+    } else {
+        WidgetSpec::Column(children)
+    })
 }
 
 /// Extracts the `widgets` table from Lua globals: a map of user-chosen

@@ -45,6 +45,7 @@ use std::sync::mpsc::RecvTimeoutError;
 use std::time::Duration;
 use std::time::Instant;
 use tokio::sync::mpsc::Sender;
+use crate::config::widgets::handle_widget_action;
 
 slint::include_modules!();
 
@@ -212,7 +213,7 @@ fn build_script_runtime_thread(
         loop {
             let timeout = script_runtime
                 .next_deadline()
-                .map_or(Duration::from_secs(3600), |d| {
+                .map_or(Duration::from_hours(1), |d| {
                     d.saturating_duration_since(Instant::now())
                 });
 
@@ -334,6 +335,11 @@ fn wire_callbacks(ui: &AppWindow, tx: &Sender<PlayerCommand>) {
     ui.on_playlist_opened(wire_cmd_1arg(tx, |playlist_index| {
         OpenPlaylist(playlist_index as usize)
     }));
+
+    let tx_clone = tx.clone();
+    ui.on_widget_action_triggered(move |action: slint::SharedString| {
+        handle_widget_action(&action, &tx_clone);
+    });
 }
 
 /// Returns a closure that sends `cmd` over `tx`. For callbacks that only

@@ -1,6 +1,0 @@
-Checks: >
-    bugprone-*,
-    performance-*,
-    readability-*,
-    -readability-uppercase-literal-suffix,
-    -readability-magic-numbers

@@ -1,14 +1,62 @@
+import { IconButton } from "icon_button.slint";
+
 export enum WidgetNodeKind {
     Button,
-    Row,
-    Column,
     Spacer,
 }
 
-export struct WidgetNode {
+export struct WidgetLeaf {
     kind: WidgetNodeKind,
     icon: image,
     icon-text: string,
     action: string,
     size: int,
+}
+
+export component WidgetLeafRenderer {
+    in property <WidgetLeaf> leaf;
+    callback action-triggered(string);
+
+    if leaf.kind == WidgetNodeKind.Button: IconButton {
+        icon-image: leaf.icon;
+        icon: leaf.icon-text;
+        button-size: leaf.size * 1px;
+        clicked => {
+            root.action-triggered(leaf.action)
+        }
+    }
+
+    if leaf.kind == WidgetNodeKind.Spacer: Rectangle {
+        width: leaf.size * 1px;
+    }
+}
+
+export component WidgetRow {
+    in property <[WidgetLeaf]> leaves;
+    callback action-triggered(string);
+
+    HorizontalLayout {
+        spacing: 8px;
+        for leaf in root.leaves: WidgetLeafRenderer {
+            leaf: leaf;
+            action-triggered(a) => {
+                root.action-triggered(a)
+            }
+        }
+    }
+}
+
+export component WidgetColumn {
+    in property <[WidgetLeaf]> leaves;
+    callback action-triggered(string);
+
+    VerticalLayout {
+        spacing: 8px;
+        for leaf in root.leaves: WidgetLeafRenderer {
+            leaf: leaf;
+            action-triggered(a) => {
+                root.action-triggered(a)
+            }
+        }
+    }
 }
