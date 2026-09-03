@@ -7,3 +7,4 @@ IndentWidth: 4
 UseTab: ForIndentation
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: false
+SortIncludes: Never
