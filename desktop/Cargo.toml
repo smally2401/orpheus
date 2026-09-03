@@ -16,6 +16,7 @@ missing_panics_doc = "allow"
 [dependencies]
 orpheus-core = { path = "../core" }
 async-executor = "1.14.0"
+dirs = "6.0.0"
 futures-lite = "2.6.1"
 mpris-server = "0.10.0"
 slint = "1.17.0"

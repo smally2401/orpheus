@@ -68,6 +68,7 @@ export component AppWindow inherits Window {
     callback volume-changed(float);
 
     callback widget-action-triggered(string);
+    in property <[WidgetLeaf]> test-widget-leaves: [];
 
     // LUA CONFIG
     in property <color> sidebar-bg: #0e101d;
@@ -178,11 +179,7 @@ export component AppWindow inherits Window {
         }
 
         WidgetRow {
-            leaves: [
-                { kind: WidgetNodeKind.Button, icon-text: "prev", action: "prev_track", size: 32 },
-                { kind: WidgetNodeKind.Button, icon-text: "toggle play", action: "toggle_play", size: 32 },
-                { kind: WidgetNodeKind.Button, icon-text: "next", action: "next_track", size: 32 },
-            ];
+            leaves: root.test-widget-leaves;
             action-triggered(a) => {
                 root.widget-action-triggered(a)
             }

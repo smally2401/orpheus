@@ -3579,6 +3579,7 @@ name = "orpheus-desktop"
 version = "0.3.0"
 dependencies = [
  "async-executor",
+ "dirs",
  "futures-lite",
  "mpris-server",
  "orpheus-core",

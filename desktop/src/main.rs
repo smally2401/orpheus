@@ -21,6 +21,7 @@ mod utils;
 
 use crate::config::keys::key_string_to_key_name;
 use crate::config::theme::set_property;
+use crate::config::widgets::widget_spec_to_slint;
 use crate::utils::art_rust_to_slint;
 use crate::utils::get_art_from_path;
 use crate::utils::image_from_decoded_art;
@@ -56,6 +57,15 @@ async fn main() -> Result<(), slint::PlatformError> {
     let (script_tx, script_rx) = std::sync::mpsc::channel::<ScriptEvent>();
 
     let (config, contents) = load_config();
+
+    let config_dir = dirs::config_dir()
+        .map(|d| d.join("orpheus"))
+        .unwrap_or_default();
+
+    if let Some(spec) = config.widgets.get("transport") {
+        let (_, leaves) = widget_spec_to_slint(spec, &config_dir);
+        ui.set_test_widget_leaves(leaves);
+    }
 
     let (tx, player_event_rx, library, playlists, playback_state) = spawn_player_bridge(
         &config.music_dir,
