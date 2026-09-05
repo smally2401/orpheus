@@ -7,15 +7,19 @@
 #include "../vendor/nuklear.h"
 #include "../vendor/nuklear_sdl3_renderer.h"
 #include <stdio.h>
-
-#ifdef DEBUG
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
-#else
-#define DEBUG_PRINT(...) ((void)0)
-#endif
+#include "app_state.h"
+#include "song.h"
+#include "utils/debug.h"
 
 int main(void)
 {
+#ifdef DEBUG
+	Song* s1 = song_create("/home/smally/Music/soda-stereo/doble-vida/lo-que-sangra.mp3");
+	song_free(s1);
+	Song* s2 = song_create("/home/smally/Music/Portishead/Dummy/mysterons.mp3");
+	song_free(s2);
+#endif
+
 	bool res = SDL_Init(SDL_INIT_VIDEO);
 	if (!res)
 	{

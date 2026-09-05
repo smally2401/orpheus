@@ -1,14 +1,17 @@
 CC = gcc
-BASE_CFLAGS = -Wall -Wextra -MMD -MP
-SDL_FLAGS = $(shell pkg-config --cflags --libs sdl3)
+BASE_CFLAGS = -MMD -MP
+MODE ?= release
+
+SDL_CFLAGS = $(shell pkg-config --cflags sdl3 glib-2.0)
+SDL_LIBS   = $(shell pkg-config --libs sdl3 glib-2.0)
 
 TARGET_NAME = orpheus
 BUILD_DIR = target
 
-MODE ?= release
-
 ifeq ($(MODE),debug)
-	CFLAGS = $(BASE_CFLAGS) -g -O0 -DDEBUG
+	CFLAGS = -Wall -Wextra -Wpedantic $(BASE_CFLAGS) -g -O0 -DDEBUG \
+			 -fsanitize=address,undefined -fno-omit-frame-pointer
+	LDFLAGS = -fsanitize=address,undefined
 else
 	CFLAGS = $(BASE_CFLAGS) -O2 -DNDEBUG
 	LDFLAGS = -flto
@@ -24,12 +27,12 @@ DEPS = $(OBJS:.o=.d)
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	@mkdir -p target
-	$(CC) $^ -o $@ $(SDL_FLAGS) -lm $(LDFLAGS)
+	@mkdir -p $(dir $@)
+	$(CC) $^ -o $@ $(SDL_LIBS) $(LDFLAGS) -lm
 
 $(OBJDIR)/%.o: src/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(SDL_CFLAGS) -c $< -o $@
 
 -include $(DEPS)
 

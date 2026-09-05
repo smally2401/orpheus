@@ -1,4 +1,6 @@
 Checks: >
     bugprone-*,
     performance-*,
-    readability-*
+    readability-*,
+    -readability-magic-numbers,
+    -readability-identifier-length
