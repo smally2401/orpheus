@@ -2,35 +2,7 @@
   {
     "arguments": [
       "/usr/bin/gcc",
-      "-Wall",
-      "-Wextra",
-      "-Wpedantic",
-      "-g",
-      "-O0",
-      "-DDEBUG",
-      "-fsanitize=address,undefined",
-      "-fno-omit-frame-pointer",
-      "-I/usr/include/pipewire-0.3",
-      "-I/usr/include/spa-0.2",
-      "-D_REENTRANT",
-      "-I/usr/include/libdrm",
-      "-I/usr/include/libdecor-0",
-      "-I/usr/include/glib-2.0",
-      "-I/usr/lib/x86_64-linux-gnu/glib-2.0/include",
-      "-I/usr/include/sysprof-6",
-      "-pthread",
-      "-c",
-      "-o",
-      "target/debug/object/main.o",
-      "src/main.c"
-    ],
-    "directory": "/home/smally/Coding/orpheus_c/orpheus",
-    "file": "/home/smally/Coding/orpheus_c/orpheus/src/main.c",
-    "output": "/home/smally/Coding/orpheus_c/orpheus/target/debug/object/main.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/gcc",
+      "-std=c99",
       "-Wall",
       "-Wextra",
       "-Wpedantic",
@@ -60,6 +32,7 @@
   {
     "arguments": [
       "/usr/bin/gcc",
+      "-std=c99",
       "-Wall",
       "-Wextra",
       "-Wpedantic",

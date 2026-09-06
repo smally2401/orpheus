@@ -1,6 +1,5 @@
 BasedOnStyle: LLVM
 BreakBeforeBraces: Allman
-ColumnLimit: 100
 PointerAlignment: Left
 TabWidth: 4
 IndentWidth: 4
@@ -8,3 +7,7 @@ UseTab: ForIndentation
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: false
 SortIncludes: Never
+BreakBeforeTernaryOperators: true
+AlignOperands: DontAlign
+ContinuationIndentWidth: 4
+ColumnLimit: 80

@@ -2,18 +2,18 @@ CC = gcc
 BASE_CFLAGS = -MMD -MP
 MODE ?= release
 
-SDL_CFLAGS = $(shell pkg-config --cflags sdl3 glib-2.0)
-SDL_LIBS   = $(shell pkg-config --libs sdl3 glib-2.0)
+SDL_CFLAGS = $(shell pkg-config --cflags sdl3 sdl3-image glib-2.0)
+SDL_LIBS   = $(shell pkg-config --libs sdl3 sdl3-image glib-2.0)
 
 TARGET_NAME = orpheus
 BUILD_DIR = target
 
 ifeq ($(MODE),debug)
-	CFLAGS = -Wall -Wextra -Wpedantic $(BASE_CFLAGS) -g -O0 -DDEBUG \
+	CFLAGS = -std=c99 -Wall -Wextra -Wpedantic $(BASE_CFLAGS) -g -O0 -DDEBUG \
 			 -fsanitize=address,undefined -fno-omit-frame-pointer
 	LDFLAGS = -fsanitize=address,undefined
 else
-	CFLAGS = $(BASE_CFLAGS) -O2 -DNDEBUG
+	CFLAGS = -std=c99 $(BASE_CFLAGS) -O2 -DNDEBUG
 	LDFLAGS = -flto
 endif
 
