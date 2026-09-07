@@ -1,10 +1,11 @@
 #ifndef APP_STATE_H
 #define APP_STATE_H
 
-#include <glib.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
+
+#include <glib.h>
 
 typedef struct
 {

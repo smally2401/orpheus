@@ -1,9 +1,11 @@
 #include "decode.h"
-#include "utils/debug.h"
+
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include "utils/debug.h"
 
 static uint32_t synchsafe_to_int(unsigned const char* buf)
 {
@@ -40,7 +42,7 @@ static char* decode_text_frame(unsigned const char* content, uint32_t len)
 	}
 
 	// TODO: handle other encodings
-	DEBUG_PRINT("UNHANDLED ENCODING MARKER: %u\n", content[0]);
+	// DEBUG_PRINT("UNHANDLED ENCODING MARKER: %u\n", content[0]);
 	return NULL;
 }
 
@@ -55,7 +57,7 @@ static void assign_text_field(char** field, const unsigned char* frame_data,
 
 	free(*field);
 	*field = text;
-	DEBUG_PRINT("%s\n", text);
+	// DEBUG_PRINT("%s\n", text);
 }
 
 // APIC content, in order: 1-byte encoding, null-terminated MOME string, 1-byte
@@ -125,7 +127,7 @@ static void process_frame(Song* song, const unsigned char* frame,
 			int track_num = (int)strtol(text, NULL, 10);
 			free(text);
 			song->number = track_num;
-			DEBUG_PRINT("TRACK NUMBER: %i\n", track_num);
+			// DEBUG_PRINT("TRACK NUMBER: %i\n", track_num);
 		}
 	}
 	else if (memcmp(frame, "APIC", 4) == 0)
@@ -138,7 +140,7 @@ static void process_frame(Song* song, const unsigned char* frame,
 		char* text = decode_text_frame(content, frame_size);
 		if (text)
 		{
-			DEBUG_PRINT("%.4s: %s\n", frame, text);
+			// DEBUG_PRINT("%.4s: %s\n", frame, text);
 			free(text);
 		}
 	}
@@ -179,7 +181,7 @@ int mp3_tags(Song* song)
 
 	unsigned char ver = header[3];
 	uint32_t pos = 0;
-	DEBUG_PRINT("\n\n");
+	// DEBUG_PRINT("\n\n");
 	while (pos + 10 < size)
 	{
 		if (memcmp(&tag_data[pos], "\0\0\0\0", 4) == 0)

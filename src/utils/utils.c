@@ -18,3 +18,14 @@ char* orph_strdup(const char* str)
 
 	return dup;
 }
+
+const char* get_extension(const char* path)
+{
+	const char* dot = strrchr(path, '.');
+	if (!dot || strrchr(dot, '/') || strrchr(dot, '\\'))
+	{
+		return NULL;
+	}
+
+	return dot + 1;
+}

@@ -1,21 +1,20 @@
+#include <stdbool.h>
+#include <stdio.h>
+
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_error.h>
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_init.h>
-#include <SDL3/SDL_iostream.h>
-#include <SDL3/SDL_render.h>
-#include <SDL3/SDL_surface.h>
 #include <SDL3_image/SDL_image.h>
+
+#include "library.h"
 #include "nuklear_config.h"
 #include "../vendor/nuklear.h"
 #include "../vendor/nuklear_sdl3_renderer.h"
-#include <stdio.h>
-#include <stdbool.h>
+
 #include "backend.h"
 #include "song.h"
 
 int main(void)
 {
+	scan_library("/home/smally/Music");
 
 	bool res = SDL_Init(SDL_INIT_VIDEO);
 	if (!res)
@@ -30,20 +29,22 @@ int main(void)
 	if (!window)
 	{
 		fprintf(stderr, "SDL_CreateWindow failed: %s", SDL_GetError());
-		puts("aaaaaaaaaaaaaa");
 		return 1;
 	}
 
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
-	struct nk_context* context = nk_sdl_init(window, renderer, nk_sdl_allocator());
+	struct nk_context* context =
+	    nk_sdl_init(window, renderer, nk_sdl_allocator());
 	nk_sdl_font_stash_begin(context);
 	nk_sdl_font_stash_end(context);
 
-	Song* test_song = song_create("/home/smally/Music/Portishead/Dummy/mysterons.mp3");
+	Song* test_song =
+	    song_create("/home/smally/Music/Portishead/Dummy/mysterons.mp3");
 	SDL_Texture* art_texture = NULL;
 	if (test_song->art)
 	{
-		SDL_IOStream* io = SDL_IOFromConstMem(test_song->art->data, test_song->art->size);
+		SDL_IOStream* io =
+		    SDL_IOFromConstMem(test_song->art->data, test_song->art->size);
 		SDL_Surface* surface = IMG_Load_IO(io, true);
 
 		printf("width: %i | height: %i\n", surface->w, surface->h);
@@ -51,15 +52,14 @@ int main(void)
 		if (!surface)
 		{
 			fprintf(stderr, "IMG_Load_IO failed: %s\n", SDL_GetError());
-			puts("aaaaaaaaaaaaaa");
 		}
 		else
 		{
 			art_texture = SDL_CreateTextureFromSurface(renderer, surface);
 			if (!art_texture)
 			{
-				fprintf(stderr, "SDL_CreateTextureFromSurface failed: %s\n", SDL_GetError());
-				puts("aaaaaaaaaaaaaa");
+				fprintf(stderr, "SDL_CreateTextureFromSurface failed: %s\n",
+				        SDL_GetError());
 			}
 
 			SDL_DestroySurface(surface);
@@ -115,7 +115,8 @@ int main(void)
 		{
 			if (!SDL_RenderTexture(renderer, art_texture, NULL, NULL))
 			{
-				fprintf(stderr, "SDL_RenderTexture failed: %s\n", SDL_GetError());
+				fprintf(stderr, "SDL_RenderTexture failed: %s\n",
+				        SDL_GetError());
 			}
 		}
 

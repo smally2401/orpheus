@@ -1,11 +1,13 @@
 #include "song.h"
+
 #include <stdint.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
+
 #include "backend.h"
+#include "decode.h"
 #include "utils/debug.h"
 #include "utils/utils.h"
-#include "decode.h"
 
 typedef enum
 {
@@ -26,17 +28,6 @@ static SongExtension get_extension_enum(const char* ext)
 	}
 
 	return EXT_INVALID;
-}
-
-static const char* get_extension(const char* path)
-{
-	const char* dot = strrchr(path, '.');
-	if (!dot || strrchr(dot, '/') || strrchr(dot, '\\'))
-	{
-		return NULL;
-	}
-
-	return dot + 1;
 }
 
 static int song_from_id3v2(Song* song)
@@ -65,7 +56,7 @@ static int song_from_id3v2(Song* song)
 Song* song_create(char* path)
 {
 	Song* song = malloc(sizeof(Song));
-	song->path = path;
+	song->path = orph_strdup(path);
 	song->number = -1;
 	song->album_artist = orph_strdup("Unknown Artist");
 	song->artist = orph_strdup("Unknown Artist");
@@ -80,6 +71,7 @@ Song* song_create(char* path)
 
 void song_free(Song* song)
 {
+	free(song->path);
 	free(song->album_artist);
 	free(song->artist);
 	free(song->album_title);
