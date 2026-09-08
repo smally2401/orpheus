@@ -29,8 +29,7 @@ typedef struct
 {
 	char* title;
 	char* artist;
-	Song** tracklist;
-	int track_count;
+	GPtrArray* tracklist;
 	AlbumArt* art;
 } Album;
 

@@ -3,6 +3,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
+#include <glib.h>
 
 #include "library.h"
 #include "nuklear_config.h"
@@ -11,10 +12,15 @@
 
 #include "backend.h"
 #include "song.h"
+#include "utils/debug.h"
 
 int main(void)
 {
-	scan_library("/home/smally/Music");
+	GHashTable* library_1 = scan_library("/home/smally/Music");
+	GHashTable* library_2 = build_library(library_1);
+	GPtrArray* albums = sorted_albums(library_2);
+
+	print_albums(albums);
 
 	bool res = SDL_Init(SDL_INIT_VIDEO);
 	if (!res)
@@ -38,37 +44,7 @@ int main(void)
 	nk_sdl_font_stash_begin(context);
 	nk_sdl_font_stash_end(context);
 
-	Song* test_song =
-	    song_create("/home/smally/Music/Portishead/Dummy/mysterons.mp3");
 	SDL_Texture* art_texture = NULL;
-	if (test_song->art)
-	{
-		SDL_IOStream* io =
-		    SDL_IOFromConstMem(test_song->art->data, test_song->art->size);
-		SDL_Surface* surface = IMG_Load_IO(io, true);
-
-		printf("width: %i | height: %i\n", surface->w, surface->h);
-
-		if (!surface)
-		{
-			fprintf(stderr, "IMG_Load_IO failed: %s\n", SDL_GetError());
-		}
-		else
-		{
-			art_texture = SDL_CreateTextureFromSurface(renderer, surface);
-			if (!art_texture)
-			{
-				fprintf(stderr, "SDL_CreateTextureFromSurface failed: %s\n",
-				        SDL_GetError());
-			}
-
-			SDL_DestroySurface(surface);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "test_song has no art\n");
-	}
 
 	int running = 1;
 	SDL_Event event;
@@ -83,9 +59,6 @@ int main(void)
 			{
 				running = 0;
 			}
-
-			// DEBUG_PRINT("TYPE: %u\n", event.type);
-			// DEBUG_PRINT("BUTTON: %u\n", event.button.button);
 
 			nk_sdl_handle_event(context, &event);
 		}
@@ -129,7 +102,6 @@ int main(void)
 		SDL_DestroyTexture(art_texture);
 	}
 
-	song_free(test_song);
 	nk_sdl_shutdown(context);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
