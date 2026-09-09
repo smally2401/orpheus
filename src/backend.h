@@ -1,6 +1,7 @@
 #ifndef APP_STATE_H
 #define APP_STATE_H
 
+#include "audio.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -51,18 +52,21 @@ typedef enum
 
 typedef struct
 {
-	// PLAYER
-	Playlist* playlists;
-	int playlist_count;
+	AudioPlayer* player;
+	// Playlist* playlists;
+	// int playlist_count;
 	GHashTable* song_paths;
-	Song** queue;
-	int queue_length;
-	int* order;
+	GPtrArray* library;
+	GPtrArray* queue;
+	// int* order;
 	int index;
-	bool shuffle;
-	RepeatMode repeat;
+	// bool shuffle;
+	// RepeatMode repeat;
 	float volume;
 	bool paused;
 } OrpheusBackend;
+
+OrpheusBackend* backend_init(const char* music_dir);
+void backend_destroy(OrpheusBackend* backend);
 
 #endif

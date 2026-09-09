@@ -3,8 +3,6 @@
 
 #include <glib.h>
 
-#include "../audio.h"
-
 #ifdef DEBUG
 
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
@@ -24,6 +22,5 @@
 
 void print_library(GHashTable* library);
 void print_albums(GPtrArray* albums);
-AudioPlayer* test_audio(void);
 
 #endif

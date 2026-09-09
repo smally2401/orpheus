@@ -17,6 +17,12 @@ else
 	LDFLAGS = -flto
 endif
 
+ifeq ($(os),Windows_NT)
+	EXE_EXT = .exe
+else
+	EXE_EXT =
+endif
+
 TARGET = $(BUILD_DIR)/$(MODE)/$(TARGET_NAME)
 OBJDIR = $(BUILD_DIR)/$(MODE)/object
 

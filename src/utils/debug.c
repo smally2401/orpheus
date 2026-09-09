@@ -6,7 +6,6 @@
 
 #include "../library.h"
 #include "../backend.h"
-#include "../audio.h"
 
 void print_library(GHashTable* library)
 {
@@ -46,27 +45,4 @@ void print_albums(GPtrArray* albums)
 		Album* album = (Album*)albums->pdata[i];
 		puts(album->title);
 	}
-}
-
-AudioPlayer* test_audio(void)
-{
-	AudioPlayer* player = audio_create();
-	if (!player)
-	{
-		puts("could not create player");
-		return NULL;
-	}
-
-	audio_set_volume(player, 1.0F);
-
-	if (!audio_load_file(player,
-	                     "/home/smally/Music/john-coltrane/a-love-supreme/01 "
-	                     "Acknowledgement.mp3"))
-	{
-		puts("could not play file");
-		return NULL;
-	}
-
-	audio_play(player);
-	return player;
 }

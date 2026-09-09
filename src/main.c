@@ -7,8 +7,6 @@
 #include <SDL3_image/SDL_image.h>
 #include <glib.h>
 
-#include "audio.h"
-#include "library.h"
 #include "nuklear_config.h"
 #include "../vendor/nuklear.h"
 #include "../vendor/nuklear_sdl3_renderer.h"
@@ -16,6 +14,8 @@
 #include "backend.h"
 #include "song.h"
 #include "utils/debug.h"
+#include "audio.h"
+#include "library.h"
 
 typedef enum
 {
@@ -25,13 +25,9 @@ typedef enum
 
 int main(void)
 {
-	GHashTable* library_1 = scan_library("/home/smally/Music");
-	GHashTable* library_2 = build_library(library_1);
-	GPtrArray* albums = sorted_albums(library_2);
-
+	OrpheusBackend* backend = backend_init("/home/smally/Music");
 	Album* open_album = NULL;
 	CurrentView current_view = VIEW_LIBRARY;
-	AudioPlayer* player = test_audio();
 
 	bool res = SDL_Init(SDL_INIT_VIDEO);
 	if (!res)
@@ -89,15 +85,15 @@ int main(void)
 			switch (current_view)
 			{
 			case VIEW_LIBRARY:
-				for (guint i = 0; i < albums->len; i++)
-				{
-					Album* album = albums->pdata[i];
-					if (nk_button_label(context, album->title))
-					{
-						open_album = album;
-						current_view = VIEW_ALBUM;
-					}
-				}
+				// for (guint i = 0; i < albums->len; i++)
+				// {
+				// 	Album* album = albums->pdata[i];
+				// 	if (nk_button_label(context, album->title))
+				// 	{
+				// 		open_album = album;
+				// 		current_view = VIEW_ALBUM;
+				// 	}
+				// }
 
 				break;
 
@@ -107,7 +103,8 @@ int main(void)
 					Song* song = open_album->tracklist->pdata[i];
 					if (nk_button_label(context, song->title))
 					{
-						puts(song->path);
+						// audio_load_file(player, song->path);
+						// audio_play(player);
 					}
 				}
 
@@ -149,10 +146,7 @@ int main(void)
 		SDL_DestroyTexture(art_texture);
 	}
 
-	g_ptr_array_free(albums, TRUE);
-	g_hash_table_destroy(library_2);
-	g_hash_table_destroy(library_1);
-
+	backend_destroy(backend);
 	nk_sdl_shutdown(context);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
