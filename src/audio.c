@@ -6,9 +6,14 @@
 #include <stdlib.h>
 
 #ifdef _WIN32
-#define ma_sound_init_from_path ma_sound_init_from_file_w
-#else
-#define ma_sound_init_from_path ma_sound_init_from_file
+#include <windows.h>
+static wchar_t* utf8_to_wide(const char* utf8_str)
+{
+	int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8_str, -1, NULL, 0);
+	wchar_t* wstr = malloc(wlen * sizeof(wchar_t));
+	MultiByteToWideChar(CP_UTF8, 0, utf8_str, -1, wstr, wlen);
+	return wstr;
+}
 #endif
 
 AudioPlayer* audio_create(void)
@@ -45,7 +50,7 @@ void audio_destroy(AudioPlayer* player)
 	free(player);
 }
 
-bool audio_load_file(AudioPlayer* player, const path_string path)
+bool audio_load_file(AudioPlayer* player, const char* path)
 {
 	if (!player)
 	{
@@ -58,8 +63,16 @@ bool audio_load_file(AudioPlayer* player, const path_string path)
 		player->has_sound = false;
 	}
 
-	ma_result res = ma_sound_init_from_path(&player->engine, path, 0, NULL,
+#ifdef _WIN32
+	wchar_t* wide_path = utf8_to_wide(path);
+	ma_result res = ma_sound_init_from_file_w(&player->engine, wide_path, 0,
+	                                          NULL, NULL, &player->sound);
+	free(wide_path);
+#else
+	ma_result res = ma_sound_init_from_file(&player->engine, path, 0, NULL,
 	                                        NULL, &player->sound);
+#endif
+
 	if (res == MA_SUCCESS)
 	{
 		player->has_sound = true;

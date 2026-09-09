@@ -5,12 +5,6 @@
 
 #include <stdbool.h>
 
-#ifdef _WIN32
-typedef const wchar_t* path_string;
-#else
-typedef const char* path_string;
-#endif
-
 typedef struct
 {
 	ma_engine engine;
@@ -21,7 +15,7 @@ typedef struct
 
 AudioPlayer* audio_create(void);
 void audio_destroy(AudioPlayer* player);
-bool audio_load_file(AudioPlayer* player, path_string path);
+bool audio_load_file(AudioPlayer* player, const char* path);
 void audio_play(AudioPlayer* player);
 void audio_pause(AudioPlayer* player);
 bool audio_seek_seconds(AudioPlayer* player, float seconds);
