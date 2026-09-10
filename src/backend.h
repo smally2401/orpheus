@@ -37,10 +37,7 @@ typedef struct
 typedef struct
 {
 	char* name;
-	char** songs;
-	int track_count;
-	bool sort;
-	AlbumArt* art;
+	GPtrArray* songs;
 } Playlist;
 
 typedef enum
@@ -53,8 +50,7 @@ typedef enum
 typedef struct
 {
 	AudioPlayer* player;
-	// Playlist* playlists;
-	// int playlist_count;
+	GPtrArray* playlists;
 	GHashTable* song_paths;
 	GHashTable* built_library;
 	GPtrArray* library;

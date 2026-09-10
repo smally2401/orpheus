@@ -12,22 +12,20 @@
 #include "../vendor/nuklear_sdl3_renderer.h"
 
 #include "backend.h"
-#include "song.h"
-#include "utils/debug.h"
-#include "audio.h"
-#include "library.h"
-
-typedef enum
-{
-	VIEW_LIBRARY,
-	VIEW_ALBUM,
-} CurrentView;
+#include "ui/ui_state.h"
+#include "config/config.h"
 
 int main(void)
 {
+	load_lua();
+
+	UiState ui_state;
+	ui_state.win_width = 800;
+	ui_state.win_height = 450;
+	ui_state.current_view = VIEW_LIBRARY;
+	ui_state.current_album = NULL;
+
 	OrpheusBackend* backend = backend_init("/home/smally/Music");
-	Album* open_album = NULL;
-	CurrentView current_view = VIEW_LIBRARY;
 
 	bool res = SDL_Init(SDL_INIT_VIDEO);
 	if (!res)
@@ -36,9 +34,8 @@ int main(void)
 		return 1;
 	}
 
-	int win_width = 800;
-	int win_height = 450;
-	SDL_Window* window = SDL_CreateWindow("orpheus", win_width, win_height, 0);
+	SDL_Window* window =
+	    SDL_CreateWindow("orpheus", ui_state.win_width, ui_state.win_height, 0);
 	if (!window)
 	{
 		fprintf(stderr, "SDL_CreateWindow failed: %s", SDL_GetError());
@@ -69,29 +66,32 @@ int main(void)
 
 			if (event.type == SDL_EVENT_WINDOW_RESIZED)
 			{
-				SDL_GetWindowSizeInPixels(window, &win_width, &win_height);
+				SDL_GetWindowSizeInPixels(window, &ui_state.win_width,
+				                          &ui_state.win_height);
 			}
 
 			nk_sdl_handle_event(context, &event);
 		}
 
-		nk_bool res =
-		    nk_begin(context, "orpheus",
-		             nk_rect(0, 0, (float)win_width, (float)win_height), 0);
+		nk_bool res = nk_begin(context, "orpheus",
+		                       nk_rect(0, 0, (float)ui_state.win_width,
+		                               (float)ui_state.win_height),
+		                       0);
 		if (res)
 		{
 			nk_layout_row_static(context, 30, 100, 1);
 
-			switch (current_view)
+			switch (ui_state.current_view)
 			{
 			case VIEW_LIBRARY:
+
 				for (guint i = 0; i < backend->library->len; i++)
 				{
 					Album* album = backend->library->pdata[i];
 					if (nk_button_label(context, album->title))
 					{
-						open_album = album;
-						current_view = VIEW_ALBUM;
+						ui_state.current_album = album;
+						ui_state.current_view = VIEW_ALBUM;
 					}
 				}
 
@@ -108,20 +108,30 @@ int main(void)
 				break;
 
 			case VIEW_ALBUM:
-				for (guint i = 0; i < open_album->tracklist->len; i++)
+
+				for (guint i = 0; i < ui_state.current_album->tracklist->len;
+				     i++)
 				{
-					Song* song = open_album->tracklist->pdata[i];
+					Song* song = ui_state.current_album->tracklist->pdata[i];
 					if (nk_button_label(context, song->title))
 					{
-						backend_load_album_to_queue(backend, open_album,
-						                            (int)i);
+						backend_load_album_to_queue(
+						    backend, ui_state.current_album, (int)i);
 					}
 				}
 
 				if (nk_button_label(context, "GO BACK"))
 				{
-					current_view = VIEW_LIBRARY;
+					ui_state.current_view = VIEW_LIBRARY;
 				}
+
+				break;
+
+			case VIEW_PLAYLISTS:
+
+				break;
+
+			case VIEW_OPEN_PLAYLIST:
 
 				break;
 			}

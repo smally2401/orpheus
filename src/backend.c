@@ -11,6 +11,7 @@ OrpheusBackend* backend_init(const char* music_dir)
 	backend->song_paths = scan_library(music_dir);
 	backend->built_library = build_library(backend->song_paths);
 	backend->library = sorted_albums(backend->built_library);
+	backend->playlists = g_ptr_array_new();
 	backend->queue = g_ptr_array_new();
 	backend->index = 0;
 	backend->volume = 1.0F;
@@ -25,6 +26,7 @@ void backend_destroy(OrpheusBackend* backend)
 	g_hash_table_destroy(backend->song_paths);
 	g_hash_table_destroy(backend->built_library);
 	g_ptr_array_free(backend->library, TRUE);
+	g_ptr_array_free(backend->playlists, TRUE);
 	g_ptr_array_free(backend->queue, TRUE);
 	free(backend);
 }

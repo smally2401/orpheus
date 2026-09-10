@@ -1,5 +1,8 @@
 #include "config.h"
 
+#include <lua5.4/lauxlib.h>
+#include <lua5.4/lua.h>
+#include <lua5.4/lualib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -82,4 +85,21 @@ static int touch_file(const char* path)
 
 	fclose(f);
 	return 0;
+}
+
+void load_lua(void)
+{
+	lua_State* lstate = luaL_newstate();
+	luaL_openlibs(lstate);
+	char* config_path = get_config_path();
+
+	if (luaL_dofile(lstate, config_path) != LUA_OK)
+	{
+		const char* err = lua_tostring(lstate, -1);
+		fprintf(stderr, "Lua error: %s\n", err);
+		lua_pop(lstate, 1);
+	}
+
+	free(config_path);
+	lua_close(lstate);
 }
