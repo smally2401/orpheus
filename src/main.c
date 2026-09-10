@@ -85,15 +85,25 @@ int main(void)
 			switch (current_view)
 			{
 			case VIEW_LIBRARY:
-				// for (guint i = 0; i < albums->len; i++)
-				// {
-				// 	Album* album = albums->pdata[i];
-				// 	if (nk_button_label(context, album->title))
-				// 	{
-				// 		open_album = album;
-				// 		current_view = VIEW_ALBUM;
-				// 	}
-				// }
+				for (guint i = 0; i < backend->library->len; i++)
+				{
+					Album* album = backend->library->pdata[i];
+					if (nk_button_label(context, album->title))
+					{
+						open_album = album;
+						current_view = VIEW_ALBUM;
+					}
+				}
+
+				if (nk_button_label(context, "PREV"))
+				{
+					backend_prev(backend);
+				}
+
+				if (nk_button_label(context, "NEXT"))
+				{
+					backend_next(backend);
+				}
 
 				break;
 
@@ -103,8 +113,8 @@ int main(void)
 					Song* song = open_album->tracklist->pdata[i];
 					if (nk_button_label(context, song->title))
 					{
-						// audio_load_file(player, song->path);
-						// audio_play(player);
+						backend_load_album_to_queue(backend, open_album,
+						                            (int)i);
 					}
 				}
 

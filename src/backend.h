@@ -56,6 +56,7 @@ typedef struct
 	// Playlist* playlists;
 	// int playlist_count;
 	GHashTable* song_paths;
+	GHashTable* built_library;
 	GPtrArray* library;
 	GPtrArray* queue;
 	// int* order;
@@ -68,5 +69,9 @@ typedef struct
 
 OrpheusBackend* backend_init(const char* music_dir);
 void backend_destroy(OrpheusBackend* backend);
+void backend_prev(OrpheusBackend* backend);
+void backend_next(OrpheusBackend* backend);
+void backend_load_album_to_queue(OrpheusBackend* backend, Album* album,
+                                 int idx);
 
 #endif
