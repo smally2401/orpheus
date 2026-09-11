@@ -1,12 +1,13 @@
 #include "backend.h"
 
-#include "audio.h"
-#include "glib.h"
+#include <glib.h>
+
+#include "../audio/audio.h"
 #include "library.h"
 
 OrpheusBackend* backend_init(const char* music_dir)
 {
-	OrpheusBackend* backend = malloc(sizeof(OrpheusBackend));
+	OrpheusBackend* backend = g_malloc(sizeof(OrpheusBackend));
 	backend->player = audio_create();
 	backend->song_paths = scan_library(music_dir);
 	backend->built_library = build_library(backend->song_paths);
@@ -29,7 +30,7 @@ void backend_destroy(OrpheusBackend* backend)
 	g_ptr_array_free(backend->library, TRUE);
 	g_ptr_array_free(backend->playlists, TRUE);
 	g_ptr_array_free(backend->queue, TRUE);
-	free(backend);
+	g_free(backend);
 }
 
 void backend_play(OrpheusBackend* backend)

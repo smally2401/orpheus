@@ -8,11 +8,11 @@
 #include <glib.h>
 
 #include "config/config.h"
-#include "nuklear_config.h"
+#include "impl/nuklear_config.h"
 #include "../vendor/nuklear.h"
 #include "../vendor/nuklear_sdl3_renderer.h"
 
-#include "backend.h"
+#include "backend/backend.h"
 #include "ui/ui_state.h"
 
 int main(void)

@@ -1,7 +1,7 @@
 #ifndef AUDIO_H
 #define AUDIO_H
 
-#include "../vendor/miniaudio.h"
+#include "../../vendor/miniaudio.h"
 
 #include <stdbool.h>
 

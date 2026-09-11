@@ -5,9 +5,9 @@
 #include <string.h>
 
 #include "backend.h"
-#include "decode.h"
-#include "utils/debug.h"
-#include "utils/utils.h"
+#include "../utils/decode.h"
+#include "../utils/debug.h"
+#include "../utils/utils.h"
 
 typedef enum
 {
@@ -55,13 +55,13 @@ static int song_from_id3v2(Song* song)
 
 Song* song_create(char* path)
 {
-	Song* song = malloc(sizeof(Song));
-	song->path = orph_strdup(path);
+	Song* song = g_malloc(sizeof(Song));
+	song->path = g_strdup(path);
 	song->number = -1;
-	song->album_artist = orph_strdup("Unknown Artist");
-	song->artist = orph_strdup("Unknown Artist");
-	song->album_title = orph_strdup("Unknown Album");
-	song->title = orph_strdup("Unknown Title");
+	song->album_artist = g_strdup("Unknown Artist");
+	song->artist = g_strdup("Unknown Artist");
+	song->album_title = g_strdup("Unknown Album");
+	song->title = g_strdup("Unknown Title");
 	song->duration_secs = 0;
 	song->art = NULL;
 
@@ -71,17 +71,17 @@ Song* song_create(char* path)
 
 void song_free(Song* song)
 {
-	free(song->path);
-	free(song->album_artist);
-	free(song->artist);
-	free(song->album_title);
-	free(song->title);
+	g_free(song->path);
+	g_free(song->album_artist);
+	g_free(song->artist);
+	g_free(song->album_title);
+	g_free(song->title);
 
 	if (song->art)
 	{
-		free(song->art->data);
-		free(song->art);
+		g_free(song->art->data);
+		g_free(song->art);
 	}
 
-	free(song);
+	g_free(song);
 }

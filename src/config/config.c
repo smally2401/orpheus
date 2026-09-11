@@ -1,7 +1,6 @@
 #include "config.h"
 #include "glib.h"
 #include "lauxlib.h"
-#include "lstate.h"
 #include "lua.h"
 
 #include <stdio.h>
@@ -55,23 +54,13 @@ static char* get_config_path(void)
 	size_t dir_len = strlen(base) + strlen(suffix1) + 1;
 	size_t path_len = dir_len + strlen(suffix2);
 
-	char* config_dir = malloc(dir_len);
-	if (!config_dir)
-	{
-		return NULL;
-	}
-
-	char* config_path = malloc(path_len);
-	if (!config_path)
-	{
-		free(config_dir);
-		return NULL;
-	}
+	char* config_dir = g_malloc(dir_len);
+	char* config_path = g_malloc(path_len);
 
 	snprintf(config_dir, dir_len, "%s%s", base, suffix1);
 	orph_mkdir(config_dir);
 	snprintf(config_path, path_len, "%s%s", config_dir, suffix2);
-	free(config_dir);
+	g_free(config_dir);
 
 	return config_path;
 }
@@ -151,6 +140,6 @@ void load_lua(OrpheusBackend* backend)
 		lua_pop(lstate, 1);
 	}
 
-	free(config_path);
+	g_free(config_path);
 	lua_close(lstate);
 }

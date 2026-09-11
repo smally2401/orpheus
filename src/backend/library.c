@@ -11,7 +11,7 @@
 
 #include "backend.h"
 #include "song.h"
-#include "utils/utils.h"
+#include "../utils/utils.h"
 
 static guint album_key_hash(gconstpointer key)
 {
@@ -36,11 +36,7 @@ static void song_destroy(gpointer data)
 static char* join_path(const char* dirname, const char* fname)
 {
 	size_t len = strlen(dirname) + strlen(fname) + 1;
-	char* res = malloc(len);
-	if (!res)
-	{
-		return NULL;
-	}
+	char* res = g_malloc(len);
 
 	snprintf(res, len, "%s%s", dirname, fname);
 	return res;
@@ -66,20 +62,20 @@ static SDL_EnumerationResult visit_entry(void* userdata, const char* dirname,
 		g_hash_table_insert(song_paths, song->path, song);
 	}
 
-	free(full_path);
+	g_free(full_path);
 	return SDL_ENUM_CONTINUE;
 }
 
 static void album_key_destroy(gpointer data)
 {
-	free((AlbumKey*)data);
+	g_free((AlbumKey*)data);
 }
 
 static void album_destroy(gpointer data)
 {
 	Album* album = (Album*)data;
 	g_ptr_array_free(album->tracklist, TRUE);
-	free(album);
+	g_free(album);
 }
 
 void push_song(GPtrArray* tracklist, Song* song)
@@ -132,11 +128,11 @@ GHashTable* build_library(GHashTable* song_paths)
 		}
 		else
 		{
-			AlbumKey* new_key = malloc(sizeof(AlbumKey));
+			AlbumKey* new_key = g_malloc(sizeof(AlbumKey));
 			new_key->album_title = song->album_title;
 			new_key->album_artist = song->album_artist;
 
-			Album* new_album = malloc(sizeof(Album));
+			Album* new_album = g_malloc(sizeof(Album));
 			new_album->title = song->album_title;
 			new_album->artist = song->album_artist;
 			new_album->art = song->art;

@@ -5,5 +5,5 @@
 #define NK_IMPLEMENTATION
 #define NK_SDL3_RENDERER_IMPLEMENTATION
 
-#include "../vendor/nuklear.h"
-#include "../vendor/nuklear_sdl3_renderer.h"
+#include "../../vendor/nuklear.h"
+#include "../../vendor/nuklear_sdl3_renderer.h"

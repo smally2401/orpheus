@@ -4,8 +4,8 @@
 
 #include <glib.h>
 
-#include "../library.h"
-#include "../backend.h"
+#include "../backend/library.h"
+#include "../backend/backend.h"
 
 void print_library(GHashTable* library)
 {

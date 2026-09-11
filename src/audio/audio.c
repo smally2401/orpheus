@@ -1,9 +1,11 @@
 #include "audio.h"
 
 #define MINIAUDIO_IMPLEMENTATION
-#include "../vendor/miniaudio.h"
+#include "../../vendor/miniaudio.h"
 
 #include <stdlib.h>
+
+#include <glib.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -18,11 +20,7 @@ static wchar_t* utf8_to_wide(const char* utf8_str)
 
 AudioPlayer* audio_create(void)
 {
-	AudioPlayer* player = (AudioPlayer*)calloc(1, sizeof(AudioPlayer));
-	if (!player)
-	{
-		return NULL;
-	}
+	AudioPlayer* player = g_malloc0(sizeof(AudioPlayer));
 
 	ma_result res = ma_engine_init(NULL, &player->engine);
 	if (res != MA_SUCCESS)
@@ -47,7 +45,7 @@ void audio_destroy(AudioPlayer* player)
 	}
 
 	ma_engine_uninit(&player->engine);
-	free(player);
+	g_free(player);
 }
 
 bool audio_load_file(AudioPlayer* player, const char* path)

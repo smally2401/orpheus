@@ -1,7 +1,7 @@
 #ifndef UI_STATE_H
 #define UI_STATE_H
 
-#include "../backend.h"
+#include "../backend/backend.h"
 
 typedef enum
 {

@@ -7,7 +7,7 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
-#include "../backend.h"
+#include "../backend/backend.h"
 
 typedef enum
 {

@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "utils/debug.h"
-
 static uint32_t synchsafe_to_int(unsigned const char* buf)
 {
 	return (buf[0] << 21) | (buf[1] << 14) | (buf[2] << 7) | (buf[3]);
@@ -30,12 +28,7 @@ static char* decode_text_frame(unsigned const char* content, uint32_t len)
 
 	if (content[0] == 0 || content[0] == 3)
 	{
-		char* frame = malloc(len);
-		if (!frame)
-		{
-			return NULL;
-		}
-
+		char* frame = g_malloc(len);
 		memcpy(frame, content + 1, len - 1);
 		frame[len - 1] = '\0';
 		return frame;
@@ -55,7 +48,7 @@ static void assign_text_field(char** field, const unsigned char* frame_data,
 		return;
 	}
 
-	free(*field);
+	g_free(*field);
 	*field = text;
 	// DEBUG_PRINT("%s\n", text);
 }
@@ -125,7 +118,7 @@ static void process_frame(Song* song, const unsigned char* frame,
 		if (text)
 		{
 			int track_num = (int)strtol(text, NULL, 10);
-			free(text);
+			g_free(text);
 			song->number = track_num;
 			// DEBUG_PRINT("TRACK NUMBER: %i\n", track_num);
 		}
@@ -140,8 +133,7 @@ static void process_frame(Song* song, const unsigned char* frame,
 		char* text = decode_text_frame(content, frame_size);
 		if (text)
 		{
-			// DEBUG_PRINT("%.4s: %s\n", frame, text);
-			free(text);
+			g_free(text);
 		}
 	}
 #endif
@@ -170,18 +162,17 @@ int mp3_tags(Song* song)
 	}
 
 	uint32_t size = synchsafe_to_int(&header[6]);
-	unsigned char* tag_data = malloc(size);
+	unsigned char* tag_data = g_malloc(size);
 	unsigned long n = fread(tag_data, 1, size, f);
 	if (n < size)
 	{
-		free(tag_data);
+		g_free(tag_data);
 		fclose(f);
 		return -1;
 	}
 
 	unsigned char ver = header[3];
 	uint32_t pos = 0;
-	// DEBUG_PRINT("\n\n");
 	while (pos + 10 < size)
 	{
 		if (memcmp(&tag_data[pos], "\0\0\0\0", 4) == 0)
@@ -201,7 +192,7 @@ int mp3_tags(Song* song)
 		pos += 10 + frame_size;
 	}
 
-	free(tag_data);
+	g_free(tag_data);
 	fclose(f);
 	return 0;
 }

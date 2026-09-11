@@ -1,7 +1,7 @@
 #ifndef APP_STATE_H
 #define APP_STATE_H
 
-#include "audio.h"
+#include "../audio/audio.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
