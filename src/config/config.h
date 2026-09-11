@@ -1,10 +1,28 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <lua5.4/lua.h>
-#include <lua5.4/lauxlib.h>
-#include <lua5.4/lualib.h>
+#include <glib.h>
 
-void load_lua(void);
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
+
+#include "../backend.h"
+
+typedef enum
+{
+	CMD_PUSH_PLAYLIST,
+} CommandType;
+
+typedef struct
+{
+	CommandType type;
+	union
+	{
+		Playlist* playlist;
+	} data;
+} Command;
+
+void load_lua(OrpheusBackend* backend);
 
 #endif

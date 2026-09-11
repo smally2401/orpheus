@@ -1,5 +1,5 @@
 CC = gcc
-BASE_CFLAGS = -MMD -MP
+BASE_CFLAGS = -MMD -MP -Ivendor/lua
 MODE ?= release
 
 SDL_CFLAGS = $(shell pkg-config --cflags sdl3 sdl3-image glib-2.0)
@@ -23,7 +23,7 @@ else
 	EXE_EXT =
 endif
 
-TARGET = $(BUILD_DIR)/$(MODE)/$(TARGET_NAME)
+TARGET = $(BUILD_DIR)/$(MODE)/$(TARGET_NAME)$(EXE_EXT)
 OBJDIR = $(BUILD_DIR)/$(MODE)/object
 
 SRCS = $(shell find src -name '*.c')

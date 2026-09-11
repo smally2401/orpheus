@@ -11,7 +11,8 @@ OrpheusBackend* backend_init(const char* music_dir)
 	backend->song_paths = scan_library(music_dir);
 	backend->built_library = build_library(backend->song_paths);
 	backend->library = sorted_albums(backend->built_library);
-	backend->playlists = g_ptr_array_new();
+	backend->playlists =
+	    g_ptr_array_new_with_free_func((GDestroyNotify)playlist_free);
 	backend->queue = g_ptr_array_new();
 	backend->index = 0;
 	backend->volume = 1.0F;
@@ -95,9 +96,36 @@ void backend_load_album_to_queue(OrpheusBackend* backend, Album* album, int idx)
 	backend_load_track(backend, backend->queue->pdata[idx]);
 }
 
+void backend_load_playlist_to_queue(OrpheusBackend* backend, Playlist* playlist,
+                                    int idx)
+{
+	g_ptr_array_free(backend->queue, TRUE);
+	backend->queue = g_ptr_array_new();
+	for (guint i = 0; i < playlist->songs->len; i++)
+	{
+		g_ptr_array_add(backend->queue, playlist->songs->pdata[i]);
+	}
+
+	backend->index = idx;
+	backend_load_track(backend, backend->queue->pdata[idx]);
+}
+
 void backend_tick(OrpheusBackend* backend)
 {
 	if (audio_is_empty(backend->player) && !audio_is_paused(backend->player))
 	{
 	}
+}
+
+Song* song_from_path(OrpheusBackend* backend, const char* path)
+{
+	return g_hash_table_lookup(backend->song_paths, path);
+}
+
+void playlist_free(gpointer data)
+{
+	Playlist* playlist = data;
+	g_free(playlist->name);
+	g_ptr_array_free(playlist->songs, FALSE);
+	g_free(playlist);
 }

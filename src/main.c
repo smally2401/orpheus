@@ -7,25 +7,25 @@
 #include <SDL3_image/SDL_image.h>
 #include <glib.h>
 
+#include "config/config.h"
 #include "nuklear_config.h"
 #include "../vendor/nuklear.h"
 #include "../vendor/nuklear_sdl3_renderer.h"
 
 #include "backend.h"
 #include "ui/ui_state.h"
-#include "config/config.h"
 
 int main(void)
 {
-	load_lua();
-
 	UiState ui_state;
 	ui_state.win_width = 800;
 	ui_state.win_height = 450;
 	ui_state.current_view = VIEW_LIBRARY;
 	ui_state.current_album = NULL;
+	ui_state.current_playlist = NULL;
 
 	OrpheusBackend* backend = backend_init("/home/smally/Music");
+	load_lua(backend);
 
 	bool res = SDL_Init(SDL_INIT_VIDEO);
 	if (!res)
@@ -105,6 +105,11 @@ int main(void)
 					backend_next(backend);
 				}
 
+				if (nk_button_label(context, "PLAYLISTS"))
+				{
+					ui_state.current_view = VIEW_PLAYLISTS;
+				}
+
 				break;
 
 			case VIEW_ALBUM:
@@ -129,9 +134,30 @@ int main(void)
 
 			case VIEW_PLAYLISTS:
 
+				for (guint i = 0; i < backend->playlists->len; i++)
+				{
+					Playlist* playlist = backend->playlists->pdata[i];
+					if (nk_button_label(context, playlist->name))
+					{
+						ui_state.current_playlist = playlist;
+						ui_state.current_view = VIEW_OPEN_PLAYLIST;
+					}
+				}
+
 				break;
 
 			case VIEW_OPEN_PLAYLIST:
+
+				for (guint i = 0; i < ui_state.current_playlist->songs->len;
+				     i++)
+				{
+					Song* song = ui_state.current_playlist->songs->pdata[i];
+					if (nk_button_label(context, song->title))
+					{
+						backend_load_playlist_to_queue(
+						    backend, ui_state.current_playlist, (int)i);
+					}
+				}
 
 				break;
 			}

@@ -15,6 +15,7 @@ typedef struct
 {
 	CurrentView current_view;
 	Album* current_album;
+	Playlist* current_playlist;
 	int win_width;
 	int win_height;
 } UiState;
