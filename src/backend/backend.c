@@ -127,6 +127,6 @@ void playlist_free(gpointer data)
 {
 	Playlist* playlist = data;
 	g_free(playlist->name);
-	g_ptr_array_free(playlist->songs, FALSE);
+	g_ptr_array_free(playlist->songs, TRUE);
 	g_free(playlist);
 }

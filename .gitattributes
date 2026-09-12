@@ -1,1 +1,2 @@
 /vendor/* linguist-vendored
+Makefile linguist-detectable=false
