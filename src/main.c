@@ -14,15 +14,11 @@
 
 #include "backend/backend.h"
 #include "ui/ui_state.h"
+#include "ui/ui_view.h"
 
 int main(void)
 {
-	UiState ui_state;
-	ui_state.win_width = 800;
-	ui_state.win_height = 450;
-	ui_state.current_view = VIEW_LIBRARY;
-	ui_state.current_album = NULL;
-	ui_state.current_playlist = NULL;
+	UiState ui_state = ui_state_init();
 
 	OrpheusBackend* backend = backend_init("/home/smally/Music");
 	load_lua(backend);
@@ -80,98 +76,13 @@ int main(void)
 		if (res)
 		{
 			nk_layout_row_static(context, 30, 100, 1);
-
-			switch (ui_state.current_view)
-			{
-			case VIEW_LIBRARY:
-
-				for (guint i = 0; i < backend->library->len; i++)
-				{
-					Album* album = backend->library->pdata[i];
-					if (nk_button_label(context, album->title))
-					{
-						ui_state.current_album = album;
-						ui_state.current_view = VIEW_ALBUM;
-					}
-				}
-
-				if (nk_button_label(context, "PREV"))
-				{
-					backend_prev(backend);
-				}
-
-				if (nk_button_label(context, "NEXT"))
-				{
-					backend_next(backend);
-				}
-
-				if (nk_button_label(context, "PLAYLISTS"))
-				{
-					ui_state.current_view = VIEW_PLAYLISTS;
-				}
-
-				break;
-
-			case VIEW_ALBUM:
-
-				for (guint i = 0; i < ui_state.current_album->tracklist->len;
-				     i++)
-				{
-					Song* song = ui_state.current_album->tracklist->pdata[i];
-					if (nk_button_label(context, song->title))
-					{
-						backend_load_album_to_queue(
-						    backend, ui_state.current_album, (int)i);
-					}
-				}
-
-				if (nk_button_label(context, "GO BACK"))
-				{
-					ui_state.current_view = VIEW_LIBRARY;
-				}
-
-				break;
-
-			case VIEW_PLAYLISTS:
-
-				for (guint i = 0; i < backend->playlists->len; i++)
-				{
-					Playlist* playlist = backend->playlists->pdata[i];
-					if (nk_button_label(context, playlist->name))
-					{
-						ui_state.current_playlist = playlist;
-						ui_state.current_view = VIEW_OPEN_PLAYLIST;
-					}
-				}
-
-				break;
-
-			case VIEW_OPEN_PLAYLIST:
-
-				for (guint i = 0; i < ui_state.current_playlist->songs->len;
-				     i++)
-				{
-					Song* song = ui_state.current_playlist->songs->pdata[i];
-					if (nk_button_label(context, song->title))
-					{
-						backend_load_playlist_to_queue(
-						    backend, ui_state.current_playlist, (int)i);
-					}
-				}
-
-				break;
-			}
+			display_current_view(backend, &ui_state, context);
 		}
 
 		nk_end(context);
 		nk_input_end(context);
 
-		const int red = 30;
-		const int green = 30;
-		const int blue = 30;
-		const int alpha = 255;
-
-		SDL_SetRenderDrawColor(renderer, red, green, blue, alpha);
+		SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
 		SDL_RenderClear(renderer);
 
 		if (art_texture)

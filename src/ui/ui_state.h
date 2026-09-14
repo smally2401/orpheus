@@ -11,7 +11,7 @@ typedef enum
 	VIEW_OPEN_PLAYLIST,
 } CurrentView;
 
-typedef struct
+typedef struct UiState
 {
 	CurrentView current_view;
 	Album* current_album;
@@ -20,6 +20,6 @@ typedef struct
 	int win_height;
 } UiState;
 
-UiState* ui_state_init(void);
+UiState ui_state_init(void);
 
 #endif
