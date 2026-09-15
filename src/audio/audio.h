@@ -20,7 +20,7 @@ void audio_play(AudioPlayer* player);
 void audio_pause(AudioPlayer* player);
 bool audio_seek_seconds(AudioPlayer* player, float seconds);
 float audio_get_position_seconds(AudioPlayer* player);
-float audio_get_duration_seconds(AudioPlayer* player);
+float audio_get_duration_seconds(AudioPlayer* player, const char* path);
 bool audio_is_empty(AudioPlayer* player);
 bool audio_is_paused(AudioPlayer* player);
 float audio_get_volume(AudioPlayer* player);

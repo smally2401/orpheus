@@ -86,6 +86,11 @@ int main(void)
 			{
 				backend_toggle_play(backend);
 			}
+			if (nk_button_label(context, "TOGGLE REPEAT"))
+			{
+				backend_toggle_repeat(backend);
+				printf("%i\n", backend->repeat);
+			}
 			display_position_slider(backend, context);
 		}
 

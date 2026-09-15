@@ -137,21 +137,45 @@ float audio_get_position_seconds(AudioPlayer* player)
 	return (float)cursor / (float)sample_rate;
 }
 
-float audio_get_duration_seconds(AudioPlayer* player)
+float audio_get_duration_seconds(AudioPlayer* player, const char* path)
 {
-	if (!player || !player->has_sound)
+	// if (!player || !player->has_sound)
+	// {
+	// 	return 0.0F;
+	// }
+	//
+	// float duration;
+	// ma_result res = ma_sound_get_length_in_seconds(&player->sound,
+	// &duration); if (res != MA_SUCCESS)
+	// {
+	// 	return 0.0F;
+	// }
+	//
+	// return duration;
+
+	if (!player || !player->has_sound || !path)
 	{
 		return 0.0F;
 	}
 
-	float duration;
-	ma_result res = ma_sound_get_length_in_seconds(&player->sound, &duration);
-	if (res != MA_SUCCESS)
+	ma_decoder decoder;
+	ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 2, 0);
+
+	if (ma_decoder_init_file(path, &config, &decoder) != MA_SUCCESS)
 	{
 		return 0.0F;
 	}
 
-	return duration;
+	ma_uint64 frames = 0;
+	float seconds = 0.0F;
+
+	if (ma_decoder_get_length_in_pcm_frames(&decoder, &frames) == MA_SUCCESS)
+	{
+		seconds = (float)frames / (float)decoder.outputSampleRate;
+	}
+
+	ma_decoder_uninit(&decoder);
+	return seconds;
 }
 
 bool audio_is_empty(AudioPlayer* player)

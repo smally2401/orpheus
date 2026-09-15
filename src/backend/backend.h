@@ -58,7 +58,7 @@ typedef struct
 	// int* order;
 	int index;
 	// bool shuffle;
-	// RepeatMode repeat;
+	RepeatMode repeat;
 	float volume;
 	bool paused;
 } OrpheusBackend;
@@ -78,5 +78,6 @@ float backend_get_position_seconds(OrpheusBackend* backend);
 float backend_get_duration_seconds(OrpheusBackend* backend);
 void backend_seek(OrpheusBackend* backend, float seconds);
 void backend_tick(OrpheusBackend* backend);
+void backend_toggle_repeat(OrpheusBackend* backend);
 
 #endif

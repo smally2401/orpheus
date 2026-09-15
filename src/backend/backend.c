@@ -16,6 +16,7 @@ OrpheusBackend* backend_init(const char* music_dir)
 	    g_ptr_array_new_with_free_func((GDestroyNotify)playlist_free);
 	backend->queue = g_ptr_array_new();
 	backend->index = 0;
+	backend->repeat = REPEAT_OFF;
 	backend->volume = 1.0F;
 	backend->paused = true;
 
@@ -113,9 +114,27 @@ void backend_load_playlist_to_queue(OrpheusBackend* backend, Playlist* playlist,
 
 void backend_tick(OrpheusBackend* backend)
 {
-	if (audio_is_empty(backend->player) && !audio_is_paused(backend->player))
+	bool track_ended = backend->queue->len > 0 &&
+	    audio_is_empty(backend->player) && !audio_is_paused(backend->player);
+
+	if (track_ended)
 	{
-		backend_next(backend);
+		switch (backend->repeat)
+		{
+		case REPEAT_OFF:
+			backend_next(backend);
+			break;
+
+		case REPEAT_QUEUE:
+			bool last_track = backend->index + 1 == (int)backend->queue->len;
+			backend->index = last_track ? 0 : backend->index + 1;
+			backend_load_track(backend, backend->queue->pdata[backend->index]);
+			break;
+
+		case REPEAT_TRACK:
+			backend_load_track(backend, backend->queue->pdata[backend->index]);
+			break;
+		}
 	}
 }
 
@@ -139,10 +158,34 @@ float backend_get_position_seconds(OrpheusBackend* backend)
 
 float backend_get_duration_seconds(OrpheusBackend* backend)
 {
-	return audio_get_duration_seconds(backend->player);
+	if (backend->queue->len == 0)
+	{
+		return 0.0F;
+	}
+
+	Song* current_song = (Song*)backend->queue->pdata[backend->index];
+	return audio_get_duration_seconds(backend->player, current_song->path);
 }
 
 void backend_seek(OrpheusBackend* backend, float seconds)
 {
 	audio_seek_seconds(backend->player, seconds);
+}
+
+void backend_toggle_repeat(OrpheusBackend* backend)
+{
+	switch (backend->repeat)
+	{
+	case REPEAT_OFF:
+		backend->repeat = REPEAT_QUEUE;
+		break;
+
+	case REPEAT_QUEUE:
+		backend->repeat = REPEAT_TRACK;
+		break;
+
+	case REPEAT_TRACK:
+		backend->repeat = REPEAT_OFF;
+		break;
+	}
 }
