@@ -111,11 +111,11 @@ void backend_load_playlist_to_queue(OrpheusBackend* backend, Playlist* playlist,
 	backend_load_track(backend, backend->queue->pdata[idx]);
 }
 
-// TODO
 void backend_tick(OrpheusBackend* backend)
 {
 	if (audio_is_empty(backend->player) && !audio_is_paused(backend->player))
 	{
+		backend_next(backend);
 	}
 }
 

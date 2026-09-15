@@ -77,5 +77,6 @@ Song* song_from_path(OrpheusBackend* backend, const char* path);
 float backend_get_position_seconds(OrpheusBackend* backend);
 float backend_get_duration_seconds(OrpheusBackend* backend);
 void backend_seek(OrpheusBackend* backend, float seconds);
+void backend_tick(OrpheusBackend* backend);
 
 #endif

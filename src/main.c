@@ -55,6 +55,7 @@ int main(void)
 
 	while (running)
 	{
+		backend_tick(backend);
 		nk_input_begin(context);
 
 		while (SDL_PollEvent(&event))
