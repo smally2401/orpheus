@@ -137,6 +137,23 @@ float audio_get_position_seconds(AudioPlayer* player)
 	return (float)cursor / (float)sample_rate;
 }
 
+float audio_get_duration_seconds(AudioPlayer* player)
+{
+	if (!player || !player->has_sound)
+	{
+		return 0.0F;
+	}
+
+	float duration;
+	ma_result res = ma_sound_get_length_in_seconds(&player->sound, &duration);
+	if (res != MA_SUCCESS)
+	{
+		return 0.0F;
+	}
+
+	return duration;
+}
+
 bool audio_is_empty(AudioPlayer* player)
 {
 	if (!player || !player->has_sound)

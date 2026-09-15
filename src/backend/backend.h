@@ -66,6 +66,7 @@ typedef struct
 void playlist_free(gpointer data);
 OrpheusBackend* backend_init(const char* music_dir);
 void backend_destroy(OrpheusBackend* backend);
+void backend_toggle_play(OrpheusBackend* backend);
 void backend_prev(OrpheusBackend* backend);
 void backend_next(OrpheusBackend* backend);
 void backend_load_album_to_queue(OrpheusBackend* backend, Album* album,
@@ -73,5 +74,8 @@ void backend_load_album_to_queue(OrpheusBackend* backend, Album* album,
 void backend_load_playlist_to_queue(OrpheusBackend* backend, Playlist* playlist,
                                     int idx);
 Song* song_from_path(OrpheusBackend* backend, const char* path);
+float backend_get_position_seconds(OrpheusBackend* backend);
+float backend_get_duration_seconds(OrpheusBackend* backend);
+void backend_seek(OrpheusBackend* backend, float seconds);
 
 #endif

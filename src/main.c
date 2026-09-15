@@ -1,4 +1,5 @@
 #include <SDL3/SDL_oldnames.h>
+#include <SDL3/SDL_render.h>
 #include <SDL3/SDL_video.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -15,6 +16,7 @@
 #include "backend/backend.h"
 #include "ui/ui_state.h"
 #include "ui/ui_view.h"
+#include "ui/position_slider.h"
 
 int main(void)
 {
@@ -39,6 +41,8 @@ int main(void)
 	}
 
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
+	SDL_SetRenderVSync(renderer, 1);
+
 	struct nk_context* context =
 	    nk_sdl_init(window, renderer, nk_sdl_allocator());
 	nk_sdl_font_stash_begin(context);
@@ -77,6 +81,11 @@ int main(void)
 		{
 			nk_layout_row_static(context, 30, 100, 1);
 			display_current_view(backend, &ui_state, context);
+			if (nk_button_label(context, "TOGGLE PLAY"))
+			{
+				backend_toggle_play(backend);
+			}
+			display_position_slider(backend, context);
 		}
 
 		nk_end(context);

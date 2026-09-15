@@ -111,6 +111,7 @@ void backend_load_playlist_to_queue(OrpheusBackend* backend, Playlist* playlist,
 	backend_load_track(backend, backend->queue->pdata[idx]);
 }
 
+// TODO
 void backend_tick(OrpheusBackend* backend)
 {
 	if (audio_is_empty(backend->player) && !audio_is_paused(backend->player))
@@ -129,4 +130,19 @@ void playlist_free(gpointer data)
 	g_free(playlist->name);
 	g_ptr_array_free(playlist->songs, TRUE);
 	g_free(playlist);
+}
+
+float backend_get_position_seconds(OrpheusBackend* backend)
+{
+	return audio_get_position_seconds(backend->player);
+}
+
+float backend_get_duration_seconds(OrpheusBackend* backend)
+{
+	return audio_get_duration_seconds(backend->player);
+}
+
+void backend_seek(OrpheusBackend* backend, float seconds)
+{
+	audio_seek_seconds(backend->player, seconds);
 }
