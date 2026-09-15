@@ -55,9 +55,9 @@ typedef struct
 	GHashTable* built_library;
 	GPtrArray* library;
 	GPtrArray* queue;
-	// int* order;
+	GArray* order;
 	int index;
-	// bool shuffle;
+	bool shuffle;
 	RepeatMode repeat;
 	float volume;
 	bool paused;
@@ -79,5 +79,6 @@ float backend_get_duration_seconds(OrpheusBackend* backend);
 void backend_seek(OrpheusBackend* backend, float seconds);
 void backend_tick(OrpheusBackend* backend);
 void backend_toggle_repeat(OrpheusBackend* backend);
+void backend_toggle_shuffle(OrpheusBackend* backend);
 
 #endif

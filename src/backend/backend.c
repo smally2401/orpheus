@@ -1,8 +1,12 @@
 #include "backend.h"
 
+#include <stdlib.h>
+#include <stdio.h>
+
 #include <glib.h>
 
 #include "../audio/audio.h"
+#include "glibconfig.h"
 #include "library.h"
 
 OrpheusBackend* backend_init(const char* music_dir)
@@ -15,7 +19,9 @@ OrpheusBackend* backend_init(const char* music_dir)
 	backend->playlists =
 	    g_ptr_array_new_with_free_func((GDestroyNotify)playlist_free);
 	backend->queue = g_ptr_array_new();
+	backend->order = g_array_new(FALSE, FALSE, sizeof(int));
 	backend->index = 0;
+	backend->shuffle = false;
 	backend->repeat = REPEAT_OFF;
 	backend->volume = 1.0F;
 	backend->paused = true;
@@ -31,7 +37,22 @@ void backend_destroy(OrpheusBackend* backend)
 	g_ptr_array_free(backend->library, TRUE);
 	g_ptr_array_free(backend->playlists, TRUE);
 	g_ptr_array_free(backend->queue, TRUE);
+	g_array_free(backend->order, TRUE);
 	g_free(backend);
+}
+
+Song* backend_get_current_song(OrpheusBackend* backend)
+{
+	if (backend->queue->len == 0)
+	{
+		return NULL;
+	}
+
+	int real_index = backend->shuffle
+	    ? g_array_index(backend->order, int, backend->index)
+	    : backend->index;
+
+	return backend->queue->pdata[real_index];
 }
 
 void backend_play(OrpheusBackend* backend)
@@ -72,7 +93,7 @@ void backend_next(OrpheusBackend* backend)
 	if (backend->index + 1 < (int)backend->queue->len)
 	{
 		backend->index++;
-		backend_load_track(backend, backend->queue->pdata[backend->index]);
+		backend_load_track(backend, backend_get_current_song(backend));
 	}
 }
 
@@ -81,7 +102,72 @@ void backend_prev(OrpheusBackend* backend)
 	if (backend->index != 0)
 	{
 		backend->index--;
-		backend_load_track(backend, backend->queue->pdata[backend->index]);
+		backend_load_track(backend, backend_get_current_song(backend));
+	}
+}
+
+void backend_unshuffle_order(OrpheusBackend* backend)
+{
+	if (backend->queue->len == 0)
+	{
+		return;
+	}
+
+	g_array_free(backend->order, TRUE);
+	backend->order = g_array_new(FALSE, FALSE, sizeof(int));
+	for (int i = 0; i < (int)backend->queue->len; i++)
+	{
+		g_array_append_val(backend->order, i);
+	}
+}
+
+int* backend_get_shuffled_order(int len)
+{
+	if (len <= 0)
+	{
+		return NULL;
+	}
+
+	int* order = g_malloc(len * sizeof(int));
+	for (int i = 0; i < len; i++)
+	{
+		order[i] = i;
+	}
+
+	for (int i = len - 1; i > 0; i--)
+	{
+		int j = rand() % (i + 1);
+		int tmp = order[i];
+		order[i] = order[j];
+		order[j] = tmp;
+	}
+
+	return order;
+}
+
+void backend_shuffle_order(OrpheusBackend* backend)
+{
+	if (backend->queue->len == 0)
+	{
+		return;
+	}
+
+	g_array_free(backend->order, TRUE);
+	backend->order = g_array_new(FALSE, FALSE, sizeof(int));
+	int* shuffled_order = backend_get_shuffled_order((int)backend->queue->len);
+	for (int i = 0; i < (int)backend->queue->len; i++)
+	{
+		g_array_append_val(backend->order, shuffled_order[i]);
+	}
+
+	g_free(shuffled_order);
+	for (int i = 0; i < (int)backend->queue->len; i++)
+	{
+		if (g_array_index(backend->order, int, i) == backend->index)
+		{
+			backend->index = i;
+			break;
+		}
 	}
 }
 
@@ -95,7 +181,17 @@ void backend_load_album_to_queue(OrpheusBackend* backend, Album* album, int idx)
 	}
 
 	backend->index = idx;
-	backend_load_track(backend, backend->queue->pdata[idx]);
+
+	if (backend->shuffle)
+	{
+		backend_shuffle_order(backend);
+	}
+	else
+	{
+		backend_unshuffle_order(backend);
+	}
+
+	backend_load_track(backend, backend_get_current_song(backend));
 }
 
 void backend_load_playlist_to_queue(OrpheusBackend* backend, Playlist* playlist,
@@ -109,7 +205,17 @@ void backend_load_playlist_to_queue(OrpheusBackend* backend, Playlist* playlist,
 	}
 
 	backend->index = idx;
-	backend_load_track(backend, backend->queue->pdata[idx]);
+
+	if (backend->shuffle)
+	{
+		backend_shuffle_order(backend);
+	}
+	else
+	{
+		backend_unshuffle_order(backend);
+	}
+
+	backend_load_track(backend, backend_get_current_song(backend));
 }
 
 void backend_tick(OrpheusBackend* backend)
@@ -128,7 +234,7 @@ void backend_tick(OrpheusBackend* backend)
 		case REPEAT_QUEUE:
 			bool last_track = backend->index + 1 == (int)backend->queue->len;
 			backend->index = last_track ? 0 : backend->index + 1;
-			backend_load_track(backend, backend->queue->pdata[backend->index]);
+			backend_load_track(backend, backend_get_current_song(backend));
 			break;
 
 		case REPEAT_TRACK:
@@ -188,4 +294,30 @@ void backend_toggle_repeat(OrpheusBackend* backend)
 		backend->repeat = REPEAT_OFF;
 		break;
 	}
+}
+
+void backend_toggle_shuffle(OrpheusBackend* backend)
+{
+	backend->shuffle = !backend->shuffle;
+
+	if (backend->shuffle)
+	{
+		backend_shuffle_order(backend);
+	}
+	else
+	{
+		backend_unshuffle_order(backend);
+	}
+
+#ifdef DEBUG
+	for (int i = 0; i < (int)backend->queue->len; i++)
+	{
+
+		int real_index =
+		    backend->shuffle ? g_array_index(backend->order, int, i) : i;
+
+		Song* song = backend->queue->pdata[real_index];
+		printf("%i. %s\n", i, song->title);
+	}
+#endif
 }

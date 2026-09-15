@@ -20,6 +20,7 @@
 
 int main(void)
 {
+	srand(time(NULL));
 	UiState ui_state = ui_state_init();
 
 	OrpheusBackend* backend = backend_init("/home/smally/Music");
@@ -90,6 +91,11 @@ int main(void)
 			{
 				backend_toggle_repeat(backend);
 				printf("%i\n", backend->repeat);
+			}
+			if (nk_button_label(context, "TOGGLE SHUFFLE"))
+			{
+				backend_toggle_shuffle(backend);
+				printf("%s\n", backend->shuffle ? "shuffle on" : "shuffle off");
 			}
 			display_position_slider(backend, context);
 		}
