@@ -321,3 +321,8 @@ void backend_toggle_shuffle(OrpheusBackend* backend)
 	}
 #endif
 }
+
+void backend_set_volume(OrpheusBackend* backend, float vol)
+{
+	audio_set_volume(backend->player, vol);
+}

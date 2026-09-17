@@ -17,6 +17,7 @@
 #include "ui/ui_state.h"
 #include "ui/ui_view.h"
 #include "ui/position_slider.h"
+#include "ui/volume_slider.h"
 
 int main(void)
 {
@@ -98,6 +99,7 @@ int main(void)
 				printf("%s\n", backend->shuffle ? "shuffle on" : "shuffle off");
 			}
 			display_position_slider(backend, context);
+			display_volume_slider(backend, context);
 		}
 
 		nk_end(context);

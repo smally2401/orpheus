@@ -80,5 +80,6 @@ void backend_seek(OrpheusBackend* backend, float seconds);
 void backend_tick(OrpheusBackend* backend);
 void backend_toggle_repeat(OrpheusBackend* backend);
 void backend_toggle_shuffle(OrpheusBackend* backend);
+void backend_set_volume(OrpheusBackend* backend, float vol);
 
 #endif
