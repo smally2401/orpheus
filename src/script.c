@@ -1,6 +1,7 @@
 #include "script.h"
 
 #include "app.h"
+#include "api.h"
 #include "util.h"
 
 #include <glib.h>
@@ -152,6 +153,8 @@ void script_init(int nfiles, char** files)
     setup_package_path(L);
 
     lua_newtable(L);
+    api_window_open(L);
+    api_sys_open(L);
     push_paths(L);
     lua_setfield(L, -2, "paths");
     lua_pushstring(L, ORPHEUS_VERSION);

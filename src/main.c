@@ -51,5 +51,5 @@ int main(void)
     SDL_DestroyRenderer(app.renderer);
     SDL_DestroyWindow(app.window);
     SDL_Quit();
-    return 0;
+    return app.exit_code;
 }
