@@ -153,6 +153,7 @@ void script_init(int nfiles, char** files)
     setup_package_path(L);
 
     lua_newtable(L);
+    api_gfx_open(L);
     api_window_open(L);
     api_sys_open(L);
     push_paths(L);
@@ -239,6 +240,7 @@ void script_shutdown(void)
     }
 
     script_event("quit", "");
+    api_gfx_shutdown(app.L);
     lua_close(app.L);
     app.L = NULL;
 }

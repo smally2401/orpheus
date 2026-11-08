@@ -12,6 +12,6 @@ void api_sys_open(lua_State* L);
 
 void api_gfx_shutdown(lua_State* L);
 void api_gfx_begin_frame(void);
-SDL_FColor api_check_color(lua_State* L);
+SDL_FColor api_check_color(lua_State* L, int idx);
 
 #endif

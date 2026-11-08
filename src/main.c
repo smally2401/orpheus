@@ -1,6 +1,9 @@
+#include "api.h"
 #include "app.h"
 #include "util.h"
 #include "script.h"
+#include <SDL3/SDL_blendmode.h>
+#include <SDL3/SDL_render.h>
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_timer.h>
 
@@ -22,6 +25,7 @@ int main(void)
         die("could not create window: %s", SDL_GetError());
     }
 
+    SDL_SetRenderDrawBlendMode(app.renderer, SDL_BLENDMODE_BLEND);
     SDL_SetRenderVSync(app.renderer, 1);
     script_init(0, NULL);
     app.running = true;
@@ -40,10 +44,11 @@ int main(void)
         Uint64 now = SDL_GetTicksNS();
         double dt = (double)(now - last) / 1e9;
         last = now;
-        script_event("frame", "nb", dt, 1);
 
-        SDL_SetRenderDrawColor(app.renderer, 30, 30, 40, 255);
+        SDL_SetRenderDrawColor(app.renderer, 0, 0, 0, 255);
         SDL_RenderClear(app.renderer);
+        api_gfx_begin_frame();
+        script_event("frame", "nb", dt, 1);
         SDL_RenderPresent(app.renderer);
     }
 
