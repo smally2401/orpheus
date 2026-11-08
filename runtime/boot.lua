@@ -1,16 +1,14 @@
-local O, g = orpheus, orpheus.gfx
-function O._event(name, ...)
-    if name ~= "frame" then
-        print(name, ...)
-        return
-    end
-    local dt = ...
-    local w, h = O.window.size()
-    g.rect(20, 20, 200, 100, "#6aa3ff")
-    g.outline(20, 140, 200, 100, { 255, 100, 100 }, 3)
-    g.poly({ 300, 20, 360, 60, 300, 100 }, "#e0a458")
-    g.clip(400, 20, 100, 30)
-    g.text("this text is clipped at 100 px wide", 400, 30, "#ffffff")
-    g.unclip()
-    g.text(string.format("dt = %.4f", dt), 20, h - 20, "#8b8d9c80")
-end
+local O = require("orpheus.core")
+O.on("draw", function()
+  local w, h = O.window.size()
+  O.gfx.rect(0, 0, w, h, O.theme.bg)
+  O.gfx.text(O.util.format_time(O.time()), 20, 20, O.theme.fg)
+end)
+O.every(1, function() O.log("tick") end)
+local t = O.after(2.5, function() O.log("dont look at me") end)
+O.after(1.5, function() O.cancel(t) end)
+O.after(4, function() error("errors in timers caught") end)
+O.on("key_down", function(k, mods) O.log("key", k, mods) end)
+O.on("key_down", function(k) if k == "q" then O.quit() end end)
+print(O.util.serialize({ 1, 2, x = { y = "z" } }))
+
