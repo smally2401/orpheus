@@ -1,14 +1,21 @@
 local O = require("orpheus.core")
-O.on("draw", function()
-  local w, h = O.window.size()
-  O.gfx.rect(0, 0, w, h, O.theme.bg)
-  O.gfx.text(O.util.format_time(O.time()), 20, 20, O.theme.fg)
-end)
-O.every(1, function() O.log("tick") end)
-local t = O.after(2.5, function() O.log("dont look at me") end)
-O.after(1.5, function() O.cancel(t) end)
-O.after(4, function() error("errors in timers caught") end)
-O.on("key_down", function(k, mods) O.log("key", k, mods) end)
-O.on("key_down", function(k) if k == "q" then O.quit() end end)
-print(O.util.serialize({ 1, 2, x = { y = "z" } }))
+O.ui = require("orpheus.ui")
+local ui = O.ui
+
+ui.add(ui.Label { id = "clock", x = 10, y = 10, w = -10, h = 30,
+  text = function() return os.date("%H:%M:%S") end })
+ui.add(ui.Button { x = 10, y = 50, w = 120, h = 32, text = "Click me",
+  action = function() O.log("clicked") end })
+ui.add(ui.Button { x = -10, y = "100%-50", w = 40, h = 40, icon = ui.icons.play,
+  action = function() O.log("play") end })
+local box = ui.add(ui.Box {
+  x = "25%", y = 100, w = "50%", h = 200, bg = "#334", border_width = 2,
+  on_wheel = function(_, dy) O.log("wheel", dy) end,
+  children = {
+    ui.Button { x = 10, y = 10, w = 100, h = 30, text = "inner" },
+    ui.Label { x = 10, y = -10, w = -10, h = 20, text = "bottom of the box" },
+  },
+})
+ui.bind("ctrl+q", O.quit)
+ui.bind("space", function() box.visible = not box.visible end)
 
