@@ -155,6 +155,7 @@ void script_init(int nfiles, char** files)
     lua_newtable(L);
     api_gfx_open(L);
     api_window_open(L);
+    api_audio_open(L);
     api_sys_open(L);
     push_paths(L);
     lua_setfield(L, -2, "paths");

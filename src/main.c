@@ -1,5 +1,6 @@
 #include "api.h"
 #include "app.h"
+#include "audio.h"
 #include "util.h"
 #include "script.h"
 
@@ -193,6 +194,11 @@ static void run(void)
         {
         }
 
+        if (audio_poll_finished())
+        {
+            script_event("track_end", "");
+        }
+
         now = SDL_GetTicksNS();
         if (now - last < frame_ns)
         {
@@ -274,6 +280,7 @@ int main(int argc, char** argv)
     SDL_SetWindowMinimumSize(app.window, 320, 200);
     SDL_StopTextInput(app.window);
 
+    audio_init();
     app.running = true;
     script_init(nfiles, files);
     free(files);
@@ -281,6 +288,7 @@ int main(int argc, char** argv)
     run();
 
     script_shutdown();
+    audio_shutdown();
     SDL_DestroyRenderer(app.renderer);
     SDL_DestroyWindow(app.window);
     SDL_Quit();

@@ -601,6 +601,52 @@ function ui.icons.stop(_, x, y, w, h, c)
   gfx.rect(x + w / 2 - s, y + h / 2 - s, s * 2, s * 2, c)
 end
 
+ui.Slider = Widget:extend {
+    cursor = "hand",
+    step = 0.05,
+
+    draw = function(self, x, y, w, h)
+        local v = self.drag_value or self:get("value") or 0
+        v = math.max(0, math.min(1, v))
+        local track = self:get("bg", "button")
+        local th = math.max(2, math.floor(self:get("track_height") or h / 3))
+        local ty = y + math.floor((h - th) / 2)
+        gfx.rect(x, ty, w, th, track)
+        gfx.rect(x, ty, math.floor(w * v), th, self:get("fill", "accent"))
+        if self:is_hovered() or self.drag_value then
+            local kw = math.max(4, math.floor(h / 2))
+            gfx.rect(x + math.floor(w * v) - kw / 2, y + (h - h * 0.8) / 2, kw, h * 0.8, self:get("knob", "fg"))
+        end
+    end,
+
+    set_from = function(self, lx, final)
+        local v = math.max(0, math.min(1, lx / math.max(1, self.aw)))
+        self.drag_value = (not final) and v or nil
+        if self.on_change then
+            self:on_change(v, final)
+        end
+    end,
+
+    on_mouse_down = function (self, lx)
+       self:set_from(lx, false)
+    end,
+
+    on_drag = function (self, lx)
+       self:set_from(lx, false)
+    end,
+
+    on_mouse_up = function (self, lx)
+       self:set_from(lx, true)
+    end,
+
+    on_wheel = function (self, dy)
+        local v = (self:get("value") or 0) + dy * self.step
+        if self.on_change then
+            self:on_change(math.max(0, math.min(1, v)), true)
+        end
+    end,
+}
+
 ui.root = ui.Box {
   id = "root",
   border_width = 0,
