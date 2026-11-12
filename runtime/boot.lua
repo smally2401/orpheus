@@ -1,4 +1,5 @@
 local O = require("orpheus.core")
+if orpheus.config_file then return dofile(orpheus.config_file) end
 local t0 = O.time()
 local files = O.fs.scan(O.paths.music, { "mp3", "flac", "ogg", "wav" })
 O.log(#files, "files in", O.time() - t0, "s; first:", files[1])

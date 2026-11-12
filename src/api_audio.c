@@ -1,6 +1,8 @@
 #include "api.h"
 
 #include "audio.h"
+#include "tags.h"
+
 #include "lauxlib.h"
 #include "lua.h"
 
@@ -97,6 +99,25 @@ static int l_path(lua_State* L)
     return 1;
 }
 
+static void tag_cb(const char* key, const char* value, void* ud)
+{
+    lua_State* L = ud;
+    lua_pushstring(L, value);
+    lua_setfield(L, -2, key);
+}
+
+static int l_tags(lua_State* L)
+{
+    const char* path = luaL_checkstring(L, 1);
+    lua_newtable(L);
+    if (!tags_read(path, tag_cb, L))
+    {
+        lua_pushnil(L);
+    }
+
+    return 1;
+}
+
 void api_audio_open(lua_State* L)
 {
     static const luaL_Reg fns[] = {
@@ -116,4 +137,6 @@ void api_audio_open(lua_State* L)
 
     luaL_newlib(L, fns);
     lua_setfield(L, -2, "audio");
+    lua_pushcfunction(L, l_tags);
+    lua_setfield(L, -2, "tags");
 }
