@@ -1,11 +1,8 @@
 local O = require("orpheus.core")
-local P = require("orpheus.playlist")
-local pl = P.new("test", { tracks = {
-  { path = "a", title = "beta", artist = "Zed", track = 2 },
-  { path = "b", title = "Alpha", artist = "Zed", track = 1 },
-  { path = "c", title = "gamma", artist = "Abe", track = 10 },
-} })
-local function show() local t = {} for i, x in ipairs(pl.tracks) do t[i] = x.title end print(table.concat(t, ", ")) end
-pl:sort("title") show()
-pl:sort("-track") show()
-pl:sort("artist") show()
+O.ui = require("orpheus.ui")
+O.playlist = require("orpheus.playlist")
+O.library = require("orpheus.library")
+local t0 = O.time()
+O.library.rescan(function() O.log(#O.library.tracks, "tracks in", O.time() - t0, "s") end)
+O.on("library_progress", function(d, t) if d % 200 == 0 then O.log(d, "/", t) end end)
+
