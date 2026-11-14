@@ -69,8 +69,8 @@ SDL_FColor api_check_color(lua_State* L, int idx)
         else if (n == 6 || n == 8)
         {
             c.r = (v[0] * 16 + v[1]) / 255.0f;
-            c.r = (v[2] * 16 + v[3]) / 255.0f;
-            c.r = (v[4] * 16 + v[5]) / 255.0f;
+            c.g = (v[2] * 16 + v[3]) / 255.0f;
+            c.b = (v[4] * 16 + v[5]) / 255.0f;
             c.a = n == 8 ? (v[6] * 16 + v[7]) / 255.0f : 1;
         }
         else

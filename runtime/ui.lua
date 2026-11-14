@@ -30,7 +30,7 @@ local function font_of(self)
     return self:get("font") or theme.font
 end
 
-function ui.row_height()
+function ui.row_height(font)
     return theme.row_height or math.floor(gfx.line_height(font or theme.font) + 6)
 end
 
@@ -646,6 +646,343 @@ ui.Slider = Widget:extend {
         end
     end,
 }
+
+ui.List = Widget:extend {
+    framed = true,
+    focusable = true,
+    header = false,
+    init = function(self)
+        self.scroll = 0
+        self.selection = {}
+        self.anchor = nil
+        self.cursor_index = nil
+        self._gen = -1
+    end,
+}
+local List = ui.List
+
+function List:refresh()
+    self._gen = -1
+end
+
+function List:rows()
+    local src = self:get("items") or {}
+    local filt = self.filter
+    if self._src == src and self._gen == ui.generation and
+        self._filt == filt and self._n == #src then
+            return self._rows
+        end
+    self._src, self._gen, self._filt, self._n = src, ui.generation, filt, #src
+    if filt then
+        local out = {}
+        for _, it in ipairs(src) do
+            if filt(it) then
+                out[#out + 1] = it
+            end
+        end
+        self._rows = out
+    else
+        self._rows = src
+    end
+    return self._rows
+end
+
+function List:row_h()
+    return self:get("row_height") or ui.row_height(font_of(self))
+end
+
+function List:header_h()
+    return self:get("header") and self:row_h() or 0
+end
+
+function List:page()
+    return math.max(1, math.floor((self.ah - self:header_h()) / self:row_h()))
+end
+
+function List:clamp_scroll()
+    local rows = self:rows()
+    local max = math.max(0, #rows * self:row_h() - (self.ah - self:header_h()))
+    self.scroll = math.max(0, math.min(self.scroll, max))
+end
+
+function List:scroll_to(i)
+    if not self.ah then
+        return
+    end
+    local rh = self:row_h()
+    local view = self.ah - self:header_h()
+    local top = (i - 1) * rh
+    if top < self.scroll then
+        self.scroll = top
+    elseif top + rh > self.scroll + view then
+        self.scroll = top + rh - view
+    end
+    self:clamp_scroll()
+end
+
+function List:selected_items()
+    local out = {}
+    for _, it in ipairs(self:rows()) do
+        if self.selection[it] then
+            out[#out + 1] = it
+        end
+    end
+    if #out == 0 and self.cursor_index then
+        out[1] = self:rows()[self.cursor_index]
+    end
+    return out
+end
+
+function List:select_index(i, mode)
+    local rows = self:rows()
+    if #rows == 0 then
+        return
+    end
+    i = math.max(1, math.min(#rows, i))
+    local it = rows[i]
+    if mode == "toggle" then
+        self.selection[it] = not self.selection[it] or nil
+        self.anchor = i
+    elseif mode == "range" and self.anchor then
+        self.selection = {}
+        for k = math.min(self.anchor, i), math.max(self.anchor, i) do
+            self.selection[rows[k]] = true
+        end
+    else
+        self.selection = { [it] = true }
+        self.anchor = i
+    end
+    self.cursor_index = i
+    self:scroll_to(i)
+    if self.on_select then
+        self:on_select(it, i)
+    end
+end
+
+function List:column_layout(w)
+    local cols = self:get("columns") or { { get = tostring } }
+    local fixed, flex_n = 0, 0
+    for _, c in ipairs(cols) do
+        local cw = c.width
+        if not cw then
+            flex_n = flex_n + 1
+        elseif cw <= 1 then
+            fixed = fixed + cw * w
+        else
+            fixed = fixed + cw
+        end
+    end
+    local flex = flex_n > 0 and math.max(0, (w - fixed) / flex_n) or 0
+    local out, x = {}, 0
+    for i, c in ipairs(cols) do
+        local cw = c.width
+        cw = (not cw) and flex or (cw <= 1 and cw * w or cw)
+        out[i] = {
+            col = c,
+            x = math.floor(x),
+            w = math.floor(cw),
+        }
+        x = x + cw
+    end
+    return out
+end
+
+local function cell_text(col, item, index)
+    if col.get then
+        return col.get(item, index)
+    end
+    if col.key then
+        return item[col.key]
+    end
+    return ""
+end
+
+function List:render_row(item, index, x, y, w, h, selected, layout)
+    local font = font_of(self)
+    local fg = (self.row_fg and self:row_fg(item, index)) or self:get("fg", "fg")
+    local pad = self:get("padding") or theme.padding
+    for _, c in ipairs(layout) do
+        local t = cell_text(c.col, item, index)
+        if t ~= nil and t ~= "" then
+            draw_aligned(tostring(t), x + c.x, y, c.w, h,
+            c.col.fg or fg, font, c.col.align or "left", pad)
+        end
+    end
+end
+
+function List:draw(x, y, w, h)
+    gfx.rect(x, y, w, h, self:get("bg", "panel"))
+	local rows = self:rows()
+	local rh = self:row_h()
+	local hh = self:header_h()
+	local sbw = (#rows * rh > h - hh) and 8 or 0
+	local layout = self:column_layout(w - sbw)
+	self:clamp_scroll()
+	local first = math.floor(self.scroll / rh) + 1
+	local last = math.min(#rows, first + math.ceil((h - hh) / rh))
+	local alt, sel = self:get("row_alt", "row_alt"), self:get("selection_bg", "selection")
+	gfx.clip(x, y + hh, w, h - hh)
+	for i = first, last do
+		local ry = y + hh + (i - 1) * rh - self.scroll
+		local it = rows[i]
+		local selected = self.selection[it]
+		if selected then
+			gfx.rect(x, ry, w - sbw, rh, sel)
+		elseif alt and i % 2 == 0 then
+			gfx.rect(x, ry, w - sbw, rh, alt)
+		end
+		if i == self.cursor_index and self:is_focused() then
+			gfx.outline(x, ry, w - sbw, rh, self:get("cursor_color", "border"), 1)
+		end
+		self:render_row(it, i, x, ry, w - sbw, rh, selected, layout)
+	end
+	gfx.unclip()
+	if hh > 0 then
+		gfx.rect(x, y, w, hh, self:get("header_bg", "button"))
+		local pad = self:get("padding") or theme.padding
+		for _, c in ipairs(layout) do
+			if c.col.title then
+				draw_aligned(c.col.title, x + c.x, y, c.w, hh,
+                    self:get("header_fg", "dim"), font_of(self),
+					c.col.align or "left", pad)
+			end
+		end
+	end
+	if sbw > 0 then
+		local view = h - hh
+		local total = #rows * rh
+		local th = math.max(20, view * view / total)
+		local ty = y + hh + (view - th) * (self.scroll / math.max(1, total - view))
+		gfx.rect(x + w - sbw + 2, ty, sbw - 4, th, self:get("scrollbar", "scrollbar"))
+	end
+	if #rows == 0 and self.empty_text then
+		draw_aligned(val(self.empty_text, self), x, y + hh, w, h - hh,
+            self:get("dim", "dim"), font_of(self), "center", 0)
+	end
+end
+
+function List:index_at(ly)
+	local hh = self:header_h()
+	if ly < hh then
+        return nil
+    end
+	local i = math.floor((ly - hh + self.scroll) / self:row_h()) + 1
+	if i >= 1 and i <= #self:rows() then
+        return i
+    end
+end
+
+function List:on_mouse_down(lx, ly, button, clicks)
+	local rows = self:rows()
+	local hh = self:header_h()
+	if ly < hh then
+		for _, c in ipairs(self:column_layout(self.aw)) do
+			if lx >= c.x and lx < c.x + c.w and self.on_header_click then
+                self:on_header_click(c.col)
+            end
+		end
+		return
+	end
+	if lx > self.aw - 8 and #rows * self:row_h() > self.ah - hh then
+		self.dragging_bar = true
+		self:on_drag(lx, ly)
+		return
+	end
+	local i = self:index_at(ly)
+	if not i then
+		if button == 1 then
+            self.selection = {}
+        end
+		return
+	end
+	local ctrl, shift = O.keymods and O.keymods.ctrl, O.keymods and O.keymods.shift
+	if button == 3 then
+		if not self.selection[rows[i]] then
+            self:select_index(i)
+        end
+	elseif shift then
+        self:select_index(i, "range")
+	elseif ctrl then
+        self:select_index(i, "toggle")
+	else
+        self:select_index(i)
+    end
+	if button == 1 and clicks == 2 and self.on_activate then
+        self:on_activate(rows[i], i)
+    end
+end
+
+function List:on_drag(_, ly)
+	if not self.dragging_bar then
+        return
+    end
+	local hh = self:header_h()
+	local total = #self:rows() * self:row_h()
+	local view = self.ah - hh
+	self.scroll = (ly - hh) / math.max(1, view) * total - view / 2
+	self:clamp_scroll()
+end
+
+function List:on_mouse_up()
+    self.dragging_bar = false
+end
+
+function List:on_right_click(lx, ly)
+	local i = self:index_at(ly)
+	if i and self.on_item_menu then
+		self:on_item_menu(self:rows()[i], i, self.ax + lx, self.ay + ly)
+	end
+end
+
+function List:on_wheel(dy)
+	self.scroll = self.scroll - dy * self:row_h() * 3
+	self:clamp_scroll()
+end
+
+function List:on_key(key, mods, combo)
+	local rows = self:rows()
+	local i = self.cursor_index or 0
+	local mode = mods:find("shift") and "range" or nil
+	if key == "down" then
+        self:select_index(i + 1, mode)
+	elseif key == "up" then
+        self:select_index(math.max(1, i - 1), mode)
+	elseif key == "pagedown" then
+        self:select_index(i + self:page(), mode)
+	elseif key == "pageup" then
+        self:select_index(math.max(1, i - self:page()), mode)
+	elseif key == "home" then
+        self:select_index(1, mode)
+	elseif key == "end" then
+    self:select_index(#rows, mode)
+	elseif combo == "ctrl+a" then
+		self.selection = {}
+		for _, it in ipairs(rows) do
+            self.selection[it] = true
+        end
+	elseif (key == "return" or key == "keypad enter") and self.cursor_index and self.on_activate then
+		self:on_activate(rows[self.cursor_index], self.cursor_index)
+	else
+		return false
+	end
+end
+
+O.keymods = { ctrl = false, shift = false, alt = false }
+local function track_mods(key, down)
+	if key:find("ctrl") then
+        O.keymods.ctrl = down
+	elseif key:find("shift") then
+        O.keymods.shift = down
+	elseif key:find("alt") then
+        O.keymods.alt = down end
+end
+O.on("key_down", function(key) track_mods(key, true) end)
+O.on("key_up", function(key) track_mods(key, false) end)
+O.on("focus", function(gained)
+	if not gained then
+        O.keymods.ctrl, O.keymods.shift, O.keymods.alt = false, false, false
+    end
+end)
 
 ui.root = ui.Box {
   id = "root",
