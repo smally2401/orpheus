@@ -72,7 +72,15 @@ bool audio_load(const char* path, const char** err)
     }
 
     ma_uint32 flags = MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_NO_SPATIALIZATION;
+
+#ifdef _WIN32
+    gunichar2 *wpath = g_utf8_to_utf16(path, -1, NULL, NULL, NULL);
+    ma_result r = ma_sound_init_from_file_w(&A.engine, (const wchar_t *)wpath, flags, NULL, NULL, &A.sound);
+    g_free(wpath);
+#else
     ma_result r = ma_sound_init_from_file(&A.engine, path, flags, NULL, NULL, &A.sound);
+#endif
+
     if (r != MA_SUCCESS)
     {
         if (err)

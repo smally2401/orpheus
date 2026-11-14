@@ -1,19 +1,27 @@
 CC = gcc
 PREFIX ?= /usr/local
-PKGS = sdl3 sdl3-image glib-2.0 gio-2.0 lua5.4 fontconfig
+LUA_PKG ?= lua5.4
+PKGS = sdl3 sdl3-image glib-2.0 gio-2.0 $(LUA_PKG) fontconfig
 
 CFLAGS ?= -O2 -g
 CPPFLAGS_ALL = -std=c99 -D_DEFAULT_SOURCE -Ivendor $(shell pkg-config --cflags $(PKGS))
 WARN = -Wall -Wextra -Wpedantic -Wshadow -Wno-overlength-strings
-LDLIBS += $(shell pkg-config --libs $(PKGS)) -lm -lpthread -ldl
 
 BUILD = build
 SRC = $(wildcard src/*.c)
 OBJ = $(patsubst src/%.c,$(BUILD)/%.o,$(SRC))
 
-all: orpheus
+ifeq ($(OS),Windows_NT)
+	EXE    = .exe
+	LDLIBS += $(shell pkg-config --libs $(PKGS)) -lm
+else
+	EXE    =
+	LDLIBS += $(shell pkg-config --libs $(PKGS)) -lm -lpthread -ldl
+endif
 
-orpheus: $(OBJ)
+all: orpheus$(EXE)
+
+orpheus$(EXE): $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 $(BUILD):
@@ -32,6 +40,6 @@ run: orpheus
 	$(DEVENV) ./orpheus $(ARGS)
 
 clean:
-	rm -rf $(BUILD) orpheus
+	rm -rf $(BUILD) orpheus$(EXE)
 
 .PHONY: all run clean

@@ -3,6 +3,7 @@
 #include "util.h"
 
 #include <glib.h>
+#include <glib/gstdio.h>
 
 #include <stdint.h>
 #include <stddef.h>
@@ -972,7 +973,7 @@ static void read_wav(Ctx* c, FILE* f, long fsz)
 
 static bool read_any(const char* path, Ctx* c)
 {
-    FILE* f = fopen(path, "rb");
+    FILE* f = g_fopen(path, "rb");
     if (!f)
     {
         return false;
