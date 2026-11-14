@@ -2,6 +2,7 @@
 
 #include "util.h"
 
+#include <glib.h>
 #include "miniaudio.h"
 
 #include <stdlib.h>
